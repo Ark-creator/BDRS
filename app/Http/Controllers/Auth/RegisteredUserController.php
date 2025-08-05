@@ -57,6 +57,12 @@ class RegisteredUserController extends Controller
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'middle_name' => $request->middle_name,
+                 'phone_number' => $request->phone_number,
+        'address' => $request->address,  
+        'birthday' => $request->birthday,
+        'gender' => $request->gender,
+        'civil_status' => $request->civil_status,
+        'profile_picture_url' => $request->profile_picture_url,
                 // Add other fields here if they are in the request
                 // 'phone_number' => $request->phone_number,
             ]);
