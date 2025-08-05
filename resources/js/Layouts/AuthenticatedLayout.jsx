@@ -30,6 +30,36 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    href={route('residents.index')}
+                                    active={route().current('residents.index')}
+                                >
+                                    Residents
+                                </NavLink>
+                                <NavLink
+                                    href={route('residents.home')}
+                                    active={route().current('residents.home')}
+                                >
+                                    Home
+                                </NavLink>
+                                <NavLink
+                                    href={route('residents.about')}
+                                    active={route().current('residents.about')}
+                                >
+                                    About
+                                </NavLink>
+                                <NavLink
+                                    href={route('residents.contact')}
+                                    active={route().current('residents.contact')}
+                                >
+                                    Contact Us
+                                </NavLink>
+                                <NavLink
+                                    href={route('residents.faq')}
+                                    active={route().current('residents.faq')}
+                                >
+                                    FAQ
+                                </NavLink>
                             </div>
                         </div>
 
@@ -128,11 +158,18 @@ export default function AuthenticatedLayout({ header, children }) {
                     }
                 >
                     <div className="space-y-1 pb-3 pt-2">
+                        {/* You can also add the responsive links here if you want them on mobile */}
                         <ResponsiveNavLink
                             href={route('dashboard')}
                             active={route().current('dashboard')}
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route('residents.index')}
+                            active={route().current('residents.index')}
+                        >
+                            Residents
                         </ResponsiveNavLink>
                     </div>
 
