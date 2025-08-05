@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+// You might need to import your UserProfile model if it exists
+// use App\Models\UserProfile;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB; // <-- 1. IMPORT THE DB FACADE
+use Illuminate\Support\Facades\DB; // DB Facade for transactions
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
@@ -31,40 +33,45 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        // 2. UPDATED VALIDATION RULES
+        // --- UPDATED VALIDATION RULES ---
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            // Add other profile fields here if they are in your registration form
-            // e.g., 'phone_number' => 'nullable|string|max:20|unique:user_profiles',
+            'address' => 'required|string|max:255',
+            'phone_number' => 'nullable|string|max:20',
+            'birthday' => 'nullable|date',
+            'gender' => 'nullable|string|in:Male,Female,Other',
+            'civil_status' => 'nullable|string|max:50',
+            // profile_picture_url is usually handled by a file upload, so we'll just validate it as a string for now
+            'profile_picture_url' => 'nullable|string|max:255',
         ]);
 
-        // 3. WRAP CREATION IN A DATABASE TRANSACTION
+        // Wrap the creation of two records in a database transaction.
+        // This ensures that if the profile creation fails, the user creation is also rolled back.
         $user = DB::transaction(function () use ($request) {
             
-            // 4. CREATE THE USER with only user-specific data
+            // Create the User record with authentication-related data
             $user = User::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                'role' => 'resident', // Set the default role for all new registrations
+                'role' => 'resident', // Default role for all new registrations
             ]);
 
-            // 5. CREATE THE USER PROFILE using the relationship
+            // Create the associated UserProfile record using the relationship
+            // This assumes you have a `profile()` relationship defined in your User model.
             $user->profile()->create([
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
                 'middle_name' => $request->middle_name,
-                 'phone_number' => $request->phone_number,
-        'address' => $request->address,  
-        'birthday' => $request->birthday,
-        'gender' => $request->gender,
-        'civil_status' => $request->civil_status,
-        'profile_picture_url' => $request->profile_picture_url,
-                // Add other fields here if they are in the request
-                // 'phone_number' => $request->phone_number,
+                'address' => $request->address,
+                'phone_number' => $request->phone_number,
+                'birthday' => $request->birthday,
+                'gender' => $request->gender,
+                'civil_status' => $request->civil_status,
+                'profile_picture_url' => $request->profile_picture_url,
             ]);
 
             return $user;

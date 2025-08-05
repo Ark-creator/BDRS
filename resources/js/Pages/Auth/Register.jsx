@@ -43,11 +43,17 @@ export default function Register() {
     // State for password visibility toggle
     const [passwordVisible, setPasswordVisible] = useState(false);
 
-    // Inertia's useForm hook
+    // Inertia's useForm hook with all the new fields
     const { data, setData, post, processing, errors, reset } = useForm({
         first_name: '',
         last_name: '',
         middle_name: '',
+        address: '',
+        phone_number: '',
+        birthday: '',
+        gender: '',
+        civil_status: '',
+        profile_picture_url: '', // Keeping as text input for now
         email: '',
         password: '',
         password_confirmation: '',
@@ -82,6 +88,7 @@ export default function Register() {
                         <p className="text-gray-500 mb-6">Let's get you started.</p>
 
                         <form onSubmit={submit}>
+                            {/* --- Name Fields --- */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <InputLabel forInput="first_name" value="First Name" />
@@ -94,12 +101,57 @@ export default function Register() {
                                     <InputError message={errors.last_name} className="mt-2" />
                                 </div>
                             </div>
-
                             <div className="mb-4">
                                 <InputLabel forInput="middle_name">Middle Name <span className="text-gray-400">(Optional)</span></InputLabel>
                                 <TextInput id="middle_name" name="middle_name" value={data.middle_name} onChange={(e) => setData('middle_name', e.target.value)} />
                                 <InputError message={errors.middle_name} className="mt-2" />
                             </div>
+
+                            {/* --- NEW PROFILE FIELDS --- */}
+                            <div className="mb-4">
+                                <InputLabel forInput="address" value="Full Address" />
+                                <TextInput id="address" name="address" value={data.address} onChange={(e) => setData('address', e.target.value)} required />
+                                <InputError message={errors.address} className="mt-2" />
+                            </div>
+
+                            <div className="mb-4">
+                                <InputLabel forInput="phone_number" value="Phone Number" />
+                                <TextInput id="phone_number" type="tel" name="phone_number" value={data.phone_number} onChange={(e) => setData('phone_number', e.target.value)} />
+                                <InputError message={errors.phone_number} className="mt-2" />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <InputLabel forInput="birthday" value="Birthday" />
+                                    <TextInput id="birthday" type="date" name="birthday" value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} />
+                                    <InputError message={errors.birthday} className="mt-2" />
+                                </div>
+                                <div>
+                                    <InputLabel forInput="gender" value="Gender" />
+                                    <select id="gender" name="gender" value={data.gender} className="form-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" onChange={(e) => setData('gender', e.target.value)}>
+                                        <option value="">Select...</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                    <InputError message={errors.gender} className="mt-2" />
+                                </div>
+                            </div>
+                            
+                            <div className="mb-4">
+                                <InputLabel forInput="civil_status" value="Civil Status" />
+                                <select id="civil_status" name="civil_status" value={data.civil_status} className="form-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" onChange={(e) => setData('civil_status', e.target.value)}>
+                                    <option value="">Select...</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Widowed">Widowed</option>
+                                    <option value="Separated">Separated</option>
+                                </select>
+                                <InputError message={errors.civil_status} className="mt-2" />
+                            </div>
+                            
+                            {/* --- AUTHENTICATION FIELDS --- */}
+                             <hr className="my-6" />
 
                             <div className="mb-4">
                                 <InputLabel forInput="email" value="Email Address" />
@@ -143,7 +195,3 @@ export default function Register() {
         </div>
     );
 }
-
-// This line is for if you want a GuestLayout to wrap the page, which is a common pattern in Breeze.
-// If you don't have a GuestLayout or don't want to use it, you can remove this line.
-// Register.layout = (page) => <GuestLayout children={page} />;

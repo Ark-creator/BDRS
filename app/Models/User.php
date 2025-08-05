@@ -32,6 +32,9 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
+
+        protected $appends = ['full_name']; // <-- ADD THIS LINE
+
     protected $hidden = [
         'password',
         'remember_token',

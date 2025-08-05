@@ -1,9 +1,11 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Foundation\Application;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -51,6 +53,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// --- ADMIN ROUTES ---
+// Protected by the 'be-admin' Gate (accessible by Admins and Super Admins)
+Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    // Add other admin-specific routes here (e.g., for managing document requests)
+});
+
+
+// In routes/web.php
+Route::middleware(['auth', 'can:be-super-admin'])->prefix('superadmin')->name('superadmin.')->group(function () {
+    // Change 'superadmin.users.Index' to just 'users.index'
+    Route::get('/users', [SuperAdminUserController::class, 'index'])->name('users.index'); // <-- CORRECTED
+    Route::patch('/users/{user}/update-role', [SuperAdminUserController::class, 'updateRole'])->name('users.updateRole');
 });
 
 require __DIR__.'/auth.php';
