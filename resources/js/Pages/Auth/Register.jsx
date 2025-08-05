@@ -118,7 +118,7 @@ export default function Register() {
 
                             <div className="mb-6">
                                 <InputLabel forInput="password_confirmation" value="Confirm Password" />
-                                <TextInput id="password_confirmation" type="password" name="password_confirmation" value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.targt.value)} required />
+                                <TextInput id="password_confirmation" type="password" name="password_confirmation" value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.target.value)} required />
                                 <InputError message={errors.password_confirmation} className="mt-2" />
                             </div>
 
@@ -143,3 +143,7 @@ export default function Register() {
         </div>
     );
 }
+
+// This line is for if you want a GuestLayout to wrap the page, which is a common pattern in Breeze.
+// If you don't have a GuestLayout or don't want to use it, you can remove this line.
+// Register.layout = (page) => <GuestLayout children={page} />;
