@@ -1,16 +1,19 @@
+import { useState } from 'react';
+import { Link, usePage } from '@inertiajs/react';
+
+// Component Imports
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import { Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 
-// 1. ADD IMPORTS FOR THE TOAST NOTIFICATIONS
+// Toast Notification Imports
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 export default function AuthenticatedLayout({ header, children }) {
-    const { user } = usePage().props.auth; // Simplified user access
+    // Get user from Inertia's shared props
+    const { user } = usePage().props.auth;
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
 
@@ -20,28 +23,39 @@ export default function AuthenticatedLayout({ header, children }) {
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <div className="flex h-16 justify-between">
                         <div className="flex">
+                            {/* Logo */}
                             <div className="flex shrink-0 items-center">
                                 <Link href="/">
                                     <ApplicationLogo className="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
                                 </Link>
                             </div>
 
+                            {/* Desktop Navigation Links */}
                             <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                
-                                {/* --- RESIDENT LINKS --- */}
                                 <NavLink href={route('dashboard')} active={route().current('dashboard')}>
                                     Dashboard
                                 </NavLink>
+                                <NavLink href={route('residents.home')} active={route().current('residents.home')}>
+                                    Home
+                                </NavLink>
+                                <NavLink href={route('residents.about')} active={route().current('residents.about')}>
+                                    About
+                                </NavLink>
+                                <NavLink href={route('residents.contact')} active={route().current('residents.contact')}>
+                                    Contact Us
+                                </NavLink>
+                                <NavLink href={route('residents.faq')} active={route().current('residents.faq')}>
+                                    FAQ
+                                </NavLink>
 
-                                {/* --- ADMIN LINKS (Visible to Admins & Super Admins) --- */}
-                                {/* 2. CORRECTED THE LOGIC HERE */}
+                                {/* Admin & Super Admin Links */}
                                 {(user.role === 'admin' || user.role === 'super_admin') && (
                                     <NavLink href={route('admin.dashboard')} active={route().current('admin.dashboard')}>
                                         Admin Dashboard
                                     </NavLink>
                                 )}
 
-                                {/* --- SUPER ADMIN ONLY LINKS --- */}
+                                {/* Super Admin Only Links */}
                                 {user.role === 'super_admin' && (
                                     <NavLink href={route('superadmin.users.index')} active={route().current('superadmin.users.index')}>
                                         User Management
@@ -50,6 +64,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
 
+                        {/* Settings Dropdown */}
                         <div className="hidden sm:ms-6 sm:flex sm:items-center">
                             <div className="relative ms-3">
                                 <Dropdown>
@@ -77,32 +92,48 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                         </div>
 
+                        {/* Hamburger */}
                         <div className="-me-2 flex items-center sm:hidden">
                             <button
-                                onClick={() => setShowingNavigationDropdown((previousState) => !previousState) }
+                                onClick={() => setShowingNavigationDropdown((previousState) => !previousState)}
                                 className="inline-flex items-center justify-center rounded-md p-2 text-gray-400 transition duration-150 ease-in-out hover:bg-gray-100 hover:text-gray-500 focus:bg-gray-100 focus:text-gray-500 focus:outline-none dark:text-gray-500 dark:hover:bg-gray-900 dark:hover:text-gray-400 dark:focus:bg-gray-900 dark:focus:text-gray-400"
                             >
-                                <svg className="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24" >
-                                    <path className={!showingNavigationDropdown ? 'inline-flex' : 'hidden'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/>
-                                    <path className={showingNavigationDropdown ? 'inline-flex' : 'hidden'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                                <svg className="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                                    <path className={!showingNavigationDropdown ? 'inline-flex' : 'hidden'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                                    <path className={showingNavigationDropdown ? 'inline-flex' : 'hidden'} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
                     </div>
                 </div>
 
+                {/* Responsive Navigation Menu */}
                 <div className={(showingNavigationDropdown ? 'block' : 'hidden') + ' sm:hidden'}>
                     <div className="space-y-1 pb-3 pt-2">
                         <ResponsiveNavLink href={route('dashboard')} active={route().current('dashboard')}>
                             Dashboard
                         </ResponsiveNavLink>
-                        
+                        <ResponsiveNavLink href={route('residents.home')} active={route().current('residents.home')}>
+                            Home
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('residents.about')} active={route().current('residents.about')}>
+                            About
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('residents.contact')} active={route().current('residents.contact')}>
+                            Contact Us
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink href={route('residents.faq')} active={route().current('residents.faq')}>
+                            FAQ
+                        </ResponsiveNavLink>
+
+                        {/* Admin & Super Admin Links */}
                         {(user.role === 'admin' || user.role === 'super_admin') && (
                             <ResponsiveNavLink href={route('admin.dashboard')} active={route().current('admin.dashboard')}>
                                 Admin Dashboard
                             </ResponsiveNavLink>
                         )}
-                        
+
+                        {/* Super Admin Only Links */}
                         {user.role === 'super_admin' && (
                              <ResponsiveNavLink href={route('superadmin.users.index')} active={route().current('superadmin.users.index')}>
                                 User Management
@@ -110,11 +141,13 @@ export default function AuthenticatedLayout({ header, children }) {
                         )}
                     </div>
 
+                    {/* Responsive Settings Options */}
                     <div className="border-t border-gray-200 pb-1 pt-4 dark:border-gray-600">
                         <div className="px-4">
                             <div className="text-base font-medium text-gray-800 dark:text-gray-200">{user.name}</div>
                             <div className="text-sm font-medium text-gray-500">{user.email}</div>
                         </div>
+
                         <div className="mt-3 space-y-1">
                             <ResponsiveNavLink href={route('profile.edit')}>Profile</ResponsiveNavLink>
                             <ResponsiveNavLink method="post" href={route('logout')} as="button">
@@ -133,7 +166,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
             <main>{children}</main>
 
-            {/* 3. ADD THE TOAST CONTAINER FOR NOTIFICATIONS */}
+            {/* Toast Notification Container */}
             <ToastContainer
                 position="bottom-right"
                 autoClose={5000}
