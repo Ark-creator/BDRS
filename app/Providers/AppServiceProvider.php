@@ -5,9 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
-// use Illuminate\Support\ServiceProvider;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,20 +23,27 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
-        
 
-    
-        // This Gate checks if a user is an Admin OR a Super Admin.
-        // Useful for giving access to regular admin panels.
-        Gate::define('be-admin', function (User $user) {
-            return in_array($user->role, ['admin', 'super_admin']);
+        // Allow super admins to bypass all checks automatically
+        Gate::before(function (User $user, string $ability) {
+            if ($user->role === 'super_admin') {
+                return true;
+            }
         });
 
-        // This Gate checks if a user is ONLY a Super Admin.
-        // Useful for protecting the user management page.
+        // Gate for Admin dashboard access (admins and super admins)
+        Gate::define('be-admin', function (User $user) {
+            return $user->role === 'admin';
+        });
+
+        // Gate for resident-level pages (residents and admins; superadmin handled by before)
+        Gate::define('be-resident', function (User $user) {
+            return in_array($user->role, ['resident', 'admin']);
+        });
+
+        // Gate for superadmin-only management
         Gate::define('be-super-admin', function (User $user) {
             return $user->role === 'super_admin';
         });
     }
 }
-    

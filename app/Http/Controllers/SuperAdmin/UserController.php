@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\SuperAdmin;
 
-use App\Http\Controllers\Controller;
+use Gate;
 use App\Models\User;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Redirect;
 
 class UserController extends Controller
@@ -17,8 +18,15 @@ class UserController extends Controller
     {
         return Inertia::render('SuperAdmin/Users/Usermanagement', [
             // We use paginate() for better performance with many users.
-            'users' => User::orderBy('created_at', 'desc')->paginate(10)
-        ]);
+'users' => User::select('id', 'email', 'role', 'created_at')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10)        ]);
+    
+
+      if (Gate::denies('be-super-admin')) {
+        dd('Gate check failed for role: ' . auth()->user()->role);
+    }
+    return 'You passed!';
     }
 
     /**

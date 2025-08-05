@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 
+// --- PUBLIC ROUTES ---
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -16,58 +17,38 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// --- GENERAL AUTHENTICATED ROUTES ---
+Route::middleware(['auth'])->group(function () {
+    Route::get('/dashboard', function () {
+        return Inertia::render('Dashboard');
+    })->middleware(['can:be-resident'])->name('dashboard');
 
-// Group for all Resident-related pages
-Route::middleware(['auth', 'verified'])->prefix('residents')->name('residents.')->group(function () {
-    
-    // Route for /residents, points to Residents/Index.jsx
-    Route::get('/', function () {
-        return Inertia::render('Residents/Index');
-    })->name('index');
-    
-    // Route for /residents/home, points to Residents/Home.jsx
-    Route::get('/home', function () {
-        return Inertia::render('Residents/Home');
-    })->name('home');
-
-    // Route for /residents/about, points to Residents/About.jsx
-    Route::get('/about', function () {
-        return Inertia::render('Residents/About');
-    })->name('about');
-
-    // Route for /residents/contact-us, points to Residents/ContactUs.jsx
-    Route::get('/contact-us', function () {
-        return Inertia::render('Residents/ContactUs');
-    })->name('contact');
-
-    // Route for /residents/faq, points to Residents/Faq.jsx
-    Route::get('/faq', function () {
-        return Inertia::render('Residents/Faq');
-    })->name('faq');
-});
-
-Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-// --- ADMIN ROUTES ---
-// Protected by the 'be-admin' Gate (accessible by Admins and Super Admins)
-Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    // Add other admin-specific routes here (e.g., for managing document requests)
+// --- RESIDENT ROUTES ---
+Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('residents.')->group(function () {
+    Route::get('/', fn() => Inertia::render('Residents/Index'))->name('index');
+    Route::get('/home', fn() => Inertia::render('Residents/Home'))->name('home');
+    Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
+    Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
+    Route::get('/faq', fn() => Inertia::render('Residents/Faq'))->name('faq');
 });
 
+// --- ADMIN ROUTES ---
+// Admins and Super Admins (super admin auto-passes via Gate::before)
+Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+});
 
-// In routes/web.php
+// --- SUPER ADMIN ROUTES ---
+// Only superadmins (because gate check is strict)
 Route::middleware(['auth', 'can:be-super-admin'])->prefix('superadmin')->name('superadmin.')->group(function () {
-    // Change 'superadmin.users.Index' to just 'users.index'
-    Route::get('/users', [SuperAdminUserController::class, 'index'])->name('users.index'); // <-- CORRECTED
+    Route::get('/users', [SuperAdminUserController::class, 'index'])->name('users.index');
     Route::patch('/users/{user}/update-role', [SuperAdminUserController::class, 'updateRole'])->name('users.updateRole');
 });
 
+// Auth scaffolding routes
 require __DIR__.'/auth.php';
