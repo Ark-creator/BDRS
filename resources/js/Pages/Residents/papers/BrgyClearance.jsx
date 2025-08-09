@@ -23,6 +23,7 @@ export default function BrgyClearance({ auth }) {
                             Dito mo ilalagay ang content para sa Barangay Clearance page.
                             Halimbawa: form, mga requirements, instructions, etc.
                             =========================================================
+                            SAMPLE LANG TO
                             */}
 
                             <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">

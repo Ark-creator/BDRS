@@ -19,6 +19,7 @@ export default function Indigency({ auth }) {
                             =========================================================
                             Dito mo ilalagay ang content para sa Indigency page.
                             =========================================================
+                            SAMPLE LANG TO
                             */}
 
                             <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">

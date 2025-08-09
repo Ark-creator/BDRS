@@ -23,6 +23,8 @@ export default function Akap({ auth }) {
                             DITO MO ILALAGAY ANG LAMAN NG IYONG AKAP PAGE
                             Halimbawa: form, mga instructions, etc.
                             =========================================================
+
+                            SAMPLE LANG TO
                             */}
 
                             <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">

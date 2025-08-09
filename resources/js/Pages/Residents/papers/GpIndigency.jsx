@@ -19,6 +19,7 @@ export default function GpIndigency({ auth }) {
                             =========================================================
                             Dito mo ilalagay ang content para sa GP Indigency page.
                             =========================================================
+                            SAMPLE LANG TO
                             */}
 
                             <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">
