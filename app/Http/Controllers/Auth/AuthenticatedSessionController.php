@@ -24,15 +24,7 @@ class AuthenticatedSessionController extends Controller
             'status' => session('status'),
         ]);
     }
-    public function index()
-{
-    return Inertia::render('SuperAdmin/Users/Index', [
-        // Tell Laravel to fetch the id, name, email, role, and created_at columns
-        'users' => User::select('id', 'name', 'email', 'role', 'created_at')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10)
-    ]);
-}
+   
 
     /**
      * Handle an incoming authentication request.
