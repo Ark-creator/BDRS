@@ -6,6 +6,7 @@ use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
+use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 
 // --- PUBLIC ROUTES ---
 Route::get('/', function () {
@@ -35,6 +36,19 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
     Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
     Route::get('/faq', fn() => Inertia::render('Residents/Faq'))->name('faq');
+
+    Route::prefix('papers')->name('papers.')->group(function() {
+        Route::get('/akap', fn() => Inertia::render('Residents/papers/Akap'))->name('akap');
+        // GET route to show the form
+        Route::get('/brgy-clearance', [BrgyController::class, 'brgyClearance'])->name('brgyClearance');
+        
+        // POST route to handle the form submission
+        Route::post('/brgy-clearance', [BrgyController::class, 'storeBrgyClearance'])->name('brgyClearance.store');
+        Route::get('/pwd', fn() => Inertia::render('Residents/papers/Pwd'))->name('pwd');
+        Route::get('/gp-indigency', fn() => Inertia::render('Residents/papers/GpIndigency'))->name('gpIndigency');
+        Route::get('/residency', fn() => Inertia::render('Residents/papers/Residency'))->name('residency');
+        Route::get('/indigency', fn() => Inertia::render('Residents/papers/Indigency'))->name('indigency');
+    });
 });
 
 // --- ADMIN ROUTES ---
