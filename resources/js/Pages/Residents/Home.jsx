@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 
 export default function Home({ auth }) {
@@ -9,13 +9,14 @@ export default function Home({ auth }) {
         setShowRequestCards(true);
     };
 
+    // Using simple, direct URL strings for links
     const papers = [
-        { name: 'AKAP', icon: 'fa-solid fa-users' },
-        { name: 'Barangay Clearance', icon: 'fa-solid fa-file-alt' },
-        { name: 'PWD', icon: 'fa-solid fa-wheelchair' },
-        { name: 'GP Indigency', icon: 'fa-solid fa-hand-holding-heart' },
-        { name: 'Residency', icon: 'fa-solid fa-house-user' },
-        { name: 'Indigency', icon: 'fa-solid fa-file-invoice-dollar' },
+        { name: 'AKAP', icon: 'fa-solid fa-users', href: '/residents/papers/akap' },
+        { name: 'Barangay Clearance', icon: 'fa-solid fa-file-alt', href: '/residents/papers/brgy-clearance' },
+        { name: 'PWD', icon: 'fa-solid fa-wheelchair', href: '/residents/papers/pwd' },
+        { name: 'GP Indigency', icon: 'fa-solid fa-hand-holding-heart', href: '/residents/papers/gp-indigency' },
+        { name: 'Residency', icon: 'fa-solid fa-house-user', href: '/residents/papers/residency' },
+        { name: 'Indigency', icon: 'fa-solid fa-file-invoice-dollar', href: '/residents/papers/indigency' },
     ];
 
     return (
@@ -96,9 +97,8 @@ export default function Home({ auth }) {
                             <i className="fa-solid fa-clock fa-2xl"></i>
                         </div>
                     </div>
-
                 </div>
-                {/* Button */}
+                
                 <div className="mt-10 text-center">
                     <button
                         onClick={handleRequestNowClick}
@@ -114,12 +114,15 @@ export default function Home({ auth }) {
                         <h3 className="text-3xl font-bold text-center text-white mb-10">Select a Document to Request</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-8">
                             {papers.map((paper) => (
-                                <div key={paper.name} className="bg-gray-800 rounded-xl shadow-lg p-6 flex flex-col items-center justify-center text-center text-white hover:bg-gray-700 hover:scale-105 transition-transform duration-300 cursor-pointer">
-                                    <div className="text-5xl mb-4 text-gray-400">
-                                        <i className={paper.icon}></i>
+                                // Each card is wrapped in a Link component to make it clickable
+                                <Link key={paper.name} href={paper.href} className="block h-full">
+                                    <div className="bg-gray-800 rounded-xl shadow-lg p-6 h-full flex flex-col items-center justify-center text-center text-white hover:bg-gray-700 hover:scale-105 transition-transform duration-300 cursor-pointer">
+                                        <div className="text-5xl mb-4 text-gray-400">
+                                            <i className={paper.icon}></i>
+                                        </div>
+                                        <h4 className="text-lg font-semibold">{paper.name}</h4>
                                     </div>
-                                    <h4 className="text-lg font-semibold">{paper.name}</h4>
-                                </div>
+                                </Link>
                             ))}
                         </div>
                     </div>

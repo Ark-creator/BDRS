@@ -2,16 +2,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import React from 'react';
 
-// Tumanggap ng 'auth' prop mula sa Laravel
-export default function Pwd({ auth }) {
+export default function Indigency({ auth }) {
     return (
-        // Gamitin ang parehong layout para sa consistent na design
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">PWD ID Application</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Request for Certificate of Indigency</h2>}
         >
-            {/* Palitan ang title ng page para sa browser tab */}
-            <Head title="PWD Application" />
+            <Head title="Certificate of Indigency" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -20,15 +17,15 @@ export default function Pwd({ auth }) {
 
                             {/*
                             =========================================================
-                            Dito mo ilalagay ang content para sa PWD Application page.
+                            Dito mo ilalagay ang content para sa Indigency page.
                             =========================================================
                             */}
 
                             <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">
-                                PWD ID Application Form
+                                Certificate of Indigency Request Form
                             </h3>
                             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                                Please ensure all information is correct. A valid medical certificate is required for new applicants.
+                                Please answer all questions truthfully. This application is subject to verification.
                             </p>
 
                             <form className="mt-6 space-y-6">
@@ -45,36 +42,28 @@ export default function Pwd({ auth }) {
                                     />
                                 </div>
 
-                                {/* Example Form Field: Type of Disability (Dropdown) */}
+                                {/* Example Form Field: Monthly Income */}
                                 <div>
-                                    <label htmlFor="disability_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Type of Disability</label>
-                                    <select
-                                        id="disability_type"
-                                        name="disability_type"
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white"
-                                    >
-                                        <option>Psychosocial Disability</option>
-                                        <option>Disability Due to Chronic Illness</option>
-                                        <option>Learning Disability</option>
-                                        <option>Mental Disability</option>
-                                        <option>Visual Disability</option>
-                                        <option>Orthopedic (Musculoskeletal) Disability</option>
-                                        <option>Communication Disability</option>
-                                    </select>
-                                </div>
-
-                                {/* Example Form Field: File Upload */}
-                                <div>
-                                    <label htmlFor="medical_certificate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Medical Certificate
-                                    </label>
+                                    <label htmlFor="monthly_income" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Estimated Monthly Family Income (PHP)</label>
                                     <input
-                                        type="file"
-                                        name="medical_certificate"
-                                        id="medical_certificate"
-                                        className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100 dark:file:bg-gray-700 dark:file:text-gray-200 dark:hover:file:bg-gray-600"
+                                        type="number"
+                                        name="monthly_income"
+                                        id="monthly_income"
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                                        placeholder="e.g., 5000"
                                     />
-                                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">PDF, JPG, PNG up to 5MB.</p>
+                                </div>
+                                
+                                {/* Example Form Field: Purpose */}
+                                <div>
+                                    <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Purpose of Request</label>
+                                    <textarea
+                                        name="purpose"
+                                        id="purpose"
+                                        rows="3"
+                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                                        placeholder="e.g., Medical Assistance, Financial Aid, Scholarship Application"
+                                    ></textarea>
                                 </div>
 
                                 <div className="flex justify-end">
@@ -82,7 +71,7 @@ export default function Pwd({ auth }) {
                                         type="submit"
                                         className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                     >
-                                        Submit Application
+                                        Submit Request
                                     </button>
                                 </div>
                             </form>

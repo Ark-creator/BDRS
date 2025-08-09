@@ -35,6 +35,15 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
     Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
     Route::get('/faq', fn() => Inertia::render('Residents/Faq'))->name('faq');
+
+    Route::prefix('papers')->name('papers.')->group(function() {
+        Route::get('/akap', fn() => Inertia::render('Residents/papers/Akap'))->name('akap');
+        Route::get('/brgy-clearance', fn() => Inertia::render('Residents/papers/BrgyClearance'))->name('brgyClearance');
+        Route::get('/pwd', fn() => Inertia::render('Residents/papers/Pwd'))->name('pwd');
+        Route::get('/gp-indigency', fn() => Inertia::render('Residents/papers/GpIndigency'))->name('gpIndigency');
+        Route::get('/residency', fn() => Inertia::render('Residents/papers/Residency'))->name('residency');
+        Route::get('/indigency', fn() => Inertia::render('Residents/papers/Indigency'))->name('indigency');
+    });
 });
 
 // --- ADMIN ROUTES ---
