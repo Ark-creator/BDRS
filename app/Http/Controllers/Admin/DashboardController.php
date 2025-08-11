@@ -21,7 +21,7 @@ class DashboardController extends Controller
             ->paginate(10); // Paginate the results
 
         // 3. Render the React component and pass the requests data as a prop
-        return Inertia::render('Admin/Dashboard', [
+        return Inertia::render('Admin/AdminDashboard', [
             'documentRequests' => $requests,
         ]);
     }
