@@ -47,14 +47,14 @@ class AuthenticatedSessionController extends Controller
 
         if ($user->role === 'super_admin') {
             // Redirect super admins to the user management page
-            return redirect()->intended(route('superadmin.users.index', absolute: false));
+            return redirect()->intended(route('residents.home', absolute: false));
         } elseif ($user->role === 'admin') {
             // Redirect admins to their specific admin dashboard
             // We will need to create this route and page later
-            return redirect()->intended(route('admin.dashboard', absolute: false));
+            return redirect()->intended(route('residents.home', absolute: false));
         } else {
             // Redirect all other users (residents) to the default dashboard
-            return redirect()->intended(route('dashboard', absolute: false));
+            return redirect()->intended(route('residents.home', absolute: false));
         }
         // --- END OF UPDATED LOGIC ---
     }    
