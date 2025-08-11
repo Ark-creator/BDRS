@@ -89,4 +89,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(DocumentRequest::class, 'processed_by');
     }
+    public function getFullNameAttribute()
+    {
+        return trim(
+            "{$this->profile->first_name} " .
+            ($this->profile->middle_name ? $this->profile->middle_name . ' ' : '') .
+            "{$this->profile->last_name}"
+        );
+    }
 }
