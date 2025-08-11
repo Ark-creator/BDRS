@@ -9,6 +9,7 @@
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <link rel="icon" href="/images/gapanlogo.png">
           <script src="https://kit.fontawesome.com/aed89df169.js" crossorigin="anonymous"></script>
             <link href="https://fonts.cdnfonts.com/css/myriad-pro" rel="stylesheet">
         <!-- Scripts -->

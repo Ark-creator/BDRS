@@ -16,11 +16,13 @@ class UserController extends Controller
      */
     public function index()
     {
-        return Inertia::render('SuperAdmin/Users/Usermanagement', [
-            // We use paginate() for better performance with many users.
-'users' => User::select('id', 'email', 'role', 'created_at')
+       return Inertia::render('SuperAdmin/Users/Usermanagement', [
+        'users' => User::with('profile')
+            ->select('id', 'email', 'role', 'created_at')
             ->orderBy('created_at', 'desc')
-            ->paginate(10)        ]);
+            ->paginate(10)
+
+    ]);
     
 
       if (Gate::denies('be-super-admin')) {

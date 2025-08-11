@@ -14,9 +14,13 @@ export default function UpdateProfileInformation({
 
     const { data, setData, patch, errors, processing, recentlySuccessful } =
         useForm({
-            name: user.name,
-            email: user.email,
-        });
+            first_name: user.profile?.first_name || '',
+            middle_name: user.profile?.middle_name || '',
+            last_name: user.profile?.last_name || '',
+            email: user.email || '',
+             phone_number: user.profile?.phone_number || '',
+        })
+
 
     const submit = (e) => {
         e.preventDefault();
@@ -37,21 +41,48 @@ export default function UpdateProfileInformation({
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
-                <div>
-                    <InputLabel htmlFor="name" value="Name" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div>
+        <InputLabel htmlFor="first_name" value="First Name" />
+        <TextInput
+            id="first_name"
+            className="mt-1 block w-full"
+            value={data.first_name}
+            onChange={(e) => setData('first_name', e.target.value)}
+            required
+            isFocused
+            autoComplete="given-name"
+        />
+        <InputError className="mt-2" message={errors.first_name} />
+    </div>
 
-                    <TextInput
-                        id="name"
-                        className="mt-1 block w-full"
-                        value={data.name}
-                        onChange={(e) => setData('name', e.target.value)}
-                        required
-                        isFocused
-                        autoComplete="name"
-                    />
+    <div>
+        <InputLabel htmlFor="middle_name" value="Middle Name" />
+        <TextInput
+            id="middle_name"
+            className="mt-1 block w-full"
+            value={data.middle_name}
+            onChange={(e) => setData('middle_name', e.target.value)}
+            autoComplete="additional-name"
+        />
+        <InputError className="mt-2" message={errors.middle_name} />
+    </div>
 
-                    <InputError className="mt-2" message={errors.name} />
-                </div>
+    <div>
+        <InputLabel htmlFor="last_name" value="Last Name" />
+        <TextInput
+            id="last_name"
+            className="mt-1 block w-full"
+            value={data.last_name}
+            onChange={(e) => setData('last_name', e.target.value)}
+            required
+            autoComplete="family-name"
+        />
+        <InputError className="mt-2" message={errors.last_name} />
+    </div>
+    
+</div>
+
 
                 <div>
                     <InputLabel htmlFor="email" value="Email" />
@@ -68,7 +99,19 @@ export default function UpdateProfileInformation({
 
                     <InputError className="mt-2" message={errors.email} />
                 </div>
+                <div className="mt-4">
+                    <InputLabel htmlFor="phone_number" value="Phone Number" />
 
+                    <TextInput
+                        id="phone_number"
+                        type="text"
+                        className="mt-1 block w-full"
+                        value={data.phone_number}
+                        onChange={(e) => setData('phone_number', e.target.value)}
+                    />
+
+                    <InputError message={errors.phone_number} className="mt-2" />
+                </div>
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div>
                         <p className="mt-2 text-sm text-gray-800 dark:text-gray-200">

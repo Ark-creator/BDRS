@@ -2,25 +2,21 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany; // It's good practice to import relation types
-use Illuminate\Database\Eloquent\Relations\HasOne; // 1. IMPORT HasOne RELATION TYPE
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Casts\Attribute; // 2. IMPORT Attribute FOR ACCESSOR
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * Mass assignable attributes.
      */
     protected $fillable = [
-        // 'name', // 3. REMOVED 'name'
         'email',
         'password',
         'role',
@@ -28,22 +24,20 @@ class User extends Authenticatable
     ];
 
     /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
+     * Attributes hidden from arrays/JSON.
      */
-
-        protected $appends = ['full_name']; // <-- ADD THIS LINE
-
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Append custom attributes to arrays/JSON.
+     */
+    protected $appends = ['full_name'];
+
+    /**
+     * Attribute casting.
      */
     protected function casts(): array
     {
@@ -53,31 +47,35 @@ class User extends Authenticatable
         ];
     }
 
-    // 4. ADDED a convenient accessor for the user's full name.
+    /**
+     * Accessor for the full name.
+     * Returns "First Middle Last" if available, trims extra spaces.
+     */
     protected function fullName(): Attribute
     {
         return Attribute::make(
-            get: fn () => "{$this->profile?->first_name} {$this->profile?->last_name}",
+            get: fn () => trim(
+                collect([
+                    $this->profile?->first_name,
+                    $this->profile?->middle_name,
+                    $this->profile?->last_name
+                ])
+                ->filter() // remove null/empty parts
+                ->implode(' ')
+            )
         );
     }
 
     /**
-     * Get the profile associated with the user.
+     * Relationship: One user has one profile.
      */
-    public function profile(): HasOne // 5. ADDED the profile() relationship
+    public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
     }
 
-
-    /*
-    |--------------------------------------------------------------------------
-    | EXISTING RELATIONSHIPS (PRESERVED)
-    |--------------------------------------------------------------------------
-    */
-
     /**
-     * Get all of the document requests for the User.
+     * Relationship: All document requests of this user.
      */
     public function documentRequests(): HasMany
     {
@@ -85,10 +83,24 @@ class User extends Authenticatable
     }
 
     /**
-     * Get all of the requests processed by the User (if they are an admin).
+     * Relationship: Requests processed by this user.
      */
     public function processedRequests(): HasMany
     {
         return $this->hasMany(DocumentRequest::class, 'processed_by');
     }
+    public function getFullNameAttribute()
+{
+    if (!$this->relationLoaded('profile')) {
+        $this->load('profile');
+    }
+
+    return trim(
+        collect([
+            $this->profile->first_name ?? '',
+            $this->profile->middle_name ?? '',
+            $this->profile->last_name ?? ''
+        ])->filter()->implode(' ')
+    );
+}
 }

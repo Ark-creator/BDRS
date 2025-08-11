@@ -55,7 +55,15 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
 // Admins and Super Admins (super admin auto-passes via Gate::before)
 Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/announcement', fn() => Inertia::render('Admin/Announcement'))->name('announcement');
+    Route::get('/documents', fn() => Inertia::render('Admin/Documents'))->name('documents');
+    Route::get('/request', fn() => Inertia::render('Admin/Request'))->name('request');
+    Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
+    Route::get('/messages', fn() => Inertia::render('Admin/Messages'))->name('messages');
+    Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
 });
+
 
 // --- SUPER ADMIN ROUTES ---
 // Only superadmins (because gate check is strict)

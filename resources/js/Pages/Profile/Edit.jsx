@@ -51,7 +51,7 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                         <header>
                             <h1 className="text-3xl font-bold tracking-tight text-slate-900">Account Settings</h1>
                             <p className="mt-2 text-lg text-slate-600">
-                                Hi, <span className="font-semibold text-blue-600">{auth.user.name}</span>. Manage your account information and security settings.
+                                Hi, <span className="font-semibold text-blue-600">{auth.user.full_name}</span>. Manage your account information and security settings.
                             </p>
                         </header>
 

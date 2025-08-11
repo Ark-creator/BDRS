@@ -31,9 +31,10 @@ export default function AuthenticatedLayout({ header, children }) {
 
             {/* Desktop Menu */}
             <div className="hidden md:flex gap-6">
-              <NavLink href={route("dashboard")} active={route().current("dashboard")}>
+              {/* hindi na naten gagamitin */}
+              {/* <NavLink href={route("dashboard")} active={route().current("dashboard")}>
                 Dashboard
-              </NavLink>
+              </NavLink> */}
               <NavLink href={route("residents.home")} active={route().current("residents.home")}>
                 Home
               </NavLink>
@@ -101,9 +102,10 @@ export default function AuthenticatedLayout({ header, children }) {
         {showingNavigationDropdown && (
           <div className="md:hidden bg-white dark:bg-gray-800 shadow-lg">
             <div className="px-4 py-3 space-y-2">
-              <ResponsiveNavLink href={route("dashboard")} active={route().current("dashboard")}>
+              {/* hindi na naten gagamitin */}
+              {/* <ResponsiveNavLink href={route("dashboard")} active={route().current("dashboard")}>
                 Dashboard
-              </ResponsiveNavLink>
+              </ResponsiveNavLink> */}
               <ResponsiveNavLink href={route("residents.home")} active={route().current("residents.home")}>
                 Home
               </ResponsiveNavLink>
