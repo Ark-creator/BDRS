@@ -18,6 +18,7 @@ export default function UpdateProfileInformation({
             middle_name: user.profile?.middle_name || '',
             last_name: user.profile?.last_name || '',
             email: user.email || '',
+             phone_number: user.profile?.phone_number || '',
         })
 
 
@@ -79,6 +80,7 @@ export default function UpdateProfileInformation({
         />
         <InputError className="mt-2" message={errors.last_name} />
     </div>
+    
 </div>
 
 
@@ -97,7 +99,19 @@ export default function UpdateProfileInformation({
 
                     <InputError className="mt-2" message={errors.email} />
                 </div>
+                <div className="mt-4">
+                    <InputLabel htmlFor="phone_number" value="Phone Number" />
 
+                    <TextInput
+                        id="phone_number"
+                        type="text"
+                        className="mt-1 block w-full"
+                        value={data.phone_number}
+                        onChange={(e) => setData('phone_number', e.target.value)}
+                    />
+
+                    <InputError message={errors.phone_number} className="mt-2" />
+                </div>
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <div>
                         <p className="mt-2 text-sm text-gray-800 dark:text-gray-200">

@@ -28,27 +28,30 @@ class ProfileController extends Controller
      * Update the user's profile information.
      */
     public function update(Request $request)
-        {
-            $request->validate([
-                'first_name' => 'required|string|max:255',
-                'middle_name' => 'nullable|string|max:255',
-                'last_name' => 'required|string|max:255',
-                'email' => 'required|email|max:255|unique:users,email,' . auth()->id(),
-            ]);
+{
+    $request->validate([
+        'first_name'   => 'required|string|max:255',
+        'middle_name'  => 'nullable|string|max:255',
+        'last_name'    => 'required|string|max:255',
+        'email'        => 'required|email|max:255|unique:users,email,' . auth()->id(),
+        'phone_number' => 'nullable|string|max:20',
+    ]);
 
-            $user = $request->user();
-            $user->email = $request->email;
-            $user->save();
+    $user = $request->user();
+    $user->email = $request->email;
+    $user->save();
 
-            // Update user profile
-            $user->profile()->update([
-                'first_name' => $request->first_name,
-                'middle_name' => $request->middle_name,
-                'last_name' => $request->last_name,
-            ]);
+    // Update user profile
+    $user->profile()->update([
+        'first_name'   => $request->first_name,
+        'middle_name'  => $request->middle_name,
+        'last_name'    => $request->last_name,
+        'phone_number' => $request->phone_number, // ✅ added phone number
+    ]);
 
-            return back()->with('success', 'Profile updated successfully.');
-        }
+    return back()->with('success', 'Profile updated successfully.');
+}
+
 
 
     /**
