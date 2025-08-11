@@ -1,9 +1,25 @@
-import React from 'react'
+// resources/js/Pages/Admin/Announcement.jsx
+import React from "react";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import Links from "@/Components/admin/Links";
+import { Head } from "@inertiajs/react";
 
-function Announcement() {
+export default function Announcement() {
   return (
-    <div>Announcement</div>
-  )
-}
+    <AuthenticatedLayout
+      header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200">Announcements</h2>}
+    >
+      <Head title="Announcements" />
 
-export default Announcement
+      <div className="flex">
+        <aside className="w-64 bg-gray-100 dark:bg-gray-900 min-h-screen">
+          <Links />
+        </aside>
+
+        <main className="flex-1 p-6">
+          Announcement Content Here
+        </main>
+      </div>
+    </AuthenticatedLayout>
+  );
+}
