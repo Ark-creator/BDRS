@@ -160,12 +160,12 @@ export default function AboutUs({ auth }) {
                                 <motion.div className="text-center group" variants={cardVariants}>
                                     <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/amparado.png" alt="City Councilor" />
                                     <h3 className="text-xl font-bold text-slate-900">Paul Michael Amparado</h3>
-                                    <p className="text-blue-600 font-semibold">City Councilor</p>
+                                    <p className="text-blue-600 font-semibold">Barangay Captain</p>
                                 </motion.div>
                                 <motion.div className="text-center group" variants={cardVariants}>
-                                    <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/secretary.png" alt="Barangay Secretary" />
+                                    <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/sec.jpg" alt="Barangay Secretary" />
                                     <h3 className="text-xl font-bold text-slate-900">William Tirrado</h3>
-                                    <p className="text-blue-600 font-semibold">Barangay Administrator</p>
+                                    <p className="text-blue-600 font-semibold">Barangay Secretary</p>
                                 </motion.div>
                             </div>
                         </div>

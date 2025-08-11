@@ -23,7 +23,7 @@ export default function AuthenticatedLayout({ header, children }) {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
-            <img className="w-10 h-10" src="/images/gapanlogo.png" alt="" />
+            <img className="w-10 h-10 rounded-full" src="/images/logo1.jpg" alt="" />
               <span className="font-bold text-lg text-blue-900 dark:text-white">
                 Doconnect
               </span>

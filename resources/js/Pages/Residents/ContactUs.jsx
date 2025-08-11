@@ -61,7 +61,7 @@ export default function ContactUs({ auth }) {
                                     </div>
                                     <div>
                                         <h4 className="font-semibold text-slate-800">Phone Number</h4>
-                                        <p className="text-slate-500">(044) 123-4567</p>
+                                        <p className="text-slate-500">(044) 329-6240</p>
                                     </div>
                                 </a>
                                 <a href="mailto:brgy.sanlorenzo@gapan.gov.ph" className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
