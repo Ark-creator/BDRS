@@ -1,132 +1,134 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import Footer from '@/Components/Residents/Footer'; 
+import Announcements from '@/Components/Residents/Announcements'; 
 
 export default function Home({ auth }) {
     const [showRequestCards, setShowRequestCards] = useState(false);
+    const documentsSectionRef = useRef(null);
 
     const handleRequestNowClick = () => {
         setShowRequestCards(true);
+        setTimeout(() => {
+            documentsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
     };
 
-    // Using simple, direct URL strings for links
     const papers = [
-        { name: 'AKAP', icon: 'fa-solid fa-users', href: '/residents/papers/akap' },
-        { name: 'Barangay Clearance', icon: 'fa-solid fa-file-alt', href: '/residents/papers/brgy-clearance' },
-        { name: 'PWD', icon: 'fa-solid fa-wheelchair', href: '/residents/papers/pwd' },
-        { name: 'GP Indigency', icon: 'fa-solid fa-hand-holding-heart', href: '/residents/papers/gp-indigency' },
-        { name: 'Residency', icon: 'fa-solid fa-house-user', href: '/residents/papers/residency' },
-        { name: 'Indigency', icon: 'fa-solid fa-file-invoice-dollar', href: '/residents/papers/indigency' },
+        { 
+            name: 'AKAP', 
+            href: '/residents/papers/akap', 
+            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m-7.5-2.962A3.375 3.375 0 019 15a3.375 3.375 0 01-1.749-3.082 3.375 3.375 0 01-1.749-3.082 3.375 3.375 0 011.749-3.082A3.375 3.375 0 019 5.812a3.375 3.375 0 011.749 3.082 3.375 3.375 0 011.749 3.082 3.375 3.375 0 01-1.749 3.082zM15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> 
+        },
+        { 
+            name: 'Barangay Clearance', 
+            href: '/residents/papers/brgy-clearance', 
+            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg> 
+        },
+        { 
+            name: 'PWD Certificate', 
+            href: '/residents/papers/pwd', 
+            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg> 
+        },
+        { 
+            name: 'GP Indigency', 
+            href: '/residents/papers/gp-indigency', 
+            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9 9 0 110-18 9 9 0 010 18z" /><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m0 10.5V18m-5.25-2.25h-2.25m10.5 0H18m-3.75 3.75l-1.5-1.5m3 0l1.5-1.5m-5.25-5.25l-1.5 1.5m3 0l1.5 1.5" /></svg>
+        },
+        { 
+            name: 'Certificate of Residency', 
+            href: '/residents/papers/residency', 
+            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg> 
+        },
+        { 
+            name: 'Certificate of Indigency', 
+            href: '/residents/papers/indigency', 
+            icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m15-3V4.875c0-.621-.504-1.125-1.125-1.125H9.375c-.621 0-1.125.504-1.125 1.125V9m9 3h-3" /></svg> 
+        },
     ];
 
     return (
-        <AuthenticatedLayout
-            user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Home</h2>}
-        >
+        <AuthenticatedLayout user={auth.user}>
             <Head title="Home" />
 
-            <div className="max-w-7xl mx-auto mt-10 overflow-hidden rounded-lg">
-                <div className="flex bg-gray-600 text-white">
-                    <div className="w-1/3 bg-gray-800">
-                        {/* You can add an image or other content here */}
-                    </div>
-                    <div className="w-2/3 px-10 py-10 flex flex-col justify-between relative">
-                        <div>
-                            <p className="text-sm text-gray-400 mb-2">Announcements</p>
-                            <h2 className="text-2xl font-semibold leading-snug mb-4">
-                                Welcome to the Barangay Document Request System
-                            </h2>
-                            <p className="text-gray-300">
-                                Easily request your barangay documents online. Follow the steps below to get started.
-                            </p>
-                            <a href="#" className="text-sm underline hover:text-gray-300 mt-4 inline-block">Read More</a>
-                        </div>
-                        <div className="flex items-center justify-between mt-10">
-                            <div className="space-x-2">
-                                <span className="w-2 h-2 bg-white rounded-full inline-block"></span>
-                                <span className="w-2 h-2 bg-gray-500 rounded-full inline-block"></span>
-                                <span className="w-2 h-2 bg-gray-500 rounded-full inline-block"></span>
+            <div className="bg-sky-50">
+                <main>
+                    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+                        
+                        <Announcements />
+
+                        <div className="py-16 sm:py-24">
+                            <div className="text-center">
+                                <h2 className="text-base font-semibold text-blue-600 tracking-wide uppercase">How It Works</h2>
+                                <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">A Simple 3-Step Process</p>
                             </div>
-                            <button className="text-white hover:text-gray-300 transition">
-                                <i className="fa-solid fa-arrow-right"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
 
-            <div className="py-20 bg-gray-900">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-white flex flex-wrap gap-10 justify-center">
-
-                    {/* STEP 1 */}
-                    <div className="bg-gray-800 hover:bg-gray-700 transition duration-300 shadow-lg rounded-xl p-8 w-full md:w-[calc(33.333%-2.5rem)] flex justify-between items-center hover:scale-[1.02]">
-                        <div className="text-left">
-                            <div className="text-2xl font-semibold mb-2 tracking-wide">Step #1</div>
-                            <p className="text-lg text-gray-300">
-                                Click the <span className="text-white font-medium">"Request Now"</span> button to start.
-                            </p>
-                        </div>
-                        <div className="bg-gray-700 text-white rounded-full p-5 ml-6">
-                            <i className="fa-solid fa-arrow-pointer fa-2xl"></i>
-                        </div>
-                    </div>
-
-                    {/* STEP 2 */}
-                    <div className="bg-gray-800 hover:bg-gray-700 transition duration-300 shadow-lg rounded-xl p-8 w-full md:w-[calc(33.333%-2.5rem)] flex justify-between items-center hover:scale-[1.02]">
-                        <div className="text-left">
-                            <div className="text-2xl font-semibold mb-2 tracking-wide">Step #2</div>
-                            <p className="text-lg text-gray-300">
-                                Select a document type and fill out the request form carefully.
-                            </p>
-                        </div>
-                        <div className="bg-gray-700 text-white rounded-full p-5 ml-6">
-                            <i className="fa-solid fa-pen-to-square fa-2xl"></i>
-                        </div>
-                    </div>
-
-                    {/* STEP 3 */}
-                    <div className="bg-gray-800 hover:bg-gray-700 transition duration-300 shadow-lg rounded-xl p-8 w-full md:w-[calc(33.333%-2.5rem)] flex justify-between items-center hover:scale-[1.02]">
-                        <div className="text-left">
-                            <div className="text-2xl font-semibold mb-2 tracking-wide">Step #3</div>
-                            <p className="text-lg text-gray-300">
-                                You'll be notified via email or SMS once your documents are ready for pickup.
-                            </p>
-                        </div>
-                        <div className="bg-gray-700 text-white rounded-full p-5 ml-6">
-                            <i className="fa-solid fa-clock fa-2xl"></i>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="mt-10 text-center">
-                    <button
-                        onClick={handleRequestNowClick}
-                        className="bg-gray-800 hover:bg-gray-600 transition text-white font-bold px-8 py-4 rounded-md shadow-md hover:scale-105 duration-300"
-                    >
-                        REQUEST NOW &gt;
-                    </button>
-                </div>
-
-                {/* Requestable Papers Cards Section */}
-                {showRequestCards && (
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-16">
-                        <h3 className="text-3xl font-bold text-center text-white mb-10">Select a Document to Request</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-8">
-                            {papers.map((paper) => (
-                                // Each card is wrapped in a Link component to make it clickable
-                                <Link key={paper.name} href={paper.href} className="block h-full">
-                                    <div className="bg-gray-800 rounded-xl shadow-lg p-6 h-full flex flex-col items-center justify-center text-center text-white hover:bg-gray-700 hover:scale-105 transition-transform duration-300 cursor-pointer">
-                                        <div className="text-5xl mb-4 text-gray-400">
-                                            <i className={paper.icon}></i>
-                                        </div>
-                                        <h4 className="text-lg font-semibold">{paper.name}</h4>
+                                <div className="text-center">
+                                    <div className="mb-4 inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-100 text-blue-600">
+                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
                                     </div>
-                                </Link>
-                            ))}
+                                    <h3 className="text-xl font-semibold text-slate-900">1. Click & Choose</h3>
+                                    <p className="mt-2 text-slate-500">Click the "Request a Document" button and select the type of document you need.</p>
+                                </div>
+                                <div className="text-center">
+                                    <div className="mb-4 inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-100 text-blue-600">
+                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-slate-900">2. Fill Out the Form</h3>
+                                    <p className="mt-2 text-slate-500">Provide the necessary information and upload any required supporting files.</p>
+                                </div>
+                                <div className="text-center">
+                                    <div className="mb-4 inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-100 text-blue-600">
+                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <h3 className="text-xl font-semibold text-slate-900">3. Get Notified</h3>
+                                    <p className="mt-2 text-slate-500">Wait for an SMS or email notification when your document is ready for pickup.</p>
+                                </div>
+                            </div>
+                             <div className="mt-16 text-center">
+                                 <button
+                                     onClick={handleRequestNowClick}
+                                     className="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-8 py-4 rounded-lg shadow-md hover:bg-blue-700 transition-transform hover:scale-105"
+                                 >
+                                     Request a Document Now
+                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>
+                                 </button>
+                             </div>
                         </div>
+                        
+                        {showRequestCards && (
+                            <div ref={documentsSectionRef} className="bg-white py-16 sm:py-24">
+                                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                                    <div className="text-center">
+                                        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Select a Document</h2>
+                                        <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-500">
+                                            Click on a card to start your request.
+                                        </p>
+                                    </div>
+                                    <div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                                        {papers.map((paper) => (
+                                            <Link 
+                                                key={paper.name} 
+                                                href={paper.href} 
+                                                className="block group"
+                                            >
+                                                <div className="bg-slate-50 rounded-xl ring-1 ring-slate-200 p-6 h-full flex flex-col items-center justify-center text-center text-slate-700 hover:ring-blue-500 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                                    <div className="p-4 rounded-full bg-white text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                                        {paper.icon}
+                                                    </div>
+                                                    <h4 className="mt-4 text-sm font-semibold">{paper.name}</h4>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
+                </main>
+                <Footer />
             </div>
         </AuthenticatedLayout>
     );
