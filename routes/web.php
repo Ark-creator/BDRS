@@ -4,11 +4,13 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Resident\HomeController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\RequestDocumentsController; 
-use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
-use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 use App\Http\Controllers\Auth\ValidationController;
+use App\Http\Controllers\Admin\RequestDocumentsController; 
+use App\Http\Controllers\Resident\DocumentRequestController;
+use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 
 
 // --- PUBLIC ROUTES ---
@@ -44,15 +46,25 @@ Route::middleware(['auth'])->group(function () {
 // --- RESIDENT ROUTES ---
 Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('residents.')->group(function () {
     Route::get('/', fn() => Inertia::render('Residents/Index'))->name('index');
-    Route::get('/home', fn() => Inertia::render('Residents/Home'))->name('home');
+    Route::get('/home', HomeController::class)->name('home');
     Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
     Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
     Route::get('/faq', fn() => Inertia::render('Residents/Faq'))->name('faq');
+        Route::post('/request/solo-parent', [DocumentRequestController::class, 'storeSoloParent'])->name('request.solo-parent.store');
+
+ Route::get('/request/create/{documentType}', [DocumentRequestController::class, 'create'])->name('request.create');
+    
+    // ADD this new generic route for storing the request
+    Route::post('/request', [DocumentRequestController::class, 'store'])->name('request.store');
+
 
     Route::prefix('papers')->name('papers.')->group(function() {
         Route::get('/akap', fn() => Inertia::render('Residents/papers/Akap'))->name('akap');
+        Route::get('/solo-parent', fn() => Inertia::render('Residents/papers/SoloParent'))->name('soloParent');
+
         // GET route to show the form
         Route::get('/brgy-clearance', [BrgyController::class, 'brgyClearance'])->name('brgyClearance');
+        
         
         // POST route to handle the form submission
         Route::post('/brgy-clearance', [BrgyController::class, 'storeBrgyClearance'])->name('brgyClearance.store');
@@ -60,6 +72,7 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
         Route::get('/gp-indigency', fn() => Inertia::render('Residents/papers/GpIndigency'))->name('gpIndigency');
         Route::get('/residency', fn() => Inertia::render('Residents/papers/Residency'))->name('residency');
         Route::get('/indigency', fn() => Inertia::render('Residents/papers/Indigency'))->name('indigency');
+        
     });
 });
 
