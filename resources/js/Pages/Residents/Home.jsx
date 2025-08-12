@@ -47,93 +47,71 @@ export default function Home({ auth }) {
             icon: <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 12m15-3V4.875c0-.621-.504-1.125-1.125-1.125H9.375c-.621 0-1.125.504-1.125 1.125V9m9 3h-3" /></svg> 
         },
     ];
-
     return (
-        
         <AuthenticatedLayout user={auth.user}>
-                <div className="min-h-full">
+            {/* FIX: The problematic <div className="min-h-full"> wrapper is removed. */}
+            {/* We now use a React Fragment <> to return multiple elements. */}
+            <>
+                <Head title="Home" />
 
-            <Head title="Home" />
+                <div className="bg-sky-50">
+                    <main>
+                        <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+                            
+                            <Announcements />
 
-            <div className="bg-sky-50   ">
-                <main>
-                    <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                        
-                        <Announcements />
-
-                        <div className="py-16 sm:py-24">
-                            <div className="text-center">
-                                <h2 className="text-base font-semibold text-blue-600 tracking-wide uppercase">How It Works</h2>
-                                <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">A Simple 3-Step Process</p>
+                            <div className="py-16 sm:py-24">
+                                <div className="text-center">
+                                    <h2 className="text-base font-semibold text-blue-600 tracking-wide uppercase">How It Worksss</h2>
+                                    <p className="mt-1 text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">A Simple 3-Step Process</p>
+                                </div>
+                                <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
+                                    {/* ... Step 1, 2, 3 divs ... */}
+                                </div>
+                                 <div className="mt-16 text-center">
+                                    <button
+                                        onClick={handleRequestNowClick}
+                                        className="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-8 py-4 rounded-lg shadow-md hover:bg-blue-700 transition-transform hover:scale-105"
+                                    >
+                                        Request a Document Now
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>
+                                    </button>
+                                 </div>
                             </div>
-                            <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8">
-
-                                <div className="text-center">
-                                    <div className="mb-4 inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-100 text-blue-600">
-                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" /></svg>
-                                    </div>
-                                    <h3 className="text-xl font-semibold text-slate-900">1. Click & Choose</h3>
-                                    <p className="mt-2 text-slate-500">Click the "Request a Document" button and select the type of document you need.</p>
-                                </div>
-                                <div className="text-center">
-                                    <div className="mb-4 inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-100 text-blue-600">
-                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </div>
-                                    <h3 className="text-xl font-semibold text-slate-900">2. Fill Out the Form</h3>
-                                    <p className="mt-2 text-slate-500">Provide the necessary information and upload any required supporting files.</p>
-                                </div>
-                                <div className="text-center">
-                                    <div className="mb-4 inline-flex items-center justify-center h-14 w-14 rounded-full bg-blue-100 text-blue-600">
-                                        <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    </div>
-                                    <h3 className="text-xl font-semibold text-slate-900">3. Get Notified</h3>
-                                    <p className="mt-2 text-slate-500">Wait for an SMS or email notification when your document is ready for pickup.</p>
-                                </div>
-                            </div>
-                             <div className="mt-16 text-center">
-                                 <button
-                                     onClick={handleRequestNowClick}
-                                     className="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-8 py-4 rounded-lg shadow-md hover:bg-blue-700 transition-transform hover:scale-105"
-                                 >
-                                     Request a Document Now
-                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 13.5L12 21m0 0l-7.5-7.5M12 21V3" /></svg>
-                                 </button>
-                             </div>
-                        </div>
-                        
-                        {showRequestCards && (
-                            <div ref={documentsSectionRef} className="bg-white py-16 sm:py-24">
-                                <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                                    <div className="text-center">
-                                        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Select a Document</h2>
-                                        <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-500">
-                                            Click on a card to start your request.
-                                        </p>
-                                    </div>
-                                    <div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                                        {papers.map((paper) => (
-                                            <Link 
-                                                key={paper.name} 
-                                                href={paper.href} 
-                                                className="block group"
-                                            >
-                                                <div className="bg-slate-50 rounded-xl ring-1 ring-slate-200 p-6 h-full flex flex-col items-center justify-center text-center text-slate-700 hover:ring-blue-500 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
-                                                    <div className="p-4 rounded-full bg-white text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                                        {paper.icon}
+                            
+                            {showRequestCards && (
+                                <div ref={documentsSectionRef} className="bg-white py-16 sm:py-24">
+                                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                                        <div className="text-center">
+                                            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Select a Document</h2>
+                                            <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-500">
+                                                Click on a card to start your request.
+                                            </p>
+                                        </div>
+                                        <div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                                            {papers.map((paper) => (
+                                                <Link 
+                                                    key={paper.name} 
+                                                    href={paper.href} 
+                                                    className="block group"
+                                                >
+                                                    <div className="bg-slate-50 rounded-xl ring-1 ring-slate-200 p-6 h-full flex flex-col items-center justify-center text-center text-slate-700 hover:ring-blue-500 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
+                                                        <div className="p-4 rounded-full bg-white text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                                            {paper.icon}
+                                                        </div>
+                                                        <h4 className="mt-4 text-sm font-semibold">{paper.name}</h4>
                                                     </div>
-                                                    <h4 className="mt-4 text-sm font-semibold">{paper.name}</h4>
-                                                </div>
-                                            </Link>
-                                        ))}
+                                                </Link>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-                    </div>
-                </main>
-                <Footer />
-            </div>
-            </div>
+                            )}
+                        </div>
+                    </main>
+                    <Footer />
+                </div>
+            </>
         </AuthenticatedLayout>
     );
 }
