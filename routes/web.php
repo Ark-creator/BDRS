@@ -5,12 +5,13 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Resident\HomeController;
+use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Auth\ValidationController;
-use App\Http\Controllers\Admin\RequestDocumentsController; 
-use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Resident\ContactUsController;
-use App\Http\Controllers\Admin\MessagesController;
+use App\Http\Controllers\Admin\DocumentsListController;
+use App\Http\Controllers\Admin\RequestDocumentsController; 
+use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
@@ -94,13 +95,15 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
     
     // this is for documents pages fetch the data rendering
-    Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
+    // Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
     // update and delete function here
     Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
     Route::delete('/documents/{documentType}', [DocumentsListController::class, 'destroy'])->name('documents.destroy');
 
     // this is for request documents pages fetch the data rendering
-    Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); // Updated to use controller
+    Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); 
+        Route::get('/requests/{documentRequest}/generate', [DocumentGenerationController::class, 'generate'])->name('requests.generate');
+// Updated to use controller
 
     // messages render
     Route::get('/messages', [MessagesController::class, 'index'])->name('messages');

@@ -16,7 +16,7 @@ class DocumentGenerationController extends Controller
         // ---- MODIFICATION ----
         // Check the document type using the relationship you created.
         // Let's assume your DocumentType has a 'slug' or 'name' field.
-        if ($documentRequest->documentType->name !== 'Certificate of Solo Parent') {
+        if ($documentRequest->documentType->name !== 'Solo Parent') {
             abort(404, 'Invalid document type for this generation logic.');
         }
 
@@ -55,4 +55,6 @@ class DocumentGenerationController extends Controller
         $templateProcessor->saveAs($pathToSave);
         return response()->download($pathToSave)->deleteFileAfterSend(true);
     }
+
+    
 }
