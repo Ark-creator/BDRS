@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
 use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Resident\ContactUsController;
+use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 use App\Http\Controllers\Auth\ValidationController;
@@ -87,6 +88,11 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
 
     // this is for request documents pages fetch the data rendering
     Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); // Updated to use controller
+
+    // messages render
+    Route::get('/messages', [MessagesController::class, 'index'])->name('messages');
+    Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
+
 });
 
 
