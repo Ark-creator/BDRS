@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Resident\RequestPaper;
 
 use App\Http\Controllers\Controller;
-// use App\Models\Request as DocumentRequest; // Rename 'Request' model to avoid conflict
 use App\Models\DocumentRequest;
 use Illuminate\Http\Request;
+use Illuminate\Http\RedirectResponse; // Import RedirectResponse
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,7 +23,7 @@ class BrgyController extends Controller
     /**
      * Store a new Barangay Clearance request.
      */
-    public function storeBrgyClearance(Request $request): \Illuminate\Http\RedirectResponse
+    public function storeBrgyClearance(Request $request): RedirectResponse
     {
         // 1. Validate the incoming data (only 'purpose' is editable)
         $validated = $request->validate([

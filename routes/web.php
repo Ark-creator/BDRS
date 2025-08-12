@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\RequestDocumentsController; 
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 use App\Http\Controllers\Auth\ValidationController;
@@ -66,10 +67,9 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
 // Admins and Super Admins (super admin auto-passes via Gate::before)
 Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
     Route::get('/announcement', fn() => Inertia::render('Admin/Announcement'))->name('announcement');
     Route::get('/documents', fn() => Inertia::render('Admin/Documents'))->name('documents');
-    Route::get('/request', fn() => Inertia::render('Admin/Request'))->name('request');
+    Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); // Updated to use controller
     Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
     Route::get('/messages', fn() => Inertia::render('Admin/Messages'))->name('messages');
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
