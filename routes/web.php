@@ -7,6 +7,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
 use App\Http\Controllers\Admin\DocumentsListController;
+use App\Http\Controllers\Resident\ContactUsController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 use App\Http\Controllers\Auth\ValidationController;
@@ -49,6 +50,10 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
     Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
     Route::get('/faq', fn() => Inertia::render('Residents/Faq'))->name('faq');
+    
+    // this route is for Contact Us
+    Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
+    Route::post('/contact-us', [ContactUsController::class, 'store'])->name('contact.store');
 
     Route::prefix('papers')->name('papers.')->group(function() {
         Route::get('/akap', fn() => Inertia::render('Residents/papers/Akap'))->name('akap');
