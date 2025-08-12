@@ -8,6 +8,9 @@ use App\Http\Controllers\Resident\HomeController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Auth\ValidationController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
+use App\Http\Controllers\Admin\DocumentsListController;
+use App\Http\Controllers\Resident\ContactUsController;
+use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
@@ -50,6 +53,10 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
     Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
     Route::get('/faq', fn() => Inertia::render('Residents/Faq'))->name('faq');
+    
+    // this route is for Contact Us
+    Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
+    Route::post('/contact-us', [ContactUsController::class, 'store'])->name('contact.store');
         Route::post('/request/solo-parent', [DocumentRequestController::class, 'storeSoloParent'])->name('request.solo-parent.store');
 
  Route::get('/request/create/{documentType}', [DocumentRequestController::class, 'create'])->name('request.create');
@@ -82,10 +89,25 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/announcement', fn() => Inertia::render('Admin/Announcement'))->name('announcement');
     Route::get('/documents', fn() => Inertia::render('Admin/Documents'))->name('documents');
-    Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); // Updated to use controller
     Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
     Route::get('/messages', fn() => Inertia::render('Admin/Messages'))->name('messages');
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
+    
+    // this is for documents pages fetch the data rendering
+    Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
+    // update and delete function here
+    Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
+    Route::delete('/documents/{documentType}', [DocumentsListController::class, 'destroy'])->name('documents.destroy');
+
+    // this is for request documents pages fetch the data rendering
+    Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); // Updated to use controller
+
+    // messages render
+    Route::get('/messages', [MessagesController::class, 'index'])->name('messages');
+    Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
+    Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
+
+
 });
 
 

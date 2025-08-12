@@ -12,7 +12,8 @@ export default function ContactUs({ auth }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('contact.store'));
+        // Ensure this route name matches the one defined in routes/web.php
+        post(route('residents.contact.store')); // Corrected route name
     };
     
     return (
@@ -40,7 +41,7 @@ export default function ContactUs({ auth }) {
                                 Reach out to us through the channels below or visit us at the Barangay Hall.
                             </p>
                             
-                            {/* Map Section - MOVED TO TOP */}
+                            {/* Map Section */}
                             <div className="mt-8 rounded-xl overflow-hidden border border-slate-200 shadow-sm">
                                 <iframe
                                     src="https://www.google.com/maps/embed?pb=!4v1754743834400!6m8!1m7!1sGGjqFH-TIB8AE0_9inJJHA!2m2!1d15.31295437259569!2d120.9531832462395!3f249.86412101379125!4f9.946244509365542!5f0.7820865974627469"
@@ -53,7 +54,7 @@ export default function ContactUs({ auth }) {
                                 ></iframe>
                             </div>
 
-                            {/* Contact Details List - NOW BELOW MAP */}
+                            {/* Contact Details List */}
                             <div className="mt-8 space-y-2">
                                 <a href="tel:+63441234567" className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
                                     <div className="flex-shrink-0 w-12 h-12 flex items-center justify-center bg-blue-100 text-blue-600 rounded-lg">

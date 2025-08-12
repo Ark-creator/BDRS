@@ -12,7 +12,7 @@ const AuthLayout = ({ title, description, children }) => (
          
                 <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30">
                    
-                   <img src="/images/gapanlogo.png" alt="" />
+                   <img className="rounded-full p-2" src="/images/logo1.jpg" alt="logo" />
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
             </div>
