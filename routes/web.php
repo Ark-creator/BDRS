@@ -6,6 +6,7 @@ use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
+use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 use App\Http\Controllers\Auth\ValidationController;
@@ -69,10 +70,18 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/announcement', fn() => Inertia::render('Admin/Announcement'))->name('announcement');
     Route::get('/documents', fn() => Inertia::render('Admin/Documents'))->name('documents');
-    Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); // Updated to use controller
     Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
     Route::get('/messages', fn() => Inertia::render('Admin/Messages'))->name('messages');
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
+    
+    // this is for documents pages fetch the data rendering
+    Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
+    // update and delete function here
+    Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
+    Route::delete('/documents/{documentType}', [DocumentsListController::class, 'destroy'])->name('documents.destroy');
+
+    // this is for request documents pages fetch the data rendering
+    Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); // Updated to use controller
 });
 
 
