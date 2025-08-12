@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import axios from 'axios';
 import InputError from '@/Components/InputError';
 
 const CloseIcon = () => (
@@ -239,6 +240,36 @@ const PasswordStrengthIndicator = ({ password }) => {
     );
 };
 
+const ValidationIndicator = ({ status }) => {
+    const iconContainer = "absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none";
+
+    if (status === 'checking') {
+        return (
+            <div className={iconContainer}>
+                <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+        );
+    }
+    if (status === 'valid') {
+        return (
+            <div className={iconContainer}>
+                <CheckIcon />
+            </div>
+        );
+    }
+    if (status === 'invalid') {
+        return (
+            <div className={iconContainer}>
+                <CrossIcon />
+            </div>
+        );
+    }
+    return null;
+};
+
 const Step1_BasicInfo = ({ data, setData, errors }) => (
     <div className="space-y-4">
         <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Basic Information</h3>
@@ -262,17 +293,30 @@ const Step1_BasicInfo = ({ data, setData, errors }) => (
     </div>
 );
 
-const Step2_PersonalDetails = ({ data, setData, errors }) => (
+const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation }) => (
     <div className="space-y-4">
         <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
         <div>
             <label htmlFor="address" className="font-medium text-slate-700 text-sm mb-2 block">Full Address</label>
-            <CustomTextInput id="address" icon={<HomeIcon />} value={data.address} onChange={(e) => setData('address', e.target.value)} required autoFocus error={errors.address} />
+            <CustomTextInput id="address" icon={<HomeIcon />} value={data.address} onChange={(e) => setData('address', e.target.value)} required error={errors.address} />
             <InputError message={errors.address} className="mt-2" />
         </div>
-        <div>
+         <div>
             <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
-            <CustomTextInput id="phone_number" type="tel" icon={<PhoneIcon />} value={data.phone_number} onChange={(e) => setData('phone_number', e.target.value)} required error={errors.phone_number} />
+            <div className="relative">
+                <CustomTextInput
+                    id="phone_number"
+                    type="tel"
+                    icon={<PhoneIcon />}
+                    value={data.phone_number}
+                    onChange={(e) => setData('phone_number', e.target.value)}
+                    required
+                    error={errors.phone_number || phoneValidation.status === 'invalid'}
+                    className="pr-12"
+                />
+                {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
+            </div>
+            {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
             <InputError message={errors.phone_number} className="mt-2" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -305,12 +349,25 @@ const Step2_PersonalDetails = ({ data, setData, errors }) => (
     </div>
 );
 
-const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setPasswordVisible, confirmPasswordVisible, setConfirmPasswordVisible, passwordsDoNotMatch }) => (
+const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setPasswordVisible, confirmPasswordVisible, setConfirmPasswordVisible, passwordsDoNotMatch, emailValidation }) => (
     <div className="space-y-4">
         <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Account Credentials</h3>
         <div>
             <label htmlFor="email" className="font-medium text-slate-700 text-sm mb-2 block">Email Address</label>
-            <CustomTextInput id="email" type="email" icon={<MailIcon />} value={data.email} onChange={(e) => setData('email', e.target.value)} required autoFocus error={errors.email} />
+            <div className="relative">
+                <CustomTextInput
+                    id="email"
+                    type="email"
+                    icon={<MailIcon />}
+                    value={data.email}
+                    onChange={(e) => setData('email', e.target.value)}
+                    required
+                    error={errors.email || emailValidation.status === 'invalid'}
+                    className="pr-12"
+                />
+                {!errors.email && <ValidationIndicator status={emailValidation.status} />}
+            </div>
+            {emailValidation.status === 'invalid' && <InputError message={emailValidation.message} className="mt-2" />}
             <InputError message={errors.email} className="mt-2" />
         </div>
         <div>
@@ -354,9 +411,17 @@ export default function Register() {
 
     const passwordValidation = useMemo(() => getPasswordValidationState(data.password), [data.password]);
     const passwordsDoNotMatch = data.password_confirmation && data.password !== data.password_confirmation;
+    
+    // State for both phone and email real-time validation
+    const [phoneValidation, setPhoneValidation] = useState({ status: 'idle', message: '' });
+    const [emailValidation, setEmailValidation] = useState({ status: 'idle', message: '' });
 
     const submit = (e) => {
         e.preventDefault();
+        // Prevent submission if either field is being checked or is invalid
+        if (phoneValidation.status === 'checking' || phoneValidation.status === 'invalid' || emailValidation.status === 'checking' || emailValidation.status === 'invalid') {
+            return;
+        }
         post(route('register'), { onFinish: () => reset('password', 'password_confirmation') });
     };
 
@@ -371,13 +436,51 @@ export default function Register() {
     };
 
     const progressWidth = { 1: '33.3%', 2: '66.6%', 3: '100%' };
-    const stepTitles = { 1: "Step 1: Your Name", 2: "Step 2: Contact & Information", 3: "Step 3: Account Security" };
+    const stepTitles = { 1: "Step 1: Your Name", 2: "Step 2: Contact & Info", 3: "Step 3: Account Security" };
+
+    // useEffect hook for Phone Number validation
+    useEffect(() => {
+        if (!data.phone_number) {
+            setPhoneValidation({ status: 'idle', message: '' });
+            return;
+        }
+        setPhoneValidation({ status: 'checking', message: '' });
+        const timeoutId = setTimeout(() => {
+            axios.post(route('validation.phone'), { phone_number: data.phone_number })
+                .then(response => {
+                    setPhoneValidation(response.data.is_taken
+                        ? { status: 'invalid', message: 'This phone number is already registered.' }
+                        : { status: 'valid', message: '' });
+                }).catch(() => setPhoneValidation({ status: 'idle', message: 'Could not verify number.' }));
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [data.phone_number]);
+
+    // useEffect hook for Email validation
+    useEffect(() => {
+        const isEmailValid = /^\S+@\S+\.\S+$/.test(data.email);
+        if (!data.email || !isEmailValid) {
+            setEmailValidation({ status: 'idle', message: '' });
+            return;
+        }
+        setEmailValidation({ status: 'checking', message: '' });
+        const timeoutId = setTimeout(() => {
+            axios.post(route('validation.email'), { email: data.email })
+                .then(response => {
+                    setEmailValidation(response.data.is_taken
+                        ? { status: 'invalid', message: 'This email is already registered.' }
+                        : { status: 'valid', message: '' });
+                }).catch(() => setEmailValidation({ status: 'idle', message: 'Could not verify email.' }));
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [data.email]);
+
 
     const renderStep = () => {
         const stepComponent = {
             1: <Step1_BasicInfo data={data} setData={setData} errors={errors} />,
-            2: <Step2_PersonalDetails data={data} setData={setData} errors={errors} />,
-            3: <Step3_AccountCredentials data={data} setData={setData} errors={errors} passwordVisible={passwordVisible} setPasswordVisible={setPasswordVisible} confirmPasswordVisible={confirmPasswordVisible} setConfirmPasswordVisible={setConfirmPasswordVisible} passwordsDoNotMatch={passwordsDoNotMatch} />,
+            2: <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} />,
+            3: <Step3_AccountCredentials data={data} setData={setData} errors={errors} passwordVisible={passwordVisible} setPasswordVisible={setPasswordVisible} confirmPasswordVisible={confirmPasswordVisible} setConfirmPasswordVisible={setConfirmPasswordVisible} passwordsDoNotMatch={passwordsDoNotMatch} emailValidation={emailValidation} />,
         }[step];
 
         return (
@@ -460,8 +563,18 @@ export default function Register() {
                                         {step === 3 && (
                                              <div className="flex gap-4">
                                                 <SecondaryButton onClick={prevStep} disabled={processing}>Back</SecondaryButton>
-                                                <PrimaryButton type="submit" disabled={processing || !passwordValidation.isValid || passwordsDoNotMatch || !agreeToTerms}>
-                                                    Create
+                                                <PrimaryButton
+                                                    type="submit"
+                                                    disabled={
+                                                        processing ||
+                                                        !passwordValidation.isValid ||
+                                                        passwordsDoNotMatch ||
+                                                        !agreeToTerms ||
+                                                        (phoneValidation.status !== 'valid' && data.phone_number !== '') ||
+                                                        (emailValidation.status !== 'valid' && data.email !== '')
+                                                    }
+                                                >
+                                                    Create Account
                                                 </PrimaryButton>
                                             </div>
                                         )}

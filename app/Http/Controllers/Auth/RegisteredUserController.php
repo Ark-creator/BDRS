@@ -31,6 +31,8 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
+
+    
     public function store(Request $request): RedirectResponse
     {
         // --- UPDATED VALIDATION RULES ---
@@ -41,7 +43,7 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'address' => 'required|string|max:255',
-            'phone_number' => 'nullable|string|max:20',
+        'phone_number' => 'nullable|string|max:20|unique:user_profiles,phone_number',
             'birthday' => 'nullable|date',
             'gender' => 'nullable|string|in:Male,Female,Other',
             'civil_status' => 'nullable|string|max:50',
@@ -81,6 +83,8 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return redirect(route('dashboard', absolute: false));
+        return redirect(route('residents.home', absolute: false));
     }
+
+    
 }

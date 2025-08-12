@@ -7,6 +7,8 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+use App\Http\Controllers\Auth\ValidationController;
+
 
 // --- PUBLIC ROUTES ---
 Route::get('/', function () {
@@ -18,6 +20,15 @@ Route::get('/', function () {
     ]);
 });
 
+// routes/web.php
+
+// ... other routes
+
+Route::post('/validate-phone', [ValidationController::class, 'checkPhone'])->name('validation.phone');
+    Route::post('/validate-email', [ValidationController::class, 'checkEmail'])->name('validation.email');
+
+
+// ... other routes like Route::post('/register', ...)
 // --- GENERAL AUTHENTICATED ROUTES ---
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
