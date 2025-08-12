@@ -52,7 +52,7 @@ export default function Home({ auth }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="Home" />
 
-            <div className="bg-sky-50">
+            <div className="bg-sky-50   ">
                 <main>
                     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
                         

@@ -11,8 +11,8 @@ const Footer = () => {
             <div className="flex items-center gap-4">
 
               <img 
-                  className="h-16 w-16" 
-                  src="/images/gapanlogo.png"
+                  className="h-16 w-16 rounded-full" 
+                  src="/images/logo1.jpg"
                   alt="Official Seal of the Barangay" 
               />
               <div>
@@ -32,7 +32,7 @@ const Footer = () => {
                 <a href="mailto:contact@sanlorenzo.gov.ph" className="text-base text-blue-200 hover:text-white transition-colors">contact@sanlorenzo.gov.ph</a>
               </li>
               <li className="flex items-start">
-                <a href="tel:+63441234567" className="text-base text-blue-200 hover:text-white transition-colors">(044) 123-4567</a>
+                <a href="tel:+63441234567" className="text-base text-blue-200 hover:text-white transition-colors">(044) 329-6240</a>
               </li>
             </ul>
           </div>
