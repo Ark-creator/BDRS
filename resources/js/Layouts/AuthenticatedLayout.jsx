@@ -13,21 +13,19 @@ import {
 // --- Other Component Imports ---
 import NavLink from "@/Components/NavLink";
 import Dropdown from "@/Components/Dropdown";
-import ResponsiveNavLink from "@/Components/ResponsiveNavLink";
 
 // --- Toast Notification Imports ---
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 //================================================================
-// 1. SIDEBAR CODE NOW INSIDE THIS FILE
+// SIDEBAR COMPONENT
 //================================================================
 const navLinkGroups = [
-    // ... (This array of links remains the same)
     {
         title: 'Main',
         links: [
-            { name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.ashboard'), icon: <LayoutDashboard size={18} /> },
+            { name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> },
             { name: 'Announcements', href: route('admin.announcement'), active: route().current('admin.announcement'), icon: <Megaphone size={18} /> },
         ],
     },
@@ -48,7 +46,6 @@ const navLinkGroups = [
     },
 ];
 
-// We define the Sidebar component right here
 function SidebarComponent() {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [openSections, setOpenSections] = useState({ Main: true, Management: true, Account: true });
@@ -57,7 +54,6 @@ function SidebarComponent() {
         setOpenSections(prev => ({ ...prev, [title]: !prev[title] }));
     };
 
-    // Helper components for the sidebar
     const NavItem = ({ link, isCollapsed }) => (
         <li className="relative">
              <NavLink
@@ -99,8 +95,11 @@ function SidebarComponent() {
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={clsx("flex h-screen flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out", isCollapsed ? "w-20" : "w-64")}
+            transition={{ type: 'tween', duration: 0.3, ease: 'easeInOut' }}
+            className={clsx(
+                "absolute top-0 left-0 z-20 flex h-screen flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 transition-all duration-300 ease-in-out",
+                isCollapsed ? "w-20" : "w-64"
+            )}
         >
             <div className="flex items-center p-4 border-b border-slate-200 dark:border-slate-800">
                 {!isCollapsed && <h1 className="text-lg font-bold text-slate-800 dark:text-white flex-1">AdminPanel</h1>}
@@ -119,9 +118,8 @@ function SidebarComponent() {
     );
 }
 
-
 //================================================================
-// 2. MAIN AUTHENTICATED LAYOUT COMPONENT
+// MAIN AUTHENTICATED LAYOUT COMPONENT
 //================================================================
 export default function AuthenticatedLayout({ header, children }) {
     const { user } = usePage().props.auth;
@@ -139,23 +137,25 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [route().current(), isAdmin]);
 
     return (
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+        <div className="h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 relative">
             <AnimatePresence>
                 {isSidebarVisible && isAdmin && <SidebarComponent />}
             </AnimatePresence>
             
-            <div className="flex-1 flex flex-col w-full overflow-hidden">
-                {/* --- Navbar --- */}
+          <div className={clsx(
+    "flex h-full flex-col transition-[margin-left] duration-300 ease-out",
+    isSidebarVisible && "ml-64"
+)}>
                 <nav className="bg-white dark:bg-gray-800 shadow-md">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-16">
-                             {/* Logo */}
+                            {/* --- Logo --- */}
                             <Link href="/" className="flex items-center gap-2">
                                 <img className="w-10 h-10 rounded-full" src="/images/logo1.jpg" alt="Doconnect Logo" />
                                 <span className="font-bold text-lg text-blue-900 dark:text-white">Doconnect</span>
                             </Link>
 
-                            {/* Desktop Menu */}
+                            {/* --- Desktop Menu --- */}
                             <div className="hidden md:flex gap-6">
                                 <NavLink href={route("residents.home")} active={route().current("residents.home")}>Home</NavLink>
                                 <NavLink href={route("residents.about")} active={route().current("residents.about")}>About</NavLink>
@@ -163,20 +163,26 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <NavLink href={route("residents.faq")} active={route().current("residents.faq")}>FAQ</NavLink>
 
                                 {isAdmin && (
-                                    <button
-                                        onClick={() => setSidebarVisible(!isSidebarVisible)}
-                                        className={clsx('inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none', isSidebarVisible ? 'border-blue-400 text-gray-900 dark:text-gray-100 focus:border-blue-700' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 focus:text-gray-700 focus:border-gray-300')}
+                                    <Link
+                                        href={route('admin.dashboard')}
+                                        onClick={() => setSidebarVisible(true)}
+                                        className={clsx(
+                                            'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out focus:outline-none',
+                                            isSidebarVisible
+                                                ? 'border-blue-400 text-gray-900 dark:text-gray-100 focus:border-blue-700'
+                                                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-700 focus:text-gray-700 focus:border-gray-300'
+                                        )}
                                     >
                                         Admin
-                                    </button>
+                                    </Link>
                                 )}
                                 {user.role === "super_admin" && (
                                     <NavLink href={route("superadmin.users.index")} active={route().current("superadmin.users.index")}>Users</NavLink>
                                 )}
                             </div>
-                            
-                            {/* User Dropdown and Mobile Menu Button */}
-                             <div className="hidden md:flex items-center gap-3">
+
+                            {/* --- User Dropdown and Mobile Menu Button --- */}
+                            <div className="hidden md:flex items-center gap-3">
                                 <Dropdown>
                                     <Dropdown.Trigger>
                                         <button className="flex items-center gap-2 px-3 py-2 rounded-lg">
@@ -191,24 +197,24 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Dropdown>
                             </div>
                             <button onClick={() => setShowingNavigationDropdown(!showingNavigationDropdown)} className="md:hidden p-2">
-                                {/* ... hamburger/close icon SVG ... */}
+                                {/* Hamburger icon would go here */}
                             </button>
                         </div>
                     </div>
-                    {/* Mobile Menu */}
-                    {showingNavigationDropdown && ( <div className="md:hidden">{/* ... Your mobile menu NavLinks ... */}</div> )}
+                    {showingNavigationDropdown && (
+                        <div className="md:hidden">
+                            {/* Responsive NavLinks would go here */}
+                        </div>
+                    )}
                 </nav>
 
-                {/* --- Scrollable Content Area --- */}
                 <div className="flex-1 overflow-y-auto">
                     {header && (
                         <header className="bg-gray-50 dark:bg-gray-800 shadow-sm">
                             <div className="max-w-7xl mx-auto px-6 py-4">{header}</div>
                         </header>
                     )}
-                    <main className="py-6 px-4 sm:px-6 lg:px-8">
-                        {children}
-                    </main>
+                    {children}
                 </div>
             </div>
 
