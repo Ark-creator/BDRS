@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Resident\RequestPaper;
 
 use App\Http\Controllers\Controller;
-use App\Models\Request as DocumentRequest; // Rename 'Request' model to avoid conflict
+// use App\Models\Request as DocumentRequest; // Rename 'Request' model to avoid conflict
+use App\Models\DocumentRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
