@@ -6,7 +6,7 @@ import { Head } from "@inertiajs/react";
 export default function AdminDashboard() {
   return (
       <AuthenticatedLayout
-        header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200">Admin Dashboard</h2>}
+      
       >
         <Head title="Admin Dashboard" />
   
@@ -15,8 +15,8 @@ export default function AdminDashboard() {
             <Links />
           </aside>
   
-          <main className="flex-1 p-6">
-            Dashboard Content Here new file
+          <main className="">
+        
           </main>
         </div>
       </AuthenticatedLayout>
