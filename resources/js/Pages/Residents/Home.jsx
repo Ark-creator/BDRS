@@ -49,7 +49,10 @@ export default function Home({ auth }) {
     ];
 
     return (
+        
         <AuthenticatedLayout user={auth.user}>
+                <div className="min-h-full">
+
             <Head title="Home" />
 
             <div className="bg-sky-50   ">
@@ -129,6 +132,7 @@ export default function Home({ auth }) {
                     </div>
                 </main>
                 <Footer />
+            </div>
             </div>
         </AuthenticatedLayout>
     );
