@@ -9,7 +9,7 @@ import axios from 'axios';
 import {
     LayoutDashboard, Megaphone, FileText, FolderGit2, History,
     MessageSquareMore, CreditCard, PanelLeftClose, PanelLeftOpen, ChevronDown,
-    BellRing, Menu, X, ArrowLeft
+    BellRing, Menu, X, ArrowLeft, Users
 } from 'lucide-react';
 
 // --- Components ---
@@ -23,8 +23,6 @@ import "react-toastify/dist/ReactToastify.css";
 //================================================================
 // SIDEBAR COMPONENT (Desktop Collapse & Mobile Overlay)
 //================================================================
-// Ang component na ito ay humahawak sa desktop admin sidebar (collapsible) at sa
-// mobile admin sidebar (overlay na nag-slide in/out).
 function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, isMobile, setShowAdminSidebarMobile }) {
     const [openSections, setOpenSections] = useState({
         Main: true,
@@ -42,20 +40,17 @@ function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, i
             <li className="relative">
                 <NavLink
                     href={link.href}
-                    // Ipakita ang title bilang tooltip kapag naka-collapse, kung hindi, ipakita ang pangalan
                     title={isCollapsed && !mobileOpen ? link.name : undefined}
                     className={clsx(
                         'flex w-full items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-200 group z-10',
-                        (isCollapsed && !mobileOpen) && 'justify-center', // I-center ang content kapag naka-collapse (desktop lang)
+                        (isCollapsed && !mobileOpen) && 'justify-center',
                         link.active
-                            ? 'text-blue-600 dark:text-blue-400' // Styling para sa active link
-                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800' // Styling para sa inactive link
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
                     )}
                 >
                     <span className="transition-transform duration-200 group-hover:scale-110">{link.icon}</span>
-                    {/* Itago ang text kapag naka-desktop collapse O kapag nasa mobile at hindi pa bukas (overlay) */}
                     {!(isCollapsed && !mobileOpen) && <span className="flex-1 whitespace-nowrap">{link.name}</span>}
-                    {/* Badge para sa unread messages/requests etc. */}
                     {!(isCollapsed && !mobileOpen) && badgeValue > 0 && (
                         <span
                             className={clsx(
@@ -69,7 +64,6 @@ function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, i
                         </span>
                     )}
                 </NavLink>
-                {/* Active link indicator gamit ang framer-motion layoutId para sa smooth transition */}
                 {link.active && (
                     <motion.div
                         layoutId="active-nav-indicator"
@@ -83,22 +77,19 @@ function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, i
 
     const NavGroup = ({ group }) => (
         <div>
-            {/* Header ng section para sa navigation groups */}
             <div
                 onClick={() => toggleSection(group.title)}
                 className={clsx(
                     'flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors duration-200',
                     'hover:bg-slate-100 dark:hover:bg-slate-800',
-                    (isCollapsed && !mobileOpen) && 'justify-center' // I-center ang header kapag naka-collapse (desktop lang)
+                    (isCollapsed && !mobileOpen) && 'justify-center'
                 )}
             >
-                {/* Itago ang title kapag naka-collapse (desktop lang) */}
                 {!(isCollapsed && !mobileOpen) && (
                     <h3 className="text-xs font-semibold tracking-wider text-slate-400 uppercase">
                         {group.title}
                     </h3>
                 )}
-                {/* Itago ang chevron kapag naka-collapse (desktop lang) */}
                 {!(isCollapsed && !mobileOpen) && (
                     <motion.div animate={{ rotate: openSections[group.title] ? 180 : 0 }}>
                         <ChevronDown size={16} className="text-slate-400" />
@@ -106,10 +97,8 @@ function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, i
                 )}
             </div>
 
-            {/* Collapsible section links */}
             <AnimatePresence>
-                {/* Ipakita lang kapag bukas ang section at hindi naka-collapse (desktop) O kapag mobileOpen (mobile) */}
-                {(openSections[group.title] && !(isCollapsed && !mobileOpen)) && (
+                {(openSections[group.title] || (isCollapsed && !mobileOpen)) && (
                     <motion.ul
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
@@ -130,22 +119,19 @@ function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, i
 
     return (
         <motion.aside
-            // Animation para sa desktop width change AT mobile slide-in/out
-            initial={{ x: isMobile ? '-100%' : (isCollapsed ? '4rem' : '16rem'), width: isMobile ? '16rem' : (isCollapsed ? '4rem' : '16rem') }}
-            animate={{ x: isMobile ? (mobileOpen ? '0%' : '-100%') : '0%', width: isMobile ? '16rem' : (isCollapsed ? '4rem' : '16rem') }}
+            initial={false}
+            animate={{ width: isMobile ? '16rem' : (isCollapsed ? '5rem' : '16rem'), x: isMobile ? (mobileOpen ? '0%' : '-100%') : '0%' }}
             transition={{ type: 'tween', duration: 0.3 }}
             className={clsx(
                 "fixed top-0 z-40 flex h-full flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800",
-                "left-0" // Siguraduhin na nagsisimula sa kaliwa 0
+                "left-0"
             )}
         >
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
-                {/* Ipakita ang AdminPanel title kung hindi naka-desktop collapse O kung mobile open */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800 h-16">
                 {!(isCollapsed && !mobileOpen) && (
-                    <h1 className="text-lg font-bold text-slate-800 dark:text-white">AdminPanel</h1>
+                    <h1 className="text-lg font-bold text-slate-800 dark:text-white whitespace-nowrap">Admin Panel</h1>
                 )}
-                {/* Button para i-collapse/expand ang sidebar - desktop lang ito */}
-                {!isMobile && ( // Itago ang button na ito kapag mobile (burger button sa header ang magko-kontrol)
+                {!isMobile && (
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -162,16 +148,15 @@ function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, i
                     ))}
                 </div>
             </nav>
-            {/* "Back as a Residents" link para sa mobile admin sidebar */}
             {isMobile && mobileOpen && (
                 <div className="p-3 border-t border-slate-200 dark:border-slate-800">
                     <Link
                         href={route('residents.home')}
                         className="flex items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium transition-colors duration-200 group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                        onClick={() => setShowAdminSidebarMobile(false)} // Isara ang mobile admin sidebar kapag nag-click
+                        onClick={() => setShowAdminSidebarMobile(false)}
                     >
                         <ArrowLeft size={18} />
-                        <span>Back as a Resident</span>
+                        <span>Back to Home</span>
                     </Link>
                 </div>
             )}
@@ -183,43 +168,41 @@ function SidebarComponent({ navLinks, isCollapsed, setIsCollapsed, mobileOpen, i
 // MAIN AUTHENTICATED LAYOUT (Responsive for All Devices)
 //================================================================
 export default function AuthenticatedLayout({ header, children }) {
-    const { user } = usePage().props.auth;
+    const { props } = usePage();
+    const { user } = props.auth;
     const isAdmin = user.role === "admin" || user.role === "super_admin";
+    const isSuperAdmin = user.role === "super_admin";
+
+    // NEW: Check if the current page is an admin page. This is the core logic for the requested change.
+    const isAdminPage = isAdmin && route().current()?.startsWith('admin.');
 
     const [unreadMessages, setUnreadMessages] = useState([]);
     const [isBubbleVisible, setIsBubbleVisible] = useState(false);
-    // State para sa desktop sidebar collapse (true = naka-collapse, false = naka-expand)
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-    // State para sa mobile top-navigation menu visibility (para sa public pages)
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
-    // State para sa mobile admin sidebar visibility (nag-o-overlay)
     const [showAdminSidebarMobile, setShowAdminSidebarMobile] = useState(false);
-    // State para malaman kung mobile size ang current viewport
     const [isMobile, setIsMobile] = useState(false);
+    let hoverTimeout; // For notification bubble hover delay
 
-    // Effect para ma-detect ang pagbabago sa screen size
     useEffect(() => {
         const checkScreenSize = () => {
             const mobile = window.innerWidth < 768;
             setIsMobile(mobile);
-            // Kung nagre-resize mula mobile patungong desktop, isara ang mobile nav at admin sidebar kung bukas
             if (!mobile) {
                 if (isMobileNavOpen) setIsMobileNavOpen(false);
                 if (showAdminSidebarMobile) setShowAdminSidebarMobile(false);
             }
         };
 
-        checkScreenSize(); // Initial check
-        window.addEventListener("resize", checkScreenSize); // Mag-listen sa resize events
-        return () => window.removeEventListener("resize", checkScreenSize); // I-cleanup ang listener
-    }, [isMobileNavOpen, showAdminSidebarMobile]); // Re-run kapag nagbago ang mobile nav/admin sidebar state
+        checkScreenSize();
+        window.addEventListener("resize", checkScreenSize);
+        return () => window.removeEventListener("resize", checkScreenSize);
+    }, [isMobileNavOpen, showAdminSidebarMobile]);
 
-    // Effect para kunin ang unread messages (para lang sa admins)
     useEffect(() => {
         if (isAdmin) {
             const fetchUnreadMessages = async () => {
                 try {
-                    // Assuming 'admin.messages.unread' is the correct route
                     const response = await axios.get(route('admin.messages.unread'));
                     setUnreadMessages(response.data.messages || []);
                 } catch (error) {
@@ -227,12 +210,10 @@ export default function AuthenticatedLayout({ header, children }) {
                     setUnreadMessages([]);
                 }
             };
-
             fetchUnreadMessages();
         }
-    }, [isAdmin]); // Re-run kung nagbago ang admin status
+    }, [isAdmin]);
 
-    // Navigation links na naka-grupo para sa sidebar at mobile menu
     const navLinkGroups = [
         {
             title: 'Main',
@@ -245,22 +226,20 @@ export default function AuthenticatedLayout({ header, children }) {
             title: 'Management',
             links: [
                 { name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> },
-                // Halimbawa na may static badge value, pwede itong gawing dynamic
-                { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} />, badge: 3 },
+                { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} />, },
+                ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : [])
             ],
         },
         {
             title: 'Account',
             links: [
                 { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> },
-                // Dynamic badge para sa unread messages
                 { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: unreadMessages.length },
                 { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> },
             ],
         },
     ];
 
-    // Notification bubble component para sa messages
     const NotificationBubble = ({ messages }) => (
         <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -274,7 +253,7 @@ export default function AuthenticatedLayout({ header, children }) {
             </h3>
             {messages.length > 0 ? (
                 <ul className="space-y-3">
-                    {messages.map((msg) => (
+                    {messages.slice(0, 5).map((msg) => (
                         <li key={msg.id} className="border-b border-gray-100 dark:border-gray-600 pb-2 last:border-b-0">
                             <p className="text-sm font-semibold text-blue-600 dark:text-blue-300">{msg.subject}</p>
                             <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{msg.message}</p>
@@ -294,149 +273,127 @@ export default function AuthenticatedLayout({ header, children }) {
 
     return (
         <div className="h-screen overflow-hidden bg-gray-100 dark:bg-gray-900 relative font-inter">
-            {/* Sidebar (para lang sa admin) */}
+            {/* CHANGED: Sidebar now only renders on admin pages */}
             <AnimatePresence>
-                {isAdmin && ( // Palaging i-render kung admin, hayaan ang internal logic na humawak sa mobile/desktop
+                {isAdminPage && (
                     <SidebarComponent
                         navLinks={navLinkGroups}
-                        isCollapsed={isSidebarCollapsed} // Ito ay para sa desktop collapse
+                        isCollapsed={isSidebarCollapsed}
                         setIsCollapsed={setIsSidebarCollapsed}
-                        mobileOpen={isMobile && showAdminSidebarMobile} // Ipasa ang mobile state
-                        isMobile={isMobile} // Ipasa ang isMobile sa sidebar component
-                        setShowAdminSidebarMobile={setShowAdminSidebarMobile} // Ipasa ang setter function
+                        mobileOpen={isMobile && showAdminSidebarMobile}
+                        isMobile={isMobile}
+                        setShowAdminSidebarMobile={setShowAdminSidebarMobile}
                     />
                 )}
             </AnimatePresence>
 
-            {/* Main Content Area */}
-            <div
-                className={clsx(
-                    "flex h-full flex-col transition-all duration-300 ease-out",
-                    // Ilapat ang left margin batay sa sidebar state para lang sa desktop admins
-                    isAdmin && !isMobile && !isSidebarCollapsed && "ml-64", // Desktop, expanded sidebar
-                    isAdmin && !isMobile && isSidebarCollapsed && "ml-16",  // Desktop, collapsed sidebar
-                    isMobile && "ml-0" // Sa mobile, ang content ay palaging nagsisimula sa 0, nag-o-overlay ang mobile nav/sidebar
-                )}
+            <motion.div
+                animate={{
+                    // CHANGED: Margin is now applied only on admin pages
+                    marginLeft: isMobile || !isAdminPage ? '0rem' : (isSidebarCollapsed ? '5rem' : '16rem')
+                }}
+                transition={{ type: 'tween', duration: 0.3 }}
+                className="flex h-full flex-col"
             >
-                {/* Top Navigation Bar */}
                 <nav className="bg-white dark:bg-gray-800 shadow-md sticky top-0 z-30">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-16">
-
-                            {/* Logo */}
-                            <Link href="/" className="flex items-center gap-2">
-                                {/* Gumagamit ng placeholder image para sa demonstration */}
-                                <img className="w-10 h-10 rounded-full" src="https://placehold.co/40x40/E0F2F7/0288D1?text=Logo" alt="Doconnect Logo" />
-                                <span className="font-bold text-lg text-blue-900 dark:text-white">Doconnect</span>
-                            </Link>
-
-                            {/* Desktop Navigation Links */}
-                            <div className="hidden md:flex gap-6">
-                                <NavLink href={route("residents.home")} active={route().current("residents.home")}>Home</NavLink>
-                                <NavLink href={route("residents.about")} active={route().current("residents.about")}>About</NavLink>
-                                <NavLink href={route("residents.contact")} active={route().current("residents.contact")}>Contact</NavLink>
-                                <NavLink href={route("residents.faq")} active={route().current("residents.faq")}>FAQ</NavLink>
-
-                                {/* Link ng Admin na palaging nakikita para sa admins, nagna-navigate sa dashboard */}
-                                {isAdmin && (
-                                    <NavLink href={route('admin.dashboard')} active={route().current()?.startsWith('admin.')}>
-                                        Admin
-                                    </NavLink>
-                                )}
-                                {/* Link ng Super admin para sa pamamahala ng mga user */}
-                                {user.role === "super_admin" && (
-                                    <NavLink href={route("superadmin.users.index")} active={route().current("superadmin.users.index")}>
-                                        Users
-                                    </NavLink>
-                                )}
-                            </div>
-
-                            {/* Kanang Bahagi: Notifications & User Dropdown */}
-                            <div className="flex items-center gap-3">
-                                {/* Messages Bell (para lang sa admin) */}
-                                {isAdmin && (
-                                    <div
-                                        className="relative"
-                                        onMouseEnter={() => setIsBubbleVisible(true)}
-                                        onMouseLeave={() => setIsBubbleVisible(false)}
-                                    >
-                                        <Link href={route('admin.messages')} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                            <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
-                                        </Link>
-                                        {unreadMessages.length > 0 && (
-                                            <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold ring-2 ring-white dark:ring-gray-800">
-                                                {unreadMessages.length}
-                                            </span>
-                                        )}
-                                        <AnimatePresence>
-                                            {isBubbleVisible && unreadMessages.length > 0 && (
-                                                <NotificationBubble messages={unreadMessages} />
-                                            )}
-                                        </AnimatePresence>
-                                    </div>
-                                )}
-
-                                {/* User Profile Dropdown */}
-                                <Dropdown>
-                                    <Dropdown.Trigger>
-                                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition">
-                                            <span className="font-medium text-gray-700 dark:text-gray-300">{user.name}</span>
-                                            {/* Halimbawa ng user icon gamit ang placeholder image */}
-                                            <img className="w-8 h-8 rounded-full" src="https://placehold.co/32x32/FFD166/000000?text=U" alt="User Icon" />
-                                        </button>
-                                    </Dropdown.Trigger>
-                                    <Dropdown.Content>
-                                        <Dropdown.Link href={route("profile.edit")}>Profile</Dropdown.Link>
-                                        <Dropdown.Link href={route("logout")} method="post" as="button">Log Out</Dropdown.Link>
-                                    </Dropdown.Content>
-                                </Dropdown>
-
-                                {/* Mobile Menu Toggle Button (nakatago sa desktop) */}
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => {
                                         if (isMobile) {
-                                            if (isAdmin && route().current()?.startsWith('admin.')) {
+                                            // CHANGED: Simplified mobile menu logic
+                                            if (isAdminPage) {
                                                 setShowAdminSidebarMobile(!showAdminSidebarMobile);
-                                                setIsMobileNavOpen(false); // Siguraduhin na sarado ang public mobile nav
                                             } else {
                                                 setIsMobileNavOpen(!isMobileNavOpen);
-                                                setShowAdminSidebarMobile(false); // Siguraduhin na sarado ang admin sidebar mobile
                                             }
                                         }
                                     }}
                                     className="md:hidden p-2 rounded-lg"
                                     aria-label="Toggle mobile menu"
                                 >
-                                    {(isMobile && isAdmin && route().current()?.startsWith('admin.') && showAdminSidebarMobile) || (isMobile && !isAdmin && isMobileNavOpen) || (isMobile && isAdmin && !route().current()?.startsWith('admin.') && isMobileNavOpen)
-                                        ? <X size={24} /> // Ipakita ang X kung ang mobile admin sidebar O mobile public nav ay bukas
-                                        : <Menu size={24} /> // Ipakita ang Menu kung hindi
-                                    }
+                                    {(showAdminSidebarMobile || isMobileNavOpen) ? <X size={24} /> : <Menu size={24} />}
                                 </button>
+                                <Link href="/" className="flex items-center gap-2">
+                                    <img className="w-10 h-10 rounded-full" src="/images/logo1.jpg" alt="Doconnect Logo" />
+                                    <span className="font-bold text-lg text-blue-900 dark:text-white hidden sm:inline">Doconnect</span>
+                                </Link>
+                            </div>
+
+                            <div className="hidden md:flex gap-6">
+                                <NavLink href={route("residents.home")} active={route().current("residents.home")}>Home</NavLink>
+                                <NavLink href={route("residents.about")} active={route().current("residents.about")}>About</NavLink>
+                                <NavLink href={route("residents.contact")} active={route().current("residents.contact")}>Contact</NavLink>
+                                <NavLink href={route("residents.faq")} active={route().current("residents.faq")}>FAQ</NavLink>
+                            </div>
+
+                            <div className="flex items-center gap-1">
+                                {isAdmin && (
+                                    <div
+                                        className="relative"
+                                        // UX IMPROVEMENT: Added delay on hover
+                                        onMouseEnter={() => {
+                                            clearTimeout(hoverTimeout);
+                                            hoverTimeout = setTimeout(() => setIsBubbleVisible(true), 300);
+                                        }}
+                                        onMouseLeave={() => {
+                                            clearTimeout(hoverTimeout);
+                                            hoverTimeout = setTimeout(() => setIsBubbleVisible(false), 200);
+                                        }}
+                                    >
+                                        <Link href={route('admin.messages')} className="p-2 rounded-lg transition relative">
+                                            <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
+                                            {unreadMessages.length > 0 && (
+                                                <span className="absolute top-6 -right-5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800" />
+                                            )}
+                                        </Link>
+                                        <AnimatePresence>
+                                            {isBubbleVisible && <NotificationBubble messages={unreadMessages} />}
+                                        </AnimatePresence>
+                                    </div>
+                                )}
+                                <Dropdown>
+                                    <Dropdown.Trigger>
+                                        <button className="flex items-center gap-2 px-3 py-2 rounded-lg transition">
+                                            <span className="font-medium text-gray-700 dark:text-gray-300 hidden sm:inline">{user.name}</span>
+                                            <i className="fa-solid fa-circle-user text-2xl text-blue-800 dark:text-blue-400"></i>
+                                        </button>
+                                    </Dropdown.Trigger>
+                                    <Dropdown.Content>
+                                        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-600">
+                                            <div className="font-medium text-base text-gray-800 dark:text-gray-200">{user.name}</div>
+                                            <div className="font-medium text-sm text-gray-500">{user.email}</div>
+                                        </div>
+                                        {isAdmin && (
+                                            <Dropdown.Link href={route('admin.dashboard')}>Admin Panel</Dropdown.Link>
+                                        )}
+                                        <Dropdown.Link href={route("profile.edit")}>Profile</Dropdown.Link>
+                                        <Dropdown.Link href={route("logout")} method="post" as="button">Log Out</Dropdown.Link>
+                                    </Dropdown.Content>
+                                </Dropdown>
                             </div>
                         </div>
 
-                        {/* Mobile Dropdown Navigation Menu (para sa public pages) */}
                         <AnimatePresence>
-                            {isMobileNavOpen && isMobile && ( // Ipakita lang kung mobile menu ay bukas at nasa mobile
+                            {isMobileNavOpen && isMobile && (
                                 <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}
                                     transition={{ duration: 0.2 }}
-                                    className="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-2 fixed top-16 w-full z-20" // Fixed position sa ilalim ng header
+                                    className="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700"
                                 >
-                                    <div className="flex flex-col space-y-2 px-4">
-                                        {/* Main navigation links */}
+                                    <div className="flex flex-col space-y-1 p-2">
                                         <NavLink href={route("residents.home")} active={route().current("residents.home")} onClick={() => setIsMobileNavOpen(false)}>Home</NavLink>
                                         <NavLink href={route("residents.about")} active={route().current("residents.about")} onClick={() => setIsMobileNavOpen(false)}>About</NavLink>
                                         <NavLink href={route("residents.contact")} active={route().current("residents.contact")} onClick={() => setIsMobileNavOpen(false)}>Contact</NavLink>
                                         <NavLink href={route("residents.faq")} active={route().current("residents.faq")} onClick={() => setIsMobileNavOpen(false)}>FAQ</NavLink>
-                                        {/* Admin specific links para sa mobile nav (kung admin at nasa public page) */}
-                                        {isAdmin && <NavLink href={route('admin.dashboard')} active={route().current()?.startsWith('admin.')} onClick={() => setIsMobileNavOpen(false)}>Admin</NavLink>}
-                                        {user.role === "super_admin" && <NavLink href={route("superadmin.users.index")} active={route().current("superadmin.users.index")} onClick={() => setIsMobileNavOpen(false)}>Users</NavLink>}
-                                        {/* User profile at logout links para sa mobile nav */}
-                                        <Link href={route("profile.edit")} className="block px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md" onClick={() => setIsMobileNavOpen(false)}>Profile</Link>
-                                        <Link href={route("logout")} method="post" as="button" className="block w-full text-left px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-md" onClick={() => setIsMobileNavOpen(false)}>Log Out</Link>
+                                        <div className="pt-2 mt-2 border-t border-slate-200 dark:border-slate-700 flex flex-col space-y-1">
+                                            {isAdmin && <NavLink href={route('admin.dashboard')} onClick={() => setIsMobileNavOpen(false)}>Admin Panel</NavLink>}
+                                            <NavLink href={route("profile.edit")} onClick={() => setIsMobileNavOpen(false)}>Profile</NavLink>
+                                            <NavLink href={route("logout")} method="post" as="button" onClick={() => setIsMobileNavOpen(false)}>Log Out</NavLink>
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}
@@ -444,10 +401,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </nav>
 
-                {/* Page Content */}
                 <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900">
                     {header && (
-                        <header className="bg-gray-50 dark:bg-gray-800 shadow-sm">
+                        <header className="bg-white dark:bg-slate-800 shadow-sm">
                             <div className="max-w-7xl mx-auto px-6 py-4">{header}</div>
                         </header>
                     )}
@@ -455,17 +411,14 @@ export default function AuthenticatedLayout({ header, children }) {
                         {children}
                     </div>
                 </main>
-            </div>
+            </motion.div>
 
-            {/* Global Toast Notifications */}
             <ToastContainer position="bottom-right" autoClose={5000} theme="colored" />
 
-            {/* Overlay kapag bukas ang mobile nav O mobile admin sidebar */}
-            {isMobile && (isMobileNavOpen || showAdminSidebarMobile) && (
+            {isMobile && (showAdminSidebarMobile) && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" // z-index na mas mababa sa mobile nav/sidebar
+                    className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
                     onClick={() => {
-                        if (isMobileNavOpen) setIsMobileNavOpen(false);
                         if (showAdminSidebarMobile) setShowAdminSidebarMobile(false);
                     }}
                 />
@@ -473,4 +426,3 @@ export default function AuthenticatedLayout({ header, children }) {
         </div>
     );
 }
-
