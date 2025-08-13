@@ -20,7 +20,7 @@ export default function ContactUs({ auth }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="Contact Us" />
 
-            <div className="bg-sky-50">
+            <div className="bg-slate-50">
                 <div className="bg-slate-50 border-b border-slate-200">
                     <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 text-center">
                         <h1 className="text-base font-semibold text-blue-600 tracking-wide uppercase">Contact Us</h1>

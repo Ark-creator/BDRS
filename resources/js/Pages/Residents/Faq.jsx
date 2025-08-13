@@ -44,7 +44,7 @@ export default function Faq({ auth }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="FAQ" />
 
-            <div className="py-16 bg-sky-50 min-h-screen">
+            <div className="py-16 bg-slate-50 min-h-screen">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
                     {/* Page Header */}
