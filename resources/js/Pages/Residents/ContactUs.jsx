@@ -1,9 +1,11 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import React from 'react';
 import { Head, useForm } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Footer from '@/Components/Residents/Footer'; 
+import { toast } from 'react-toastify'; // Imported toast
 
 export default function ContactUs({ auth }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, post, processing, errors, reset } = useForm({
         subject: 'General Inquiry',
         message: '',
     });
@@ -12,8 +14,21 @@ export default function ContactUs({ auth }) {
 
     const submit = (e) => {
         e.preventDefault();
-        // Ensure this route name matches the one defined in routes/web.php
-        post(route('residents.contact.store')); // Corrected route name
+        
+        // Use the post method with onSuccess callback
+        post(route('residents.contact.store'), {
+            onSuccess: () => {
+                // Show a success toast notification
+                toast.success('Message sent successfully!');
+                // Reset the form fields after successful submission
+                reset('message');
+                setData('subject', 'General Inquiry');
+            },
+            // Handle errors if needed, though Inertia.js handles it automatically
+            onError: () => {
+                toast.error('Failed to send message. Please try again.');
+            },
+        });
     };
     
     return (
