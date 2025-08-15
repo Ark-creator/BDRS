@@ -44,22 +44,24 @@ export default function Faq({ auth }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="FAQ" />
 
-            <div className="py-16 bg-sky-50 min-h-screen">
+            <div className="py-16 bg-slate-50 min-h-screen">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
                     {/* Page Header */}
                     <div className="text-center mb-12">
                         <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 text-blue-600 mb-4">
-                           {/* Inline SVG para sa Question Icon */}
-                           <svg className="h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                           </svg>
+                            {/* Inline SVG para sa Question Icon */}
+                            <svg className="h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
                         </div>
                         <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
                             {language === "tl" ? "Mga Madalas Itanong" : "Frequently Asked Questions"}
                         </h1>
                         <p className="mt-4 text-lg text-slate-600">
-                            Hanapin ang mga sagot sa mga karaniwang tanong tungkol sa serbisyo ng barangay.
+                            {language === "tl" 
+                                ? "Hanapin ang mga sagot sa mga karaniwang tanong tungkol sa serbisyo ng barangay." 
+                                : "Find answers to common questions about barangay services."}
                         </p>
                     </div>
                     
@@ -69,7 +71,7 @@ export default function Faq({ auth }) {
                             className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         >
                             <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m4 13l4-4M9 15v2m6-13l-4 4m0 0l-4-4m4 4v12" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m4 13l4-4M9 15v2m6-13l-4 4m0 0l-4-4m4 4v12" />
                             </svg>
                             {language === "tl" ? "Translate to English" : "Isalin sa Tagalog"}
                         </button>
@@ -109,7 +111,7 @@ export default function Faq({ auth }) {
                             openIndex={openIndex}
                             toggleFAQ={toggleFAQ}
                             question={language === 'tl' ? "May additional fee ba kapag rush processing?" : "Is there an extra fee for rush processing?"}
-                            answer={language === 'tl' ? "Oo, may karagdagang bayad para sa rush requests depende sa uri ng dokumento." : "Yes, additional fees apply for rush requests depending on the document type."}
+                            answer={language === 'tl' ? "Walang karagdagang bayad para sa rush requests ng dokumento." : "There is no, additional fees apply for rush requests of the documents."}
                         />
                          <AccordionItem
                             index={5}

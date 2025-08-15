@@ -12,7 +12,7 @@ const Footer = () => {
 
               <img 
                   className="h-16 w-16 rounded-full" 
-                  src="/images/logo1.jpg"
+                  src="/images/gapanlogo.png"
                   alt="Official Seal of the Barangay" 
               />
               <div>

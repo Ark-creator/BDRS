@@ -1,27 +1,225 @@
-import React from "react";
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head } from "@inertiajs/react";
+import React, { useState } from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import { Head, Link } from '@inertiajs/react';
+import { motion } from 'framer-motion';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { Users, FolderGit, Megaphone, PlusCircle, History, Banknote, MessageSquare, FilePlus, CheckCircle, XCircle, Eye, Building, FileText } from 'lucide-react';
 
-export default function AdminDashboard() {
-  return (
-    // Ang AuthenticatedLayout na ang bahala sa Navbar at Sidebar
-    <AuthenticatedLayout
-      header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Admin Dashboard</h2>}
-    >
-      <Head title="Admin Dashboard" />
+// --- Reusable UI Components ---
 
-      {/* Ito na lang ang content ng page mo.
-        WALA NANG <aside> or <main> tags dito.
-      */}
-      <div className="py-12">
-        <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-            <div className="p-6 text-gray-900 dark:text-gray-100">
-              Welcome to the Admin Dashboard! Dito mo ilalagay ang mga stats, charts, etc.
+const AuroraBackground = () => (
+    <div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
+        <div className="absolute top-0 -left-4 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-16 -right-4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-3xl animate-pulse delay-1000"></div>
+    </div>
+);
+
+const StatCard = ({ icon: Icon, title, value, change, color }) => (
+    <div className="relative overflow-hidden bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-blue-500/20 hover:-translate-y-1 transition-all duration-300">
+        <div className="flex items-start justify-between">
+            <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
+                <p className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-1">{value}</p>
             </div>
-          </div>
+            <div className={`p-3 rounded-full ${color.bg} ${color.text}`}>
+                <Icon size={24} />
+            </div>
         </div>
+    </div>
+);
+
+const CustomTooltip = ({ active, payload }) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm p-3 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700">
+        <p className="label font-semibold text-gray-800 dark:text-gray-200">{`Requests: ${payload[0].value}`}</p>
       </div>
-    </AuthenticatedLayout>
-  );
+    );
+  }
+  return null;
+};
+
+
+// --- Main Dashboard Component ---
+
+export default function AdminDashboard({ auth }) {
+    const [chartTimeframe, setChartTimeframe] = useState('Weekly');
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // --- Hard-Coded Sample Data (Mas Pinarami) ---
+    const stats = [
+        { icon: Users, title: "Total Residents", value: "1,428", color: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-300' } },
+        { icon: FolderGit, title: "Pending Requests", value: "16", color: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', text: 'text-yellow-600 dark:text-yellow-300' } },
+        { icon: Banknote, title: "Revenue (This Month)", value: "₱15,750", color: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-300' } },
+        { icon: Building, title: "System Status", value: "Operational", color: { bg: 'bg-teal-100 dark:bg-teal-900/50', text: 'text-teal-600 dark:text-teal-300' } }
+    ];
+
+    const quickActions = [
+        { label: "New Request", icon: FilePlus, href: '#' },
+        { label: "New Announcement", icon: Megaphone, href: '#' },
+        { label: "Add Document Type", icon: PlusCircle, href: '#' },
+        { label: "View Full History", icon: History, href: '#' },
+    ];
+    
+    const chartData = {
+        Weekly: [ { name: 'Mon', reqs: 12 }, { name: 'Tue', reqs: 19 }, { name: 'Wed', reqs: 15 }, { name: 'Thu', reqs: 25 }, { name: 'Fri', reqs: 22 }, { name: 'Sat', reqs: 32 }, { name: 'Sun', reqs: 28 } ],
+        Monthly: [ { name: 'Week 1', reqs: 88 }, { name: 'Week 2', reqs: 110 }, { name: 'Week 3', reqs: 140 }, { name: 'Week 4', reqs: 125 } ]
+    };
+
+    const documentBreakdownData = [
+        { name: 'Barangay Clearance', value: 400 },
+        { name: 'Cert. of Residency', value: 300 },
+        { name: 'Cert. of Indigency', value: 200 },
+        { name: 'Other Docs', value: 150 },
+    ];
+    const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
+    
+    const pendingRequests = [
+        { id: 'REQ-001', name: 'Juan Dela Cruz', docType: 'Barangay Clearance', date: 'Aug 15, 2025' },
+        { id: 'REQ-002', name: 'Maria Clara', docType: 'Certificate of Residency', date: 'Aug 15, 2025' },
+        { id: 'REQ-003', name: 'Crisostomo Ibarra', docType: 'Certificate of Indigency', date: 'Aug 14, 2025' },
+        { id: 'REQ-004', name: 'Elias', docType: 'PWD Certificate', date: 'Aug 14, 2025' },
+    ];
+
+    const recentActivities = [
+        { type: "request", user: "Maria Clara", text: "submitted a new document request.", time: "5m ago" },
+        { type: "payment", user: "Crisostomo Ibarra", text: "paid for a document.", time: "1h ago" },
+        { type: "announcement", user: "Admin", text: "posted a new announcement.", time: "3h ago" },
+        { type: "message", user: "Elias", text: "sent a new message.", time: "5h ago" },
+        { type: "user_added", user: "Admin", text: "added a new resident account.", time: "Yesterday" }
+    ];
+
+    const notificationIcons = {
+        request: FilePlus, payment: Banknote, announcement: Megaphone,
+        message: MessageSquare, user_added: Users
+    };
+
+    const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.07 } } };
+    const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
+
+    return (
+        <AuthenticatedLayout user={auth.user} >
+            <Head title="Admin Dashboard" />
+            <AuroraBackground />
+
+            <motion.div className="max-w-screen-xl mx-auto sm:px-6 lg:px-8 py-8" variants={containerVariants} initial="hidden" animate="visible">
+                {/* --- HEADER & QUICK ACTIONS --- */}
+                <motion.div variants={itemVariants} className="mb-8">
+                    <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Welcome Back, {auth.user.name}!</h1>
+                    <p className="text-gray-500 dark:text-gray-400 mt-1">{today}</p>
+                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {quickActions.map(action => (
+                            <Link key={action.label} href={action.href} className="flex items-center justify-center gap-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-4 rounded-xl shadow-md hover:shadow-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-all">
+                                <action.icon className="text-blue-600 dark:text-blue-400" size={20}/>
+                                <span className="font-medium text-sm text-gray-800 dark:text-gray-200">{action.label}</span>
+                            </Link>
+                        ))}
+                    </div>
+                </motion.div>
+
+                {/* --- MAIN GRID LAYOUT --- */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* --- MAIN CONTENT (LEFT) --- */}
+                    <div className="lg:col-span-2 flex flex-col gap-8">
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {stats.map((stat, index) => <StatCard key={index} {...stat} />)}
+                        </motion.div>
+
+                        {/* --- NEW: PENDING REQUESTS TABLE --- */}
+                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-lg">Action Required: Pending Requests</h3>
+                             <div className="overflow-x-auto">
+                                 <table className="w-full text-left">
+                                     <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+                                         <tr>
+                                             <th className="py-3 px-4">Resident</th>
+                                             <th className="py-3 px-4">Document</th>
+                                             <th className="py-3 px-4">Date</th>
+                                             <th className="py-3 px-4 text-center">Actions</th>
+                                         </tr>
+                                     </thead>
+                                     <tbody>
+                                         {pendingRequests.map(req => (
+                                             <tr key={req.id} className="border-t border-gray-200 dark:border-gray-700">
+                                                 <td className="py-3 px-4 font-medium text-gray-800 dark:text-gray-200">{req.name}</td>
+                                                 <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">{req.docType}</td>
+                                                 <td className="py-3 px-4 text-sm text-gray-500 dark:text-gray-400">{req.date}</td>
+                                                 <td className="py-3 px-4 text-center">
+                                                     <div className="flex justify-center gap-2">
+                                                        <button className="p-2 text-gray-500 hover:text-blue-600 transition-colors"><Eye size={16}/></button>
+                                                        <button className="p-2 text-gray-500 hover:text-green-600 transition-colors"><CheckCircle size={16}/></button>
+                                                        <button className="p-2 text-gray-500 hover:text-red-600 transition-colors"><XCircle size={16}/></button>
+                                                     </div>
+                                                 </td>
+                                             </tr>
+                                         ))}
+                                     </tbody>
+                                 </table>
+                             </div>
+                        </motion.div>
+                    </div>
+
+                    {/* --- SIDEBAR CONTENT (RIGHT) --- */}
+                    <div className="lg:col-span-1 flex flex-col gap-8">
+                        {/* --- NEW: DOCUMENT BREAKDOWN DONUT CHART --- */}
+                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                            <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Document Breakdown</h3>
+                            <div className="h-56 w-full">
+                                <ResponsiveContainer>
+                                    <PieChart>
+                                        <Pie data={documentBreakdownData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" paddingAngle={5}>
+                                            {documentBreakdownData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                        </Pie>
+                                        <Tooltip />
+                                        <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }}/>
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </motion.div>
+
+                        {/* --- RECENT ACTIVITY --- */}
+                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
+                             <ul className="space-y-4">
+                                
+                                {recentActivities.map((activity, index) => {
+                                    const Icon = notificationIcons[activity.type];
+                                    return (
+                                        <li key={index} className="flex items-center gap-4">
+                                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700"><Icon className="text-gray-500" size={20} /></div>
+                                            <div className="flex-grow"><p className="text-sm text-gray-700 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">{activity.user}</span> {activity.text}</p></div>
+                                            <p className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
+                                        </li>
+                                    );
+                                })}
+                             </ul>
+                        </motion.div>
+                    </div>
+                </div>
+
+                {/* --- FULL-WIDTH CHART --- */}
+                <motion.div variants={itemVariants} className="mt-8 bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">Request Volume</h3>
+                        <div className="flex gap-1 bg-gray-100 dark:bg-gray-900/50 p-1 rounded-lg text-sm">
+                            <button onClick={() => setChartTimeframe('Weekly')} className={`px-3 py-1 rounded-md transition-colors ${chartTimeframe === 'Weekly' ? 'bg-white dark:bg-gray-700 shadow' : 'hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}>Weekly</button>
+                            <button onClick={() => setChartTimeframe('Monthly')} className={`px-3 py-1 rounded-md transition-colors ${chartTimeframe === 'Monthly' ? 'bg-white dark:bg-gray-700 shadow' : 'hover:bg-gray-200 dark:hover:bg-gray-700/50'}`}>Monthly</button>
+                        </div>
+                    </div>
+                    <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={chartData[chartTimeframe]} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                                <defs><linearGradient id="colorReqs" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+                                <XAxis dataKey="name" tick={{ fill: 'currentColor' }} className="text-xs text-gray-500" />
+                                <YAxis tick={{ fill: 'currentColor' }} className="text-xs text-gray-500" />
+                                <Tooltip content={<CustomTooltip />} />
+                                <Area type="monotone" dataKey="reqs" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorReqs)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </motion.div>
+            </motion.div>
+        </AuthenticatedLayout>
+    );
 }
