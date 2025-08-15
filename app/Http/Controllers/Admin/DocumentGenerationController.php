@@ -1,60 +1,90 @@
 <?php
-// app/Http/Controllers/Admin/DocumentGenerationController.php
 
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DocumentRequest;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 use PhpOffice\PhpWord\TemplateProcessor;
-use Illuminate\Support\Str; // Import Str facade for slug conversion if needed
 
 class DocumentGenerationController extends Controller
 {
+    /**
+     * Generate a Word document based on a document request.
+     *
+     * @param  \App\Models\DocumentRequest  $documentRequest
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
     public function generate(DocumentRequest $documentRequest)
     {
-        // ---- MODIFICATION ----
-        // Check the document type using the relationship you created.
-        // Let's assume your DocumentType has a 'slug' or 'name' field.
-        if ($documentRequest->documentType->name !== 'Solo Parent') {
-            abort(404, 'Invalid document type for this generation logic.');
+        // --- NULL CHECK: Ensure the request is valid ---
+        $documentType = $documentRequest->documentType;
+        if (!$documentType) {
+            abort(500, 'The document request is missing a document type.');
         }
 
-        $templatePath = storage_path('app/templates/solo_parent_template.docx');
+        $user = $documentRequest->user;
+        if (!$user) {
+            abort(500, 'The document request is not associated with a user.');
+        }
+
+        // --- PRIMARY NULL CHECK: Ensure the user has a profile ---
+        $profile = $user->profile;
+        if (!$profile) {
+            abort(500, "Generation failed: The user '{$user->email}' has not completed their profile information.");
+        }
+
+        // Get the template path using a dynamic name
+        $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
+        $templatePath = storage_path("app/templates/{$templateName}");
 
         if (!file_exists($templatePath)) {
-            abort(500, 'Template file not found.');
+            abort(500, "Template file not found: {$templateName}");
         }
 
         $templateProcessor = new TemplateProcessor($templatePath);
-
-        // Get user and profile data via the model relationships
-        $user = $documentRequest->user;
-        $profile = $user->profile;
-        
-        // ---- MODIFICATION ----
-        // Access form_data directly as an array because of the $casts property
         $requestData = $documentRequest->form_data;
 
-        // Prepare data for the template
-        $fullName = strtoupper("{$profile->first_name} {$profile->middle_name} {$profile->last_name}");
-        $age = Carbon::parse($profile->birthday)->age;
+        // --- DYNAMIC & NULL-SAFE: Build the full name robustly ---
+        // This filters out empty/null parts (like middle_name) to prevent extra spaces
+        $nameParts = array_filter([$profile->first_name, $profile->middle_name, $profile->last_name]);
+        $fullName = strtoupper(implode(' ', $nameParts));
 
-        // Replace placeholders in the template
+        // Safely calculate age, providing a default if birthday is null
+        $age = $profile->birthday ? Carbon::parse($profile->birthday)->age : 'N/A';
+
+        // Set common placeholders
         $templateProcessor->setValue('FULL_NAME', $fullName);
         $templateProcessor->setValue('AGE', $age);
-        $templateProcessor->setValue('PURPOSE', $requestData['purpose']); // Accessing as an array key
+        $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
         $templateProcessor->setValue('DAY', date('jS'));
         $templateProcessor->setValue('MONTH_YEAR', date('F Y'));
-        
-        // Define the name of the downloaded file
-        $fileName = "SoloParentCert_{$profile->last_name}.docx";
+
+        // Set document-specific placeholders
+        switch ($documentType->name) {
+            case 'pwd':
+                $disability = $requestData['disability_type'] ?? 'Not Specified';
+                if ($disability === 'Others') {
+                    $disability = $requestData['other_disability'] ?? 'Not Specified';
+                }
+                $templateProcessor->setValue('DISABILITY_TYPE', $disability);
+                break;
+
+            case 'Solo Parent':
+                // No document-specific fields needed here
+                break;
+            
+            // Add more 'case' blocks here for other document types
+        }
+
+        // Dynamically define the download filename
+        $filePrefix = Str::studly($documentType->name);
+        $fileName = "{$filePrefix}Cert_{$profile->last_name}.docx";
         $pathToSave = storage_path("app/public/{$fileName}");
 
-        // Save and download
+        // Save, download, and delete the temporary file
         $templateProcessor->saveAs($pathToSave);
         return response()->download($pathToSave)->deleteFileAfterSend(true);
     }
-
-    
 }

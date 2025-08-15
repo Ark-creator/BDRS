@@ -223,7 +223,7 @@ export default function AuthenticatedLayout({ header, children }) {
     const { auth: { user } } = props;
     const isAdmin = user.role === "admin" || user.role === "super_admin";
     const isSuperAdmin = user.role === "super_admin";
-    const isAdminPage = isAdmin && route().current()?.startsWith('admin.');
+    const isAdminPage = isAdmin;
 
     const [unreadMessages, setUnreadMessages] = useState([]);
     const [isBubbleVisible, setIsBubbleVisible] = useState(false);

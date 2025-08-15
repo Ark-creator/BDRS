@@ -55,19 +55,15 @@ export default function Request() {
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                                         {new Date(request.created_at).toLocaleDateString()}
                                                     </td>
-                                                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        {/* Only show the link if the document type is "Solo Parent" */}
-                                                        {request.document_type?.name === 'Solo Parent' && (
-                                                            // --- THIS IS THE FIX ---
-                                                            // Changed from <Link> to a standard <a> tag to allow file downloads
-                                                            <a
-                                                                href={route('admin.requests.generate', request.id)}
-                                                                className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                                            >
-                                                                Generate
-                                                            </a>
-                                                        )}
-                                                    </td>
+                                                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+    {/* The condition has been removed, so this link will now show for all document types */}
+    <a
+        href={route('admin.requests.generate', request.id)}
+        className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+    >
+        Generate
+    </a>
+</td>
                                                 </tr>
                                             ))
                                         ) : (
