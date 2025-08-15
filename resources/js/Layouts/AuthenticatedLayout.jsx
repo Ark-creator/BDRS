@@ -349,6 +349,11 @@ export default function AuthenticatedLayout({ header, children }) {
 
                             <div className="flex items-center gap-1">
                                 {isAdmin && (
+                                    <Link href={route('admin.dashboard')} className="p-2 rounded-lg transition pr-3" title="Admin Panel">
+                                        <Users size={24} className="text-gray-500 dark:text-gray-400" />
+                                    </Link>
+                                )}
+                                {isAdmin && (
                                     <div className="relative" onMouseEnter={() => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(true), 300); }} onMouseLeave={() => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(false), 200); }}>
                                         <Link href={route('admin.messages')} className="p-2 rounded-lg transition relative">
                                             <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
@@ -367,10 +372,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <Dropdown.Content>
                                         <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-600">
                                             <div className="font-medium text-base text-gray-800 dark:text-gray-200">{user.name}</div>
-                                            {/* --- AYOS DITO --- */}
                                             <div className="font-medium text-sm text-gray-500 truncate">{user.email}</div>
                                         </div>
-                                        {isAdmin && (<Dropdown.Link href={route('admin.dashboard')}>Admin Panel</Dropdown.Link>)}
                                         <Dropdown.Link href={route("profile.edit")}>Profile</Dropdown.Link>
                                         <Dropdown.Link href={route("logout")} method="post" as="button">Log Out</Dropdown.Link>
                                     </Dropdown.Content>
