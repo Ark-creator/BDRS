@@ -451,7 +451,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             <div className="max-w-7xl mx-auto px-6 py-4">{header}</div>
                         </header>
                     )}
-                    <div className="p-4 sm:p-6 lg:p-8">
+                    <div>
                         {children}
                     </div>
                 </main>
