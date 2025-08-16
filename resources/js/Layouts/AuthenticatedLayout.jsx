@@ -310,7 +310,7 @@ export default function AuthenticatedLayout({ header, children }) {
     );
 
     return (
-        <div className="h-screen overflow-hidden bg-gray-100 dark:bg-slate-900/95 relative font-inter">
+        <div className="overflow-hidden bg-gray-100 dark:bg-slate-900/95 relative font-inter">
             <AnimatePresence>
                 {/* BINAGO: Ang sidebar ay laging ipapakita kung ang user ay isAdmin */}
                 {isAdmin && (isMobile && showAdminSidebarMobile || !isMobile) && (
