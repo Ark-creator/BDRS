@@ -13,29 +13,27 @@ class UserProfile extends Model
     /**
      * The attributes that are mass assignable.
      *
-     * This array protects against mass-assignment vulnerabilities by
-     * only allowing the specified fields to be filled using create() or update().
-     *
      * @var array<int, string>
      */
     protected $fillable = [
-        'user_id',
-        'first_name',
-        'middle_name',
-        'last_name',
-        'phone_number',
-        'address',
-        'birthday',
-        'gender',
-        'civil_status',
-        'profile_picture_url',
-    ];
+    'user_id',
+    'first_name',
+    'middle_name',
+    'last_name',
+    'phone_number',
+    'address',
+    'birthday',
+    'gender',
+    'civil_status',
+    'profile_picture_url',
+    'valid_id_type',
+    'valid_id_front_path',
+    'valid_id_back_path',
+    'face_image_path',
+];
 
     /**
      * The attributes that should be cast.
-     *
-     * This automatically converts attributes to common data types.
-     * 'birthday' will be a Carbon instance, which is great for formatting.
      *
      * @var array<string, string>
      */
@@ -45,7 +43,6 @@ class UserProfile extends Model
 
     /**
      * Get the user that owns the profile.
-     * This defines the "inverse" of the one-to-one relationship.
      */
     public function user(): BelongsTo
     {

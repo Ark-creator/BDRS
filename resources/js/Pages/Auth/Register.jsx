@@ -49,11 +49,10 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
     useEffect(() => {
         if (isOpen) {
             setError(null);
-            // Request camera access when modal opens
             navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: facingMode,
-                    width: { ideal: 1280 }, // Request a higher resolution
+                    width: { ideal: 1280 },
                     height: { ideal: 720 }
                 }
             })
@@ -69,11 +68,9 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
                 stopCamera();
             });
         } else {
-            // Stop camera when modal closes
             stopCamera();
         }
 
-        // Cleanup function to stop camera when component unmounts or isOpen changes
         return () => {
             stopCamera();
         };
@@ -85,29 +82,48 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
             const canvas = canvasRef.current;
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d');
 
-            // Flip the image if it's the front camera
+            const context = canvas.getContext('2d');
             if (facingMode === 'user') {
                 context.translate(video.videoWidth, 0);
                 context.scale(-1, 1);
             }
-            
             context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-            
-            // Convert canvas to a file blob
-            canvas.toBlob(blob => {
+
+            // --- RESIZE IMAGE TO 800x600 MAX ---
+            const maxWidth = 800;
+            const maxHeight = 600;
+            let newWidth = canvas.width;
+            let newHeight = canvas.height;
+
+            if (newWidth > maxWidth || newHeight > maxHeight) {
+                const ratio = Math.min(maxWidth / newWidth, maxHeight / newHeight);
+                newWidth *= ratio;
+                newHeight *= ratio;
+            }
+
+            // Create a new canvas for resized image
+            const resizedCanvas = document.createElement('canvas');
+            resizedCanvas.width = newWidth;
+            resizedCanvas.height = newHeight;
+            const resizedContext = resizedCanvas.getContext('2d');
+            resizedContext.imageSmoothingEnabled = true;
+            resizedContext.imageSmoothingQuality = 'high';
+            resizedContext.drawImage(canvas, 0, 0, newWidth, newHeight);
+
+            // Convert to blob with reduced quality
+            resizedCanvas.toBlob(blob => {
                 const file = new File([blob], `${title.replace(' ', '_')}.png`, { type: 'image/png' });
-                onCapture(file);
-                onClose(); // Close modal after capture
-            }, 'image/png');
+                onCapture(file); // Send resized file
+                onClose();
+            }, 'image/png', 0.9); // Quality: 0.9 (90%)
         }
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4">
             <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
                 <div className="flex justify-between items-center p-4 border-b">
                     <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
@@ -124,7 +140,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
                             className={`w-full h-full object-contain rounded-md ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                         ></video>
                     )}
-                     <canvas ref={canvasRef} className="hidden"></canvas>
+                    <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
                 <div className="p-4 border-t bg-slate-50 flex gap-4">
                     <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
@@ -282,12 +298,12 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
             case 'id_back':
                 setIdBackPreview(previewUrl);
                 setData('valid_id_back_image', file);
-                 if(errors.valid_id_back_image) errors.valid_id_back_image = '';
+                if(errors.valid_id_back_image) errors.valid_id_back_image = '';
                 break;
             case 'face':
                 setFaceImagePreview(previewUrl);
                 setData('face_image', file);
-                 if(errors.face_image) errors.face_image = '';
+                if(errors.face_image) errors.face_image = '';
                 break;
             default:
                 break;
@@ -412,24 +428,26 @@ export default function Register() {
     ), [data.email, data.password, data.password_confirmation, emailValidation, passwordValidation, passwordsDoNotMatch]);
 
     // --- Actions ---
-    const submit = (e) => {
-        e.preventDefault();
-        // --- THIS IS FOR FRONTEND-ONLY DEVELOPMENT ---
-        // It logs the data to the console instead of sending it to the backend.
-        // To re-enable backend submission, replace this block with the `post()` call.
-        console.log("Form Data Submitted (Frontend Only):", {
-            ...data
-        });
-        alert("Registration Submitted (Frontend Only)! Check the developer console for the data.");
+   // --- Actions ---
+   // --- Actions ---
+   const submit = (e) => {
+       e.preventDefault();
+    
+       post(route('register'), {
+           // This is the key fix: It forces Inertia to use the
+           // correct encoding for file uploads.
+           forceFormData: true,
 
-        // --- BACKEND SUBMISSION CODE (Currently commented out) ---
-        /*
-        post(route('register'), { 
-            onFinish: () => reset('password', 'password_confirmation'),
-            forceFormData: true,
-        });
-        */
-    };
+           // Better UX: Only reset the password on success.
+           onSuccess: () => {
+               reset('password', 'password_confirmation');
+           },
+           
+           onError: (errors) => {
+               console.error('Registration failed with errors:', errors);
+           },
+       });
+   };
 
     const nextStep = () => {
         clearErrors();
