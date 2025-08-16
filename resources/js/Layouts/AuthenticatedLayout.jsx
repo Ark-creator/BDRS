@@ -205,7 +205,7 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
 
             {isMobile && mobileOpen && (
                 <div className="p-3 border-t border-slate-200 dark:border-slate-800">
-                   <Link href={route('residents.home')} className="flex items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => setShowAdminSidebarMobile(false)}>
+                    <Link href={route('residents.home')} className="flex items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => setShowAdminSidebarMobile(false)}>
                         <ArrowLeft size={18} />
                         <span>Back to Home</span>
                     </Link>
@@ -223,7 +223,6 @@ export default function AuthenticatedLayout({ header, children }) {
     const { auth: { user } } = props;
     const isAdmin = user.role === "admin" || user.role === "super_admin";
     const isSuperAdmin = user.role === "super_admin";
-    const isAdminPage = isAdmin;
 
     const [unreadMessages, setUnreadMessages] = useState([]);
     const [isBubbleVisible, setIsBubbleVisible] = useState(false);
@@ -255,13 +254,13 @@ export default function AuthenticatedLayout({ header, children }) {
 
     useEffect(() => {
         // Automatically collapse sidebar on mobile
-        if (isMobile && isAdminPage) {
+        if (isMobile && isAdmin) {
             setIsSidebarCollapsed(true);
-        } else if (!isMobile && isAdminPage) {
+        } else if (!isMobile && isAdmin) {
              // Optional: Un-collapse sidebar if user resizes to desktop
             setIsSidebarCollapsed(false);
         }
-    }, [isMobile, isAdminPage]);
+    }, [isMobile, isAdmin]);
 
     useEffect(() => {
         if (isAdmin) {
@@ -313,7 +312,8 @@ export default function AuthenticatedLayout({ header, children }) {
     return (
         <div className="h-screen overflow-hidden bg-gray-100 dark:bg-slate-900/95 relative font-inter">
             <AnimatePresence>
-                {isAdminPage && (isMobile && showAdminSidebarMobile || !isMobile) && (
+                {/* BINAGO: Ang sidebar ay laging ipapakita kung ang user ay isAdmin */}
+                {isAdmin && (isMobile && showAdminSidebarMobile || !isMobile) && (
                     <SidebarComponent user={user} navLinks={navLinkGroups} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} mobileOpen={isMobile && showAdminSidebarMobile} isMobile={isMobile} setShowAdminSidebarMobile={setShowAdminSidebarMobile}/>
                 )}
             </AnimatePresence>
@@ -322,7 +322,8 @@ export default function AuthenticatedLayout({ header, children }) {
 
             <div
                 className={clsx("flex h-full flex-col transition-all duration-300 ease-in-out",
-                    isMobile || !isAdminPage
+                    // BINAGO: Ang margin ay laging naka-adjust para sa admin, maliban kung mobile
+                    isMobile || !isAdmin
                         ? 'ml-0'
                         : (isSidebarCollapsed ? 'ml-[5.5rem]' : 'ml-[16rem]')
                 )}
@@ -331,7 +332,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-16">
                             <div className="flex items-center gap-2">
-                                <button onClick={() => { if (isMobile) { if (isAdminPage) { setShowAdminSidebarMobile(!showAdminSidebarMobile); } else { setIsMobileNavOpen(!isMobileNavOpen); }}}} className="md:hidden p-2 rounded-lg" aria-label="Toggle mobile menu">
+                                <button onClick={() => { if (isMobile) { if (isAdmin) { setShowAdminSidebarMobile(!showAdminSidebarMobile); } else { setIsMobileNavOpen(!isMobileNavOpen); }}}} className="md:hidden p-2 rounded-lg" aria-label="Toggle mobile menu">
                                     {(showAdminSidebarMobile || isMobileNavOpen) ? <X size={24} /> : <Menu size={24} />}
                                 </button>
                                 <Link href="/" className="flex items-center gap-2">
@@ -349,7 +350,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
                             <div className="flex items-center gap-1">
                                 {isAdmin && (
-                                    <Link href={route('admin.dashboard')} className="p-2 rounded-lg transition pr-3" title="Admin Panel">
+                                    <Link href={route('admin.dashboard')} className="p-2 rounded-lg transition pr-4" title="Admin Panel">
                                         <Users size={24} className="text-gray-500 dark:text-gray-400" />
                                     </Link>
                                 )}
