@@ -14,7 +14,7 @@ class DocumentTypeSeeder extends Seeder
     {
         DB::table('document_types')->insert([
             [
-                'name' => 'AKAP',
+                'name' => 'Solo Parent',
                 'description' => 'A certificate for the AKAP program.',
                 'template_path' => 'templates/akap.blade.php',
                 'created_at' => now(),
@@ -28,7 +28,7 @@ class DocumentTypeSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'name' => 'PWD Certificate',
+                'name' => 'pwd',
                 'description' => 'A certificate for a Person with Disability.',
                 'template_path' => 'templates/pwd_certificate.blade.php',
                 'created_at' => now(),

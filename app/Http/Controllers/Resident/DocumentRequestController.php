@@ -38,20 +38,38 @@ class DocumentRequestController extends Controller
     /**
      * Store a newly created document request in the database.
      */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'purpose' => 'required|string|max:255',
-            'document_type_id' => 'required|exists:document_types,id',
-        ]);
+  // In your DocumentRequestController.php (or similar)
 
-        DocumentRequest::create([
-            'user_id' => Auth::id(),
-            'document_type_id' => $validated['document_type_id'],
-            'form_data' => ['purpose' => $validated['purpose']],
-            'status' => 'pending',
-        ]);
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'document_type_id' => 'required|exists:document_types,id',
+        'disability_type' => 'nullable|string|max:255',
+        'other_disability' => 'nullable|string|max:255',
+    ]);
 
-        return redirect()->route('residents.home')->with('success', 'Your request has been submitted successfully!');
-    }
+    // --- THIS IS THE FIX ---
+    // Get the DocumentType model to check its name
+    $documentType = \App\Models\DocumentType::find($validated['document_type_id']);
+
+    $formData = [
+        'disability_type' => $validated['disability_type'] ?? null,
+        'other_disability' => $validated['other_disability'] ?? null,
+        
+        // Set a default purpose specifically for PWD requests
+        'purpose' => ($documentType && $documentType->name === 'pwd') 
+                        ? 'For PWD ID Application' 
+                        : null,
+    ];
+
+    DocumentRequest::create([
+        'user_id' => auth()->id(),
+        'document_type_id' => $validated['document_type_id'],
+        'status' => 'pending',
+        'form_data' => $formData,
+    ]);
+
+    return redirect()->route('residents.home')->with('success', 'Request submitted successfully!');
+}
+
 }

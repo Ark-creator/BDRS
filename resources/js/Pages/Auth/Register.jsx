@@ -29,7 +29,6 @@ const PasswordStrengthIndicator = ({ password }) => { const { strength, checks }
 const ValidationIndicator = ({ status }) => { const iconContainer = "absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"; if (status === 'checking') { return ( <div className={iconContainer}> <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> </div> ); } if (status === 'valid') { return ( <div className={iconContainer}> <CheckIcon /> </div> ); } if (status === 'invalid') { return ( <div className={iconContainer}> <CrossIcon /> </div> ); } return null; };
 const CameraIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
 const IdCardIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v1m-4 0h4m-9 4h2m-2 4h4m6-4v4m-2-2h4"></path></svg>;
-const CameraFlipIcon = () => <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 10h4l3-3-3-3h-4V2L8 6l8 4v-2zm-2-2V6l-6 4.5L8 15V6.5l2-1.5V6h4zm0 6l-1.5 1.5L11 12H4l3 3-3 3h7v-4.5l1.5-1.5zM16 14v2l8-4-8-4v2h-4l-3 3 3 3h4z"></path></svg>
 
 // --- CAMERA MODAL COMPONENT ---
 const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
@@ -38,7 +37,6 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
     const [stream, setStream] = useState(null);
     const [error, setError] = useState(null);
 
-    // Function to stop all camera tracks
     const stopCamera = () => {
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
@@ -64,7 +62,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
             })
             .catch(err => {
                 console.error("Camera Error:", err);
-                setError(`Hindi ma-access ang camera. Pakisigurado na pinayagan mo ito sa browser. Error: ${err.name}`);
+                setError(`Could not access the camera. Please ensure you have granted permission in your browser. Error: ${err.name}`);
                 stopCamera();
             });
         } else {
@@ -90,7 +88,6 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
             }
             context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
 
-            // --- RESIZE IMAGE TO 800x600 MAX ---
             const maxWidth = 800;
             const maxHeight = 600;
             let newWidth = canvas.width;
@@ -102,7 +99,6 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
                 newHeight *= ratio;
             }
 
-            // Create a new canvas for resized image
             const resizedCanvas = document.createElement('canvas');
             resizedCanvas.width = newWidth;
             resizedCanvas.height = newHeight;
@@ -111,12 +107,11 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
             resizedContext.imageSmoothingQuality = 'high';
             resizedContext.drawImage(canvas, 0, 0, newWidth, newHeight);
 
-            // Convert to blob with reduced quality
             resizedCanvas.toBlob(blob => {
-                const file = new File([blob], `${title.replace(' ', '_')}.png`, { type: 'image/png' });
-                onCapture(file); // Send resized file
+                const file = new File([blob], `${title.replace(/\s/g, '_')}.png`, { type: 'image/png' });
+                onCapture(file);
                 onClose();
-            }, 'image/png', 0.9); // Quality: 0.9 (90%)
+            }, 'image/png', 0.9);
         }
     };
 
@@ -145,7 +140,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
                 <div className="p-4 border-t bg-slate-50 flex gap-4">
                     <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
                     <PrimaryButton onClick={handleCapture} disabled={!stream || !!error} className="w-full">
-                        <CameraIcon/> Kumuha ng Litrato
+                        <CameraIcon/> Capture Photo
                     </PrimaryButton>
                 </div>
             </div>
@@ -269,7 +264,7 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
         </div>
         <div>
             <label htmlFor="password_confirmation" className="font-medium text-slate-700 text-sm mb-2 block">Confirm Password</label>
-             <div className="relative">
+              <div className="relative">
                 <CustomTextInput id="password_confirmation" type={confirmPasswordVisible ? 'text' : 'password'} icon={<LockIcon />} value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.target.value)} required error={errors.password_confirmation || passwordsDoNotMatch} />
                  <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-sm z-10"> {confirmPasswordVisible ? <EyeClosedIcon /> : <EyeOpenIcon />} </button>
             </div>
@@ -285,25 +280,24 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
     const [faceImagePreview, setFaceImagePreview] = useState(null);
 
     const [isCameraOpen, setIsCameraOpen] = useState(false);
-    const [cameraTarget, setCameraTarget] = useState(null); // 'id_front', 'id_back', or 'face'
+    const [cameraTarget, setCameraTarget] = useState(null);
 
     const handleCapture = (file) => {
         const previewUrl = URL.createObjectURL(file);
+        if (errors.images) delete errors.images;
+
         switch (cameraTarget) {
             case 'id_front':
                 setIdFrontPreview(previewUrl);
                 setData('valid_id_front_image', file);
-                if(errors.valid_id_front_image) errors.valid_id_front_image = '';
                 break;
             case 'id_back':
                 setIdBackPreview(previewUrl);
                 setData('valid_id_back_image', file);
-                if(errors.valid_id_back_image) errors.valid_id_back_image = '';
                 break;
             case 'face':
                 setFaceImagePreview(previewUrl);
                 setData('face_image', file);
-                if(errors.face_image) errors.face_image = '';
                 break;
             default:
                 break;
@@ -327,6 +321,8 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Identity Verification</h3>
 
+                <InputError message={errors.images || errors.valid_id_front_image || errors.valid_id_back_image || errors.face_image} className="mt-2" />
+
                 <div>
                     <label htmlFor="valid_id_type" className="font-medium text-slate-700 text-sm mb-2 block">Type of Valid ID</label>
                     <CustomSelect id="valid_id_type" icon={<IdCardIcon />} value={data.valid_id_type} onChange={(e) => setData('valid_id_type', e.target.value)} required error={errors.valid_id_type}>
@@ -343,15 +339,13 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
                             {idFrontPreview ? <img src={idFrontPreview} alt="ID Front Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Front Preview</span>}
                         </div>
                         <SecondaryButton type="button" onClick={() => { setCameraTarget('id_front'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Front</SecondaryButton>
-                         <InputError message={errors.valid_id_front_image} className="mt-1" />
                     </div>
-                     <div className="space-y-2">
+                    <div className="space-y-2">
                         <label className="font-medium text-slate-700 text-sm">Back of ID</label>
                         <div className="w-full h-32 bg-slate-100 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
                             {idBackPreview ? <img src={idBackPreview} alt="ID Back Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Back Preview</span>}
                         </div>
                         <SecondaryButton type="button" onClick={() => { setCameraTarget('id_back'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Back</SecondaryButton>
-                         <InputError message={errors.valid_id_back_image} className="mt-1" />
                     </div>
                 </div>
 
@@ -361,10 +355,9 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
                         {faceImagePreview ? <img src={faceImagePreview} alt="Face Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-sm">Face Preview</span>}
                     </div>
                     <SecondaryButton type="button" onClick={() => { setCameraTarget('face'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Take Picture of Face</SecondaryButton>
-                    <InputError message={errors.face_image} className="mt-2" />
                 </div>
                 
-                 <div className={`pt-2 flex items-start ${!termsViewed ? 'opacity-60' : ''}`} title={!termsViewed ? 'Please view the Terms and Conditions first to enable this.' : ''}>
+                <div className={`pt-2 flex items-start ${!termsViewed ? 'opacity-60' : ''}`} title={!termsViewed ? 'Please view the Terms and Conditions first to enable this.' : ''}>
                     <div className="flex items-center h-5">
                         <input id="terms" name="terms" type="checkbox" className={`focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded ${!termsViewed ? 'cursor-not-allowed' : ''}`} checked={agreeToTerms} onChange={(e) => setAgreeToTerms(e.target.checked)} disabled={!termsViewed} />
                     </div>
@@ -377,7 +370,6 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
     );
 };
 
-
 // --- MAIN REGISTER COMPONENT ---
 export default function Register() {
     const [step, setStep] = useState(1);
@@ -387,7 +379,7 @@ export default function Register() {
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [termsViewed, setTermsViewed] = useState(false);
 
-    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors, setError } = useForm({
         first_name: '', last_name: '', middle_name: '', address: '',
         phone_number: '', birthday: '', gender: '', civil_status: '',
         email: '', password: '', password_confirmation: '',
@@ -428,26 +420,25 @@ export default function Register() {
     ), [data.email, data.password, data.password_confirmation, emailValidation, passwordValidation, passwordsDoNotMatch]);
 
     // --- Actions ---
-   // --- Actions ---
-   // --- Actions ---
-   const submit = (e) => {
-       e.preventDefault();
-    
-       post(route('register'), {
-           // This is the key fix: It forces Inertia to use the
-           // correct encoding for file uploads.
-           forceFormData: true,
+    const submit = (e) => {
+        e.preventDefault();
 
-           // Better UX: Only reset the password on success.
-           onSuccess: () => {
-               reset('password', 'password_confirmation');
-           },
-           
-           onError: (errors) => {
-               console.error('Registration failed with errors:', errors);
-           },
-       });
-   };
+        // Front-end check: Ensure all images are uploaded before submitting.
+        if (!data.valid_id_front_image || !data.valid_id_back_image || !data.face_image) {
+            setError('images', 'Please upload all three required images: ID Front, ID Back, and a Selfie.');
+            return; // Stop the submission
+        }
+
+        post(route('register'), {
+            forceFormData: true,
+            onSuccess: () => {
+                reset('password', 'password_confirmation');
+            },
+            onError: (errors) => {
+                console.error('Registration failed with errors:', errors);
+            },
+        });
+    };
 
     const nextStep = () => {
         clearErrors();
@@ -478,7 +469,6 @@ export default function Register() {
         return () => clearTimeout(handler);
     }, [data.phone_number]);
 
-    // useEffect hook for Email validation
     useEffect(() => {
         const isEmailValid = /^\S+@\S+\.\S+$/.test(data.email);
         if (!data.email || !isEmailValid) {
@@ -544,7 +534,7 @@ export default function Register() {
                                         {step === 4 && (
                                              <div className="flex gap-4">
                                                  <SecondaryButton onClick={prevStep} disabled={processing}>Back</SecondaryButton>
-                                                 <PrimaryButton type="submit" disabled={processing || !data.valid_id_type || !data.valid_id_front_image || !data.valid_id_back_image || !data.face_image || !agreeToTerms}>Register</PrimaryButton>
+                                                 <PrimaryButton type="submit" disabled={processing || !data.valid_id_type || !agreeToTerms}>Register</PrimaryButton>
                                              </div>
                                         )}
                                     </div>
