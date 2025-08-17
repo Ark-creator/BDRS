@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { Users, FolderGit, Megaphone, PlusCircle, History, Banknote, MessageSquare, FilePlus, CheckCircle, XCircle, Eye, Building, FileText } from 'lucide-react';
 
-// --- Reusable UI Components ---
+// --- Reusable UI Components (No Changes Needed Here) ---
 
 const AuroraBackground = () => (
     <div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
@@ -14,7 +14,7 @@ const AuroraBackground = () => (
     </div>
 );
 
-const StatCard = ({ icon: Icon, title, value, change, color }) => (
+const StatCard = ({ icon: Icon, title, value, color }) => (
     <div className="relative overflow-hidden bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-blue-500/20 hover:-translate-y-1 transition-all duration-300">
         <div className="flex items-start justify-between">
             <div>
@@ -42,17 +42,21 @@ const CustomTooltip = ({ active, payload }) => {
 
 // --- Main Dashboard Component ---
 
-export default function AdminDashboard({ auth }) {
+// UPDATED: Accept new props from the controller
+export default function AdminDashboard({ 
+    auth, 
+    stats = [], 
+    pendingRequests = [], 
+    documentBreakdown = [], 
+    recentActivities = [] 
+}) {
     const [chartTimeframe, setChartTimeframe] = useState('Weekly');
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // --- Hard-Coded Sample Data (Mas Pinarami) ---
-    const stats = [
-        { icon: Users, title: "Total Residents", value: "1,428", color: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-300' } },
-        { icon: FolderGit, title: "Pending Requests", value: "16", color: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', text: 'text-yellow-600 dark:text-yellow-300' } },
-        { icon: Banknote, title: "Revenue (This Month)", value: "₱15,750", color: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-300' } },
-        { icon: Building, title: "System Status", value: "Operational", color: { bg: 'bg-teal-100 dark:bg-teal-900/50', text: 'text-teal-600 dark:text-teal-300' } }
-    ];
+    // NEW: Map icon names from props to actual components
+    const iconMap = {
+        Users, FolderGit, Banknote, Building
+    };
 
     const quickActions = [
         { label: "New Request", icon: FilePlus, href: '#' },
@@ -60,38 +64,22 @@ export default function AdminDashboard({ auth }) {
         { label: "Add Document Type", icon: PlusCircle, href: '#' },
         { label: "View Full History", icon: History, href: '#' },
     ];
-    
+     
+    // NOTE: Chart data can also be fetched from the backend, but is kept
+    // here as static data for demonstration as requested.
     const chartData = {
         Weekly: [ { name: 'Mon', reqs: 12 }, { name: 'Tue', reqs: 19 }, { name: 'Wed', reqs: 15 }, { name: 'Thu', reqs: 25 }, { name: 'Fri', reqs: 22 }, { name: 'Sat', reqs: 32 }, { name: 'Sun', reqs: 28 } ],
         Monthly: [ { name: 'Week 1', reqs: 88 }, { name: 'Week 2', reqs: 110 }, { name: 'Week 3', reqs: 140 }, { name: 'Week 4', reqs: 125 } ]
     };
 
-    const documentBreakdownData = [
-        { name: 'Barangay Clearance', value: 400 },
-        { name: 'Cert. of Residency', value: 300 },
-        { name: 'Cert. of Indigency', value: 200 },
-        { name: 'Other Docs', value: 150 },
-    ];
-    const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
-    
-    const pendingRequests = [
-        { id: 'REQ-001', name: 'Juan Dela Cruz', docType: 'Barangay Clearance', date: 'Aug 15, 2025' },
-        { id: 'REQ-002', name: 'Maria Clara', docType: 'Certificate of Residency', date: 'Aug 15, 2025' },
-        { id: 'REQ-003', name: 'Crisostomo Ibarra', docType: 'Certificate of Indigency', date: 'Aug 14, 2025' },
-        { id: 'REQ-004', name: 'Elias', docType: 'PWD Certificate', date: 'Aug 14, 2025' },
-    ];
-
-    const recentActivities = [
-        { type: "request", user: "Maria Clara", text: "submitted a new document request.", time: "5m ago" },
-        { type: "payment", user: "Crisostomo Ibarra", text: "paid for a document.", time: "1h ago" },
-        { type: "announcement", user: "Admin", text: "posted a new announcement.", time: "3h ago" },
-        { type: "message", user: "Elias", text: "sent a new message.", time: "5h ago" },
-        { type: "user_added", user: "Admin", text: "added a new resident account.", time: "Yesterday" }
-    ];
-
+    // Colors for the Pie Chart
+    const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#a5b4fc'];
+     
+    // NEW: Icon mapping for different activity types from backend
     const notificationIcons = {
-        request: FilePlus, payment: Banknote, announcement: Megaphone,
-        message: MessageSquare, user_added: Users
+        request_completed: CheckCircle,
+        // You can add more types here as you expand your backend logic
+        default: FileText,
     };
 
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.07 } } };
@@ -121,11 +109,15 @@ export default function AdminDashboard({ auth }) {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* --- MAIN CONTENT (LEFT) --- */}
                     <div className="lg:col-span-2 flex flex-col gap-8">
+                        {/* UPDATED: Uses the `stats` prop from controller */}
                         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {stats.map((stat, index) => <StatCard key={index} {...stat} />)}
+                            {stats.map((stat, index) => {
+                                const IconComponent = iconMap[stat.icon];
+                                return <StatCard key={index} icon={IconComponent} {...stat} />
+                            })}
                         </motion.div>
 
-                        {/* --- NEW: PENDING REQUESTS TABLE --- */}
+                        {/* UPDATED: Uses the `pendingRequests` prop from controller */}
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-lg">Action Required: Pending Requests</h3>
                              <div className="overflow-x-auto">
@@ -161,14 +153,14 @@ export default function AdminDashboard({ auth }) {
 
                     {/* --- SIDEBAR CONTENT (RIGHT) --- */}
                     <div className="lg:col-span-1 flex flex-col gap-8">
-                        {/* --- NEW: DOCUMENT BREAKDOWN DONUT CHART --- */}
+                        {/* UPDATED: Uses the `documentBreakdown` prop from controller */}
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Document Breakdown</h3>
                             <div className="h-56 w-full">
                                 <ResponsiveContainer>
                                     <PieChart>
-                                        <Pie data={documentBreakdownData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" paddingAngle={5}>
-                                            {documentBreakdownData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                        <Pie data={documentBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" paddingAngle={5}>
+                                            {documentBreakdown.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                         </Pie>
                                         <Tooltip />
                                         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }}/>
@@ -177,17 +169,16 @@ export default function AdminDashboard({ auth }) {
                             </div>
                         </motion.div>
 
-                        {/* --- RECENT ACTIVITY --- */}
+                        {/* UPDATED: Uses the `recentActivities` prop from controller */}
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
                              <ul className="space-y-4">
-                                
                                 {recentActivities.map((activity, index) => {
-                                    const Icon = notificationIcons[activity.type];
+                                    const Icon = notificationIcons[activity.type] || notificationIcons.default;
                                     return (
                                         <li key={index} className="flex items-center gap-4">
                                             <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700"><Icon className="text-gray-500" size={20} /></div>
-                                            <div className="flex-grow"><p className="text-sm text-gray-700 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">{activity.user}</span> {activity.text}</p></div>
+                                            <div className="flex-grow"><p className="text-sm text-gray-700 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">Admin</span> {activity.text}</p></div>
                                             <p className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
                                         </li>
                                     );
@@ -197,7 +188,7 @@ export default function AdminDashboard({ auth }) {
                     </div>
                 </div>
 
-                {/* --- FULL-WIDTH CHART --- */}
+                {/* --- FULL-WIDTH CHART (Data is kept static as per request) --- */}
                 <motion.div variants={itemVariants} className="mt-8 bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">Request Volume</h3>
