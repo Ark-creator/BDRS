@@ -26,7 +26,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 //================================================================
-// SIDEBAR COMPONENT (WALANG ANIMATION)
+// SIDEBAR COMPONENT
 //================================================================
 function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileOpen, isMobile, setShowAdminSidebarMobile }) {
     const [openSections, setOpenSections] = useState({
@@ -40,7 +40,6 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
         setOpenSections(prev => ({ ...prev, [title]: !prev[title] }));
     };
 
-    // --- KINUMPLETONG DRIVER.JS TOUR FUNCTION ---
     const handleHelpTour = () => {
         if (isCollapsed) {
             setIsCollapsed(false);
@@ -156,7 +155,7 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
                         {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
                     </button>
                 )}
-                {isMobile && (
+                 {isMobile && (
                         <button onClick={() => setShowAdminSidebarMobile(false)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Close sidebar">
                         <X size={20} />
                     </button>
@@ -219,10 +218,12 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
 // MAIN AUTHENTICATED LAYOUT
 //================================================================
 export default function AuthenticatedLayout({ header, children }) {
-    const { props } = usePage();
+    const { props, component } = usePage();
     const { auth: { user } } = props;
     const isAdmin = user.role === "admin" || user.role === "super_admin";
     const isSuperAdmin = user.role === "super_admin";
+
+    const onAdminPage = component.startsWith('Admin/') || component.startsWith('SuperAdmin/');
 
     const [unreadMessages, setUnreadMessages] = useState([]);
     const [isBubbleVisible, setIsBubbleVisible] = useState(false);
@@ -251,13 +252,11 @@ export default function AuthenticatedLayout({ header, children }) {
         window.addEventListener("resize", checkScreenSize);
         return () => window.removeEventListener("resize", checkScreenSize);
     }, []);
-
+    
     useEffect(() => {
-        // Automatically collapse sidebar on mobile
         if (isMobile && isAdmin) {
             setIsSidebarCollapsed(true);
         } else if (!isMobile && isAdmin) {
-             // Optional: Un-collapse sidebar if user resizes to desktop
             setIsSidebarCollapsed(false);
         }
     }, [isMobile, isAdmin]);
@@ -291,7 +290,6 @@ export default function AuthenticatedLayout({ header, children }) {
         ]},
     ];
 
-    // --- NAIBALIK NA NOTIFICATIONBUBBLE COMPONENT ---
     const NotificationBubble = ({ messages }) => (
         <div className="absolute top-12 right-0 w-80 bg-white dark:bg-gray-700 shadow-lg rounded-lg border border-gray-200 dark:border-gray-600 z-50 p-4 transition-all duration-300">
             <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">Unread Messages ({messages.length})</h3>
@@ -312,7 +310,6 @@ export default function AuthenticatedLayout({ header, children }) {
     return (
         <div className="overflow-hidden bg-gray-100 dark:bg-slate-900/95 relative font-inter">
             <AnimatePresence>
-                {/* BINAGO: Ang sidebar ay laging ipapakita kung ang user ay isAdmin */}
                 {isAdmin && (isMobile && showAdminSidebarMobile || !isMobile) && (
                     <SidebarComponent user={user} navLinks={navLinkGroups} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} mobileOpen={isMobile && showAdminSidebarMobile} isMobile={isMobile} setShowAdminSidebarMobile={setShowAdminSidebarMobile}/>
                 )}
@@ -322,7 +319,6 @@ export default function AuthenticatedLayout({ header, children }) {
 
             <div
                 className={clsx("flex h-full flex-col transition-all duration-300 ease-in-out",
-                    // BINAGO: Ang margin ay laging naka-adjust para sa admin, maliban kung mobile
                     isMobile || !isAdmin
                         ? 'ml-0'
                         : (isSidebarCollapsed ? 'ml-[5.5rem]' : 'ml-[16rem]')
@@ -332,9 +328,27 @@ export default function AuthenticatedLayout({ header, children }) {
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-16">
                             <div className="flex items-center gap-2">
-                                <button onClick={() => { if (isMobile) { if (isAdmin) { setShowAdminSidebarMobile(!showAdminSidebarMobile); } else { setIsMobileNavOpen(!isMobileNavOpen); }}}} className="md:hidden p-2 rounded-lg" aria-label="Toggle mobile menu">
+                                {/* ================== INAYOS NA BUTTON ================== */}
+                                <button 
+                                    onClick={() => {
+                                        if (isMobile) {
+                                            if (isAdmin && onAdminPage) {
+                                                // I-toggle ang admin sidebar, siguraduhing sarado ang main nav
+                                                setShowAdminSidebarMobile(prevState => !prevState);
+                                                setIsMobileNavOpen(false);
+                                            } else {
+                                                // I-toggle ang main nav, siguraduhing sarado ang admin sidebar
+                                                setIsMobileNavOpen(prevState => !prevState);
+                                                setShowAdminSidebarMobile(false);
+                                            }
+                                        }
+                                    }} 
+                                    className="md:hidden p-2 rounded-lg" 
+                                    aria-label="Toggle mobile menu"
+                                >
                                     {(showAdminSidebarMobile || isMobileNavOpen) ? <X size={24} /> : <Menu size={24} />}
                                 </button>
+                                {/* ======================================================== */}
                                 <Link href="/" className="flex items-center gap-2">
                                     <img className="w-10 h-10 rounded-full" src="/images/gapanlogo.png" alt="Doconnect Logo" />
                                     <span className="font-bold text-lg text-blue-900 dark:text-white hidden sm:inline">Doconnect</span>
@@ -359,10 +373,10 @@ export default function AuthenticatedLayout({ header, children }) {
                                         <Link href={route('admin.messages')} className="p-2 rounded-lg transition relative">
                                             <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
                                             {unreadMessages.length > 0 && (
-    <span className="absolute top-6 -right-5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
-        {unreadMessages.length}
-    </span>
-)}
+                                                <span className="absolute top-6 -right-5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
+                                                    {unreadMessages.length}
+                                                </span>
+                                            )}
                                         </Link>
                                         <AnimatePresence>{isBubbleVisible && <NotificationBubble messages={unreadMessages} />}</AnimatePresence>
                                     </div>
