@@ -66,75 +66,70 @@ class DocumentGenerationController extends Controller
     {
         $documentType = $documentRequest->documentType;
         if (!$documentType) {
-            return response()->json(['error' => 'Missing document type.'], 500);
+            return response()->json(['error' => 'Missing document type.'], 404);
         }
 
         $profile = $documentRequest->user?->profile;
         if (!$profile) {
-            return response()->json(['error' => 'User profile is incomplete.'], 500);
-        }
-
-        $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
-        $templatePath = storage_path("app/templates/{$templateName}");
-
-        if (!file_exists($templatePath)) {
-            return response()->json(['error' => "Template file not found: {$templateName}"], 500);
+            return response()->json(['error' => 'User profile is incomplete.'], 404);
         }
 
         try {
-            $templateProcessor = new TemplateProcessor($templatePath);
+            // --- DATA GATHERING ---
             $requestData = $documentRequest->form_data;
-            
-            // --- INAYOS NA BAHAGI: Kinopya ang kumpletong logic mula sa 'generate' ---
             $nameParts = array_filter([$profile->first_name, $profile->middle_name, $profile->last_name]);
             $fullName = strtoupper(implode(' ', $nameParts));
             $age = $profile->birthday ? Carbon::parse($profile->birthday)->age : 'N/A';
+            $purpose = $requestData['purpose'] ?? 'N/A';
+            $day = '17th'; 
+            $monthYear = 'August 2025';
 
-            // Set common placeholders
-            $templateProcessor->setValue('FULL_NAME', $fullName);
-            $templateProcessor->setValue('AGE', $age);
-            $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
-            $templateProcessor->setValue('DAY', date('jS'));
-            $templateProcessor->setValue('MONTH_YEAR', date('F Y'));
+            // --- MANUAL HTML CONSTRUCTION WITH COLORS ---
+            $htmlContent = "
+                <div>
+                    <p class='header'>Republic of the Philippines</p>
+                    <p class='header'>PROVINCE OF NUEVA ECIJA</p>
+                    <p class='header'>City of Gapan</p>
 
-            // Set document-specific placeholders
-            switch ($documentType->name) {
-                case 'pwd':
-                    $disability = $requestData['disability_type'] ?? 'Not Specified';
-                    if ($disability === 'Others') {
-                        $disability = $requestData['other_disability'] ?? 'Not Specified';
-                    }
-                    $templateProcessor->setValue('DISABILITY_TYPE', $disability);
-                    break;
-                // Add more 'case' blocks here for other document types
-            }
-            // --- WAKAS NG INAYOS NA BAHAGI ---
-
-            // --- Logic para i-convert ang DOCX to HTML ---
-            $tempDir = storage_path('app/temp');
-            if (!File::isDirectory($tempDir)) {
-                File::makeDirectory($tempDir, 0755, true, true);
-            }
-
-            $tempDocxPath = $tempDir . '/' . uniqid() . '.docx';
-            $templateProcessor->saveAs($tempDocxPath);
-
-            $phpWord = IOFactory::load($tempDocxPath);
-            $htmlWriter = IOFactory::createWriter($phpWord, 'HTML');
+                    <p class='header' style='font-weight: bold; margin-top: 0.5cm; color: #D9853B;'>BARANGAY SAN LORENZO</p>
+                    
+                    <h1 class='document-title' style='color: #2E74B5;'>CERTIFICATE OF SOLO PARENT</h1>
+                    
+                    <p class='salutation'>TO WHOM IT MAY CONCERN:</p>
+                    
+                    <p class='body-content'>
+                        This is to certify that <strong>{$fullName}</strong>, {$age} years of age, resident of Barangay San Lorenzo, Gapan City, Nueva Ecija personally known to me, belongs to an indigent family in this barangay.
+                    </p>
+                    
+                    <p class='body-content'>
+                        This certification is issued upon the request of the person named above for <strong>{$purpose}</strong> purposes.
+                    </p>
+                    
+                    <p class='body-content'>
+                        Issued on this <strong>{$day}</strong> day of <strong>{$monthYear}</strong> here at Barangay Hall of San Lorenzo, Gapan City, Nueva Ecija.
+                    </p>
+                    
+                    <div class='signature-section'>
+                        <div class='signature-block'>
+                            <p>Certified by:</p>
+                            <p class='signer-name'>WILLIAM DS. TIRRADO</p>
+                            <p>Barangay Secretary</p>
+                        </div>
+                        <div class='signature-block' style='text-align: left;'>
+                            <p>Approved by:</p>
+                            <p class='signer-name'>PAUL MICHAEL A. AMPARADO</p>
+                            <p>Punong Barangay</p>
+                        </div>
+                    </div>
+                    
+                    <p class='footer-note'>Not valid without the Barangay seal.</p>
+                    <p class='header' style='font-size: 10pt; margin-top: 1cm;'>Bonifacio Street, San Lorenzo, Gapan City, Nueva Ecija, Philippines</p>
+                </div>
+            ";
             
-            $tempHtmlPath = $tempDir . '/' . uniqid() . '.html';
-            $htmlWriter->save($tempHtmlPath);
-
-            $htmlContent = file_get_contents($tempHtmlPath);
-
-            // Linisin ang temporary files
-            unlink($tempDocxPath);
-            unlink($tempHtmlPath);
-
             return response()->json(['html' => $htmlContent]);
 
         } catch (\Exception $e) {
-            // Mag-log ng error para sa debugging
             \Log::error('Document Preview Generation Failed: ' . $e->getMessage());
             return response()->json(['error' => 'An error occurred while generating the preview.'], 500);
         }

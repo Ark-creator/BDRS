@@ -184,7 +184,7 @@ export default function UserManagement({ auth, users: initialUsers }) {
         <AuthenticatedLayout user={auth.user}>
             <Head title="User Management" />
 
-            <div className="py-12 bg-gray-50 min-h-screen font-sans antialiased">
+            <div className="py-12 bg-slate-50 min-h-screen font-sans antialiased">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     <div className="bg-white rounded-lg shadow-md border border-gray-200">
                         {/* Header Section */}
@@ -225,13 +225,14 @@ export default function UserManagement({ auth, users: initialUsers }) {
                                     <option value="super_admin">Super Admin</option>
                                 </select>
                                 <button
-                                    onClick={startTour}
-                                    className="p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                    aria-label="Start tour"
+                                   onClick={startTour}
+                                   className="flex items-center gap-1 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                   aria-label="Start tour"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5L7 9.167A1 1 0 007 10.833L9.133 13.5a1 1 0 001.734 0L13 10.833A1 1 0 0013 9.167L10.867 6.5A1 1 0 0010 7z" clipRule="evenodd" />
                                     </svg>
+                                    <span className="text-xs">Need Help?</span>
                                 </button>
                             </div>
                         </div>
