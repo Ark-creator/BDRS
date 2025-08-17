@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, usePage, useForm, router } from '@inertiajs/react';
+import { Head, usePage, useForm, router, Link } from '@inertiajs/react';
 import axios from 'axios';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
