@@ -26,9 +26,9 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
 
         // 🔒 Force HTTPS when using ngrok or any https tunneling
-        if ($this->app->environment('local')) {
-            URL::forceScheme('https');
-        }
+        // if ($this->app->environment('local')) {
+        //     URL::forceScheme('https');
+        // }
 
         // Allow super admins to bypass all checks automatically
         Gate::before(function (User $user, string $ability) {
