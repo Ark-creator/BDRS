@@ -1,24 +1,31 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { Head, usePage, useForm, router } from "@inertiajs/react";
-import axios from 'axios'; // Siguraduhing naka-import ang axios
+import axios from 'axios';
+
+// Import the custom CSS file for document preview styling
+import './DocumentPreview.css'; 
 
 // --- Modal Component ---
+// This component is updated to better display the document preview.
 const Modal = ({ children, show, onClose, title }) => {
     if (!show) return null;
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-start p-4 pt-16" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-4xl" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center pb-3 border-b dark:border-gray-700">
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">&times;</button>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white text-2xl leading-none">&times;</button>
                 </div>
-                {/* Ginawang scrollable ang content ng modal */}
-                <div className="mt-4 max-h-[70vh] overflow-y-auto">{children}</div>
+                {/* The content area is made scrollable with a neutral background */}
+                <div className="mt-4 max-h-[80vh] overflow-y-auto bg-gray-200 dark:bg-gray-900 p-4 rounded">
+                    {children}
+                </div>
             </div>
         </div>
     );
 };
+
 
 export default function Request() {
     const { documentRequests } = usePage().props;
@@ -56,8 +63,7 @@ export default function Request() {
             preserveScroll: true,
         });
     };
-
-    // --- FUNCTION PARA SA PREVIEW ---
+    
     const handlePreviewClick = async (request) => {
         setSelectedRequest(request);
         setShowPreviewModal(true);
@@ -69,7 +75,8 @@ export default function Request() {
             setPreviewContent(response.data.html);
         } catch (error) {
             console.error("Error fetching document preview:", error);
-            setPreviewContent('<p class="text-center text-red-500">Could not load preview. Check the template file and controller logic.</p>');
+            const errorMessage = error.response?.data?.error || 'Could not load preview. Please check server logs.';
+            setPreviewContent(`<div class="p-8 text-center text-red-500">${errorMessage}</div>`);
         } finally {
             setIsPreviewLoading(false);
         }
@@ -101,11 +108,11 @@ export default function Request() {
                                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead className="bg-gray-50 dark:bg-gray-900">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Requestor</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Document</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requestor</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -126,7 +133,6 @@ export default function Request() {
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                                                     {request.status === 'Processing' && (
                                                         <>
-                                                            {/* --- PREVIEW BUTTON --- */}
                                                             <button onClick={() => handlePreviewClick(request)} className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">Preview</button>
                                                             <a href={route('admin.requests.generate', request.id)} className="text-indigo-600 hover:text-indigo-900">Generate</a>
                                                         </>
@@ -160,12 +166,13 @@ export default function Request() {
             </Modal>
 
             {/* --- PREVIEW MODAL --- */}
+            {/* The div below now uses the 'document-preview-container' class for styling */}
             <Modal show={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={`Preview: ${selectedRequest?.document_type?.name || ''}`}>
                 {isPreviewLoading ? (
-                    <div className="text-center p-8">Loading preview...</div>
+                    <div className="text-center p-8 text-gray-500">Loading preview...</div>
                 ) : (
                     <div 
-                        className="p-4 border rounded-md bg-gray-50 dark:bg-gray-900 prose dark:prose-invert max-w-none"
+                        className="document-preview-container"
                         dangerouslySetInnerHTML={{ __html: previewContent }}
                     />
                 )}

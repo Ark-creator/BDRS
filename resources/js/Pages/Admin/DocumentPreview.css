@@ -1,0 +1,91 @@
+/* resources/js/Pages/Admin/DocumentPreview.css */
+
+/* This container simulates the A4 paper */
+.document-preview-container {
+    background-color: white;
+    padding: 2cm; /* Standard margins */
+    width: 21.59cm;      /* US Letter Width */
+    min-height: 27.94cm; /* US Letter Height */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
+    margin: 20px auto; /* Center the 'paper' in the modal */
+    color: black;
+    font-family: 'Times New Roman', serif;
+    font-size: 12pt;
+}
+
+/* --- ELEMENT STYLES --- */
+
+/* Header Text */
+.document-preview-container .header {
+    text-align: center;
+    margin: 0;
+    line-height: 1.2;
+    font-weight: normal;
+}
+
+/* Main Document Title */
+.document-preview-container .document-title {
+    text-align: center;
+    font-weight: bold;
+    text-decoration: underline;
+    margin-top: 2cm;
+    margin-bottom: 1.5cm;
+    font-size: 14pt;
+    text-transform: uppercase;
+}
+
+/* Salutation (e.g., TO WHOM IT MAY CONCERN:) */
+.document-preview-container .salutation {
+    margin-bottom: 1cm;
+    font-weight: normal;
+    text-transform: uppercase;
+}
+
+/* Body paragraphs */
+.document-preview-container .body-content {
+    text-align: justify;
+    text-indent: 1.27cm; /* 0.5 inch first-line indent */
+    line-height: 2;
+    margin-bottom: 1cm;
+}
+
+/* This container holds the two signature columns */
+.document-preview-container .signature-section {
+    display: flex;
+    justify-content: space-around; /* Distributes space */
+    margin-top: 2cm;
+}
+
+/* Each individual signature column */
+.document-preview-container .signature-block {
+    width: 45%;
+    text-align: left;
+}
+
+.document-preview-container .signature-block p {
+    margin: 0;
+    line-height: 1.2;
+}
+
+.document-preview-container .signature-block .signer-name {
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-top: 2cm; /* This creates space for the actual signature */
+}
+
+/* The italicized note at the bottom */
+.document-preview-container .footer-note {
+    text-align: center;
+    font-style: italic;
+    margin-top: 3cm;
+}
+
+/* This resets any conflicting global styles (like from Tailwind's 'prose') */
+.document-preview-container * {
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+    line-height: inherit;
+    margin: revert; /* Use the browser's default margins for elements */
+    padding: revert;
+}
