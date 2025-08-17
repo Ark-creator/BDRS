@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use App\Models\User; // <-- Import the User model
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
+use App\Models\UserProfile;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash; // <-- Import the Hash facade
+use Illuminate\Support\Facades\Hash;
 
 class SuperAdminSeeder extends Seeder
 {
@@ -14,14 +14,39 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create the Super Admin User
-        User::firstOrCreate(
-            ['email' => 'romark7bayan@gmail.com'], // Find user by email
+        // List of Super Admin users
+        $superAdmins = [
             [
-                'password' => Hash::make('R12345678!'),
-                'role' => 'super_admin',
-                'status' => 'active',
-            ]
-        );
+                'email' => 'romark7bayan@gmail.com',
+                'password' => 'R12345678!',
+            ],
+            [
+                'email' => 'acepadillaace@gmail.com',
+                'password' => 'Ace#12345',
+            ],
+            [
+                'email' => 'jmjonatas4@gmail.com',
+                'password' => '12345678',
+            ],
+        ];
+
+        foreach ($superAdmins as $admin) {
+            // Create or get the user
+            $user = User::firstOrCreate(
+                ['email' => $admin['email']],
+                [
+                    'password' => Hash::make($admin['password']),
+                    'role' => 'super_admin',
+                    'status' => 'active',
+                ]
+            );
+
+            // Create a corresponding user profile if it doesn't exist
+            if (!$user->profile) {
+                UserProfile::factory()->create([
+                    'user_id' => $user->id,
+                ]);
+            }
+        }
     }
 }
