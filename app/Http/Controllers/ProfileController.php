@@ -17,43 +17,55 @@ class ProfileController extends Controller
      * Display the user's profile form.
      */
     public function edit(Request $request): Response
-    {
-        return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-            'status' => session('status'),
-        ]);
-    }
+{
+    // Idagdag ang linyang ito para i-define ang $user at kunin ang kanyang profile
+    $user = $request->user()->load('profile');
+
+    return Inertia::render('Profile/Edit', [
+        'mustVerifyEmail' => $user instanceof MustVerifyEmail,
+        'status' => session('status'),
+        'userProfile' => $user->profile,
+    ]);
+}
 
     /**
      * Update the user's profile information.
      */
     public function update(Request $request)
-{
-    $request->validate([
-        'first_name'   => 'required|string|max:255',
-        'middle_name'  => 'nullable|string|max:255',
-        'last_name'    => 'required|string|max:255',
-        'email'        => 'required|email|max:255|unique:users,email,' . auth()->id(),
-        'phone_number' => 'nullable|string|max:20',
-    ]);
+    {
+        // Idagdag ang validation para sa mga bagong fields
+        $request->validate([
+            'first_name'   => 'required|string|max:255',
+            'middle_name'  => 'nullable|string|max:255',
+            'last_name'    => 'required|string|max:255',
+            'email'        => 'required|email|max:255|unique:users,email,' . auth()->id(),
+            'phone_number' => 'nullable|string|max:20',
+            // --- BAGONG VALIDATION RULES ---
+            'address'      => 'nullable|string|max:500',
+            'birthday'     => 'nullable|date',
+            'gender'       => 'nullable|string|in:Male,Female,Other',
+            'civil_status' => 'nullable|string|in:Single,Married,Widowed,Separated',
+        ]);
 
-    $user = $request->user();
-    $user->email = $request->email;
-    $user->save();
+        $user = $request->user();
+        $user->email = $request->email;
+        $user->save();
 
-    // Update user profile
-    $user->profile()->update([
-        'first_name'   => $request->first_name,
-        'middle_name'  => $request->middle_name,
-        'last_name'    => $request->last_name,
-        'phone_number' => $request->phone_number, // ✅ added phone number
-    ]);
+        // Idagdag ang mga bagong fields sa pag-update ng profile
+        $user->profile()->update([
+            'first_name'   => $request->first_name,
+            'middle_name'  => $request->middle_name,
+            'last_name'    => $request->last_name,
+            'phone_number' => $request->phone_number,
+            // --- BAGONG FIELDS PARA I-SAVE ---
+            'address'      => $request->address,
+            'birthday'     => $request->birthday,
+            'gender'       => $request->gender,
+            'civil_status' => $request->civil_status,
+        ]);
 
-    return back()->with('success', 'Profile updated successfully.');
-}
-
-
-
+        return back()->with('success', 'Profile updated successfully.');
+    }
     /**
      * Delete the user's account.
      */

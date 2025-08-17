@@ -1,13 +1,37 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, usePage, useForm, router } from "@inertiajs/react";
+import { Head, usePage, useForm, router, Link } from "@inertiajs/react";
 import axios from 'axios';
-
-// Import the custom CSS file for document preview styling
 import './DocumentPreview.css'; 
 
+// --- Pagination Component ---
+// Inilipat dito para hindi na kailangan i-import
+const Pagination = ({ links }) => {
+    return (
+        <div className="mt-6 flex justify-center">
+            <div className="flex flex-wrap -mb-1">
+                {links.map((link, key) => (
+                    link.url === null ? (
+                        <div
+                            key={key}
+                            className="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-gray-400 border rounded"
+                            dangerouslySetInnerHTML={{ __html: link.label }}
+                        />
+                    ) : (
+                        <Link
+                            key={key}
+                            className={`mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-indigo-500 focus:text-indigo-500 ${link.active ? 'bg-blue-700 text-white' : ''}`}
+                            href={link.url}
+                            dangerouslySetInnerHTML={{ __html: link.label }}
+                        />
+                    )
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // --- Modal Component ---
-// This component is updated to better display the document preview.
 const Modal = ({ children, show, onClose, title }) => {
     if (!show) return null;
     return (
@@ -17,7 +41,6 @@ const Modal = ({ children, show, onClose, title }) => {
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white text-2xl leading-none">&times;</button>
                 </div>
-                {/* The content area is made scrollable with a neutral background */}
                 <div className="mt-4 max-h-[80vh] overflow-y-auto bg-gray-200 dark:bg-gray-900 p-4 rounded">
                     {children}
                 </div>
@@ -29,6 +52,7 @@ const Modal = ({ children, show, onClose, title }) => {
 
 export default function Request() {
     const { documentRequests } = usePage().props;
+    
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewContent, setPreviewContent] = useState('');
@@ -86,14 +110,14 @@ export default function Request() {
         const colors = {
             'Pending': 'border-yellow-400 text-yellow-800 bg-yellow-100',
             'Processing': 'border-blue-400 text-blue-800 bg-blue-100',
-            'Ready to Pickup': 'border-green-400 text-green-800 bg-green-100',
+            'Ready for Pickup': 'border-green-400 text-green-800 bg-green-100',
             'Claimed': 'border-gray-400 text-gray-800 bg-gray-100',
             'Rejected': 'border-red-400 text-red-800 bg-red-100',
         };
         return colors[status] || 'border-gray-300 bg-gray-200 text-gray-600';
     };
 
-    const statusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
+    const statusOptions = ['Pending', 'Processing', 'Ready for Pickup', 'Claimed', 'Rejected'];
 
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Requests</h2>}>
@@ -116,7 +140,7 @@ export default function Request() {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                        {documentRequests.length > 0 ? documentRequests.map((request) => (
+                                        {documentRequests.data.length > 0 ? documentRequests.data.map((request) => (
                                             <tr key={request.id}>
                                                 <td className="px-6 py-4 whitespace-nowrap">{request.user?.profile ? `${request.user.profile.first_name} ${request.user.profile.last_name}` : "N/A"}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">{request.document_type?.name || "N/A"}</td>
@@ -145,6 +169,9 @@ export default function Request() {
                                     </tbody>
                                 </table>
                             </div>
+
+                            <Pagination links={documentRequests.links} />
+
                         </div>
                     </div>
                 </div>
@@ -165,8 +192,7 @@ export default function Request() {
                 </form>
             </Modal>
 
-            {/* --- PREVIEW MODAL --- */}
-            {/* The div below now uses the 'document-preview-container' class for styling */}
+            {/* Preview Modal */}
             <Modal show={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={`Preview: ${selectedRequest?.document_type?.name || ''}`}>
                 {isPreviewLoading ? (
                     <div className="text-center p-8 text-gray-500">Loading preview...</div>

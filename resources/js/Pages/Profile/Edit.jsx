@@ -31,11 +31,12 @@ const SettingsCard = ({ title, description, children }) => (
     </motion.div>
 );
 
-export default function Edit({ auth, mustVerifyEmail, status }) {
+export default function Edit({ auth, mustVerifyEmail, status, userProfile }) {
     const [activeTab, setActiveTab] = useState('profile');
 
     const tabs = [
         { id: 'profile', name: 'Profile', icon: <Icon path="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /> },
+        { id: 'verification', name: 'Verification', icon: <Icon path="M10 12a2 2 0 100-4 2 2 0 000 4z M21 12c-2.21 4.42-6.21 7-9 7s-6.79-2.58-9-7c2.21-4.42 6.21-7 9-7s6.79 2.58 9 7z" /> },
         { id: 'password', name: 'Password', icon: <Icon path="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /> },
         { id: 'danger', name: 'Danger Zone', icon: <Icon path="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /> },
     ];
@@ -56,7 +57,6 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                         </header>
 
                         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                
                             <nav className="lg:col-span-1">
                                 <ul className="flex lg:flex-col gap-2">
                                     {tabs.map(tab => (
@@ -97,6 +97,41 @@ export default function Edit({ auth, mustVerifyEmail, status }) {
                                                 status={status}
                                                 className="max-w-xl"
                                             />
+                                        </SettingsCard>
+                                    )}
+
+                                    {activeTab === 'verification' && (
+                                        <SettingsCard
+                                            key="verification"
+                                            title="Uploaded Credentials"
+                                            description="These are the images you provided for verification during registration."
+                                        >
+                                            <div className="space-y-6">
+                                                {userProfile && (userProfile.face_image_path || userProfile.valid_id_front_path) ? (
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                                                        {userProfile.face_image_path && (
+                                                            <div>
+                                                                <h3 className="font-semibold text-slate-800 mb-2">Face Picture</h3>
+                                                                <img src={`/storage/${userProfile.face_image_path}`} alt="Face Picture" className="w-full h-auto rounded-lg shadow-md aspect-square object-cover" />
+                                                            </div>
+                                                        )}
+                                                        {userProfile.valid_id_front_path && (
+                                                            <div>
+                                                                <h3 className="font-semibold text-slate-800 mb-2">Valid ID (Front)</h3>
+                                                                <img src={`/storage/${userProfile.valid_id_front_path}`} alt="Valid ID Front" className="w-full h-auto rounded-lg shadow-md aspect-[1.586/1] object-cover" />
+                                                            </div>
+                                                        )}
+                                                        {userProfile.valid_id_back_path && (
+                                                            <div>
+                                                                <h3 className="font-semibold text-slate-800 mb-2">Valid ID (Back)</h3>
+                                                                <img src={`/storage/${userProfile.valid_id_back_path}`} alt="Valid ID Back" className="w-full h-auto rounded-lg shadow-md aspect-[1.586/1] object-cover" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-slate-500 text-center">No verification images have been uploaded.</p>
+                                                )}
+                                            </div>
                                         </SettingsCard>
                                     )}
 

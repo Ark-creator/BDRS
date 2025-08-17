@@ -11,15 +11,16 @@ use Inertia\Response; // Import Response class
 
 class RequestDocumentsController extends Controller
 {
-    public function index(): Response
-    {
-        // Eager load the user, user's profile, and document type
-        $documentRequests = DocumentRequest::with(['user.profile', 'documentType'])->get();
+    public function index()
+{
+    $documentRequests = DocumentRequest::with(['user.profile', 'documentType'])
+        ->latest()
+        ->paginate(10); // <-- pinalitan ng paginate()
 
-        return Inertia::render('Admin/Request', [
-            'documentRequests' => $documentRequests,
-        ]);
-    }
+    return Inertia::render('Admin/Request', [
+        'documentRequests' => $documentRequests,
+    ]);
+}
     public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
         $validated = $request->validate([

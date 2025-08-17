@@ -358,11 +358,16 @@ export default function AuthenticatedLayout({ header, children }) {
                                     <div className="relative" onMouseEnter={() => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(true), 300); }} onMouseLeave={() => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(false), 200); }}>
                                         <Link href={route('admin.messages')} className="p-2 rounded-lg transition relative">
                                             <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
-                                            {unreadMessages.length > 0 && (<span className="absolute top-6 -right-5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-gray-800" />)}
+                                            {unreadMessages.length > 0 && (
+    <span className="absolute top-6 -right-5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
+        {unreadMessages.length}
+    </span>
+)}
                                         </Link>
                                         <AnimatePresence>{isBubbleVisible && <NotificationBubble messages={unreadMessages} />}</AnimatePresence>
                                     </div>
                                 )}
+                                
                                 <Dropdown>
                                     <Dropdown.Trigger>
                                         <button className="flex items-center gap-2 px-3 py-2 rounded-lg transition">
