@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use App\Models\User;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -23,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // 🔒 Force HTTPS when using ngrok or any https tunneling
+        if ($this->app->environment('local')) {
+            URL::forceScheme('https');
+        }
 
         // Allow super admins to bypass all checks automatically
         Gate::before(function (User $user, string $ability) {

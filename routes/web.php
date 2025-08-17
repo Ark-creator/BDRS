@@ -12,6 +12,7 @@ use App\Http\Controllers\Resident\ContactUsController;
 use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
 use App\Http\Controllers\Admin\DocumentGenerationController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 
@@ -112,6 +113,8 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
+
+     Route::resource('/announcements', AnnouncementController::class);
 });
 
 
