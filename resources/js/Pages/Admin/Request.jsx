@@ -59,29 +59,44 @@ const Pagination = ({ currentPage, totalItems, itemsPerPage, onPageChange }) => 
     const totalPages = Math.ceil(totalItems / itemsPerPage);
     if (totalPages <= 1) return null;
 
-    const handlePrevious = () => onPageChange(Math.max(1, currentPage - 1));
-    const handleNext = () => onPageChange(Math.min(totalPages, currentPage + 1));
+    const pageNumbers = [];
+    for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+    }
 
     return (
         <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 dark:border-gray-700">
             <p className="text-sm text-gray-700 dark:text-gray-400">
                 Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalItems)}</span> of <span className="font-medium">{totalItems}</span> results
             </p>
-            <div className="flex items-center gap-2">
-                <button onClick={handlePrevious} disabled={currentPage === 1} className="px-3 py-1 text-sm rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Previous
+            <nav className="flex items-center gap-2">
+                <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="px-3 py-1 text-sm rounded-md bg-white dark:bg-gray-800  hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                    &laquo; Previous
                 </button>
-                <button onClick={handleNext} disabled={currentPage === totalPages} className="px-3 py-1 text-sm rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                    Next
+                {pageNumbers.map(number => (
+                    <button 
+                        key={number} 
+                        onClick={() => onPageChange(number)}
+                        className={`px-3 py-1 text-sm rounded-md ${currentPage === number ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800   hover:bg-gray-50 dark:hover:bg-gray-700'}`}
+                    >
+                        {number}
+                    </button>
+                ))}
+                <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-3 py-1 text-sm rounded-md bg-white dark:bg-gray-800  hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                     Next &raquo;
                 </button>
-            </div>
+            </nav>
         </div>
     );
 };
 
 // --- Main Page Component ---
 export default function Request() {
-    const { documentRequests, flash } = usePage().props;
+    const { flash, documentRequests: rawRequests } = usePage().props;
+
+    // ✅ Normalize: works whether `documentRequests` is an array or a paginator object
+    const documentRequests = Array.isArray(rawRequests) ? rawRequests : (rawRequests?.data ?? []);
+
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewContent, setPreviewContent] = useState('');
@@ -206,12 +221,7 @@ export default function Request() {
 
             <div className="py-12 bg-gray-50 dark:bg-gray-900">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                
-
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-2">
-                        
-                        <div id="status-filter-tabs" className="p-4 border-b border-gray-200 dark:border-gray-700">
-                                <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+                    <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manage Requests</h1>
                             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">View and process all registered document requests.</p>
@@ -228,18 +238,15 @@ export default function Request() {
                                     className="block w-full md:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                                 />
                             </div>
-                               <button
-                                   onClick={startTour}
-                                   className="flex items-center gap-1 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                   aria-label="Start tour"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5L7 9.167A1 1 0 007 10.833L9.133 13.5a1 1 0 001.734 0L13 10.833A1 1 0 0013 9.167L10.867 6.5A1 1 0 0010 7z" clipRule="evenodd" />
-                                    </svg>
-                                    <span className="text-xs">Need Help?</span>
-                                </button>
+                            <button onClick={startTour} className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                <TourIcon />
+                                Need Help?
+                            </button>
                         </div>
                     </div>
+
+                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                        <div id="status-filter-tabs" className="p-4 border-b border-gray-200 dark:border-gray-700">
                             <div className="flex space-x-1">
                                 {statusOptions.map(status => (
                                     <button 

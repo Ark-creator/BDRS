@@ -117,28 +117,42 @@ export default function AboutUs({ auth }) {
                                 </p>
                             </div>
                             <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
-                                <motion.div className="bg-slate-50 p-8 rounded-2xl ring-1 ring-slate-200" variants={cardVariants}>
-                                    <div className="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-100 text-blue-600">
-                                        <Icon path="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-slate-900">Public Records Access</h3>
-                                    <p className="mt-2 text-slate-600">Access to public documents and records is made simple through our portal.</p>
-                                </motion.div>
-                                <motion.div className="bg-slate-50 p-8 rounded-2xl ring-1 ring-slate-200" variants={cardVariants}>
-                                    <div className="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-100 text-blue-600">
-                                        <Icon path="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-slate-900">Financial Reports</h3>
-                                    <p className="mt-2 text-slate-600">View and download barangay financial statements and budget reports.</p>
-                                </motion.div>
-                                <motion.div className="bg-slate-50 p-8 rounded-2xl ring-1 ring-slate-200" variants={cardVariants}>
-                                    <div className="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-100 text-blue-600">
-                                        <Icon path="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                    </div>
-                                    <h3 className="text-xl font-bold text-slate-900">Community Feedback</h3>
-                                    <p className="mt-2 text-slate-600">We provide channels for residents to voice concerns and suggestions.</p>
-                                </motion.div>
-                            </div>
+    {/* Card 1: Transparency */}
+    <motion.div className="bg-slate-50 p-8 rounded-2xl ring-1 ring-slate-200" variants={cardVariants}>
+        <div className="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-100 text-blue-600">
+            {/* Icon for Transparency (e.g., a shield or verified icon) */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.955a11.955 11.955 0 018.618-3.04 12.02 12.02 0 008.618-3.04z" />
+            </svg>
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">Transparency</h3>
+        <p className="mt-2 text-slate-600">Promoting honesty with no fees for essential documents, except for barangay business clearances.</p>
+    </motion.div>
+
+    {/* Card 2: Community Feedback */}
+    <motion.div className="bg-slate-50 p-8 rounded-2xl ring-1 ring-slate-200" variants={cardVariants}>
+        <div className="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-100 text-blue-600">
+            {/* Icon for Feedback (e.g., chat bubble) */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">Community Feedback</h3>
+        <p className="mt-2 text-slate-600">A built-in system allows residents to voice concerns and suggestions directly to barangay officials.</p>
+    </motion.div>
+
+    {/* Card 3: Easy Access */}
+    <motion.div className="bg-slate-50 p-8 rounded-2xl ring-1 ring-slate-200" variants={cardVariants}>
+        <div className="mb-4 inline-flex items-center justify-center h-12 w-12 rounded-xl bg-blue-100 text-blue-600">
+            {/* Icon for Accessibility (e.g., mobile phone and desktop) */}
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">Easy Access</h3>
+        <p className="mt-2 text-slate-600">Request documents anytime, anywhere. Our system is accessible on desktops, tablets, and mobile phones.</p>
+    </motion.div>
+</div>
                         </div>
                     </motion.div>
 
