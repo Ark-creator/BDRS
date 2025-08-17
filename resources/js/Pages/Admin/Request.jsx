@@ -1,18 +1,20 @@
 import React, { useState } from "react";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
-import { Head, usePage, useForm, router } from "@inertiajs/react"; // Removed Link as it's not used for generate anymore
+import { Head, usePage, useForm, router } from "@inertiajs/react";
+import axios from 'axios'; // Siguraduhing naka-import ang axios
 
 // --- Modal Component ---
 const Modal = ({ children, show, onClose, title }) => {
     if (!show) return null;
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-3xl" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-center pb-3 border-b dark:border-gray-700">
                     <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
                     <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white">&times;</button>
                 </div>
-                <div className="mt-4">{children}</div>
+                {/* Ginawang scrollable ang content ng modal */}
+                <div className="mt-4 max-h-[70vh] overflow-y-auto">{children}</div>
             </div>
         </div>
     );
@@ -21,6 +23,9 @@ const Modal = ({ children, show, onClose, title }) => {
 export default function Request() {
     const { documentRequests } = usePage().props;
     const [showRejectModal, setShowRejectModal] = useState(false);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
+    const [previewContent, setPreviewContent] = useState('');
+    const [isPreviewLoading, setIsPreviewLoading] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
 
     const { data, setData, patch, processing, errors, reset } = useForm({
@@ -38,29 +43,36 @@ export default function Request() {
             openRejectModal(request);
             return;
         }
-
         if (confirm(`Are you sure you want to update the status to "${newStatus}"?`)) {
-            router.patch(route('admin.requests.status.update', request.id), {
-                status: newStatus
-            }, {
-                preserveScroll: true,
-            });
+            router.patch(route('admin.requests.status.update', request.id), { status: newStatus }, { preserveScroll: true });
         }
     };
 
     const handleRejectSubmit = (e) => {
         e.preventDefault();
         patch(route('admin.requests.status.update', selectedRequest.id), {
-            data: {
-                status: 'Rejected',
-                admin_remarks: data.admin_remarks
-            },
-            onSuccess: () => {
-                setShowRejectModal(false);
-                reset();
-            },
+            data: { status: 'Rejected', admin_remarks: data.admin_remarks },
+            onSuccess: () => { setShowRejectModal(false); reset(); },
             preserveScroll: true,
         });
+    };
+
+    // --- FUNCTION PARA SA PREVIEW ---
+    const handlePreviewClick = async (request) => {
+        setSelectedRequest(request);
+        setShowPreviewModal(true);
+        setIsPreviewLoading(true);
+        setPreviewContent('');
+
+        try {
+            const response = await axios.get(route('admin.requests.preview', request.id));
+            setPreviewContent(response.data.html);
+        } catch (error) {
+            console.error("Error fetching document preview:", error);
+            setPreviewContent('<p class="text-center text-red-500">Could not load preview. Check the template file and controller logic.</p>');
+        } finally {
+            setIsPreviewLoading(false);
+        }
     };
     
     const getStatusColor = (status) => {
@@ -107,22 +119,17 @@ export default function Request() {
                                                         onChange={(e) => handleManualStatusChange(request, e.target.value)}
                                                         className={`text-xs font-semibold rounded-full border-2 p-1.5 focus:ring-indigo-500 focus:border-indigo-500 ${getStatusColor(request.status)}`}
                                                     >
-                                                        {statusOptions.map(status => (
-                                                            <option key={status} value={status}>{status}</option>
-                                                        ))}
+                                                        {statusOptions.map(status => (<option key={status} value={status}>{status}</option>))}
                                                     </select>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">{new Date(request.created_at).toLocaleDateString()}</td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                                    {/* --- INAYOS NA ACTION --- */}
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
                                                     {request.status === 'Processing' && (
-                                                        // Pinalitan ng <a> tag para sa file download
-                                                        <a 
-                                                            href={route('admin.requests.generate', request.id)} 
-                                                            className="text-indigo-600 hover:text-indigo-900"
-                                                        >
-                                                            Generate
-                                                        </a>
+                                                        <>
+                                                            {/* --- PREVIEW BUTTON --- */}
+                                                            <button onClick={() => handlePreviewClick(request)} className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">Preview</button>
+                                                            <a href={route('admin.requests.generate', request.id)} className="text-indigo-600 hover:text-indigo-900">Generate</a>
+                                                        </>
                                                     )}
                                                 </td>
                                             </tr>
@@ -137,6 +144,7 @@ export default function Request() {
                 </div>
             </div>
 
+            {/* Reject Modal */}
             <Modal show={showRejectModal} onClose={() => setShowRejectModal(false)} title="Reject Document Request">
                 <form onSubmit={handleRejectSubmit}>
                     <div className="mb-4">
@@ -149,6 +157,18 @@ export default function Request() {
                         <button type="submit" disabled={processing} className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400">Reject Request</button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* --- PREVIEW MODAL --- */}
+            <Modal show={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={`Preview: ${selectedRequest?.document_type?.name || ''}`}>
+                {isPreviewLoading ? (
+                    <div className="text-center p-8">Loading preview...</div>
+                ) : (
+                    <div 
+                        className="p-4 border rounded-md bg-gray-50 dark:bg-gray-900 prose dark:prose-invert max-w-none"
+                        dangerouslySetInnerHTML={{ __html: previewContent }}
+                    />
+                )}
             </Modal>
         </AuthenticatedLayout>
     );

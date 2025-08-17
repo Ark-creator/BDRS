@@ -100,9 +100,12 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::patch('/documents/{documentType}/archive', [DocumentsListController::class, 'archive'])->name('documents.archive');
     Route::get('/documents/archived-data', [DocumentsListController::class, 'getArchivedDocuments'])->name('documents.archived.data');
     Route::patch('/requests/{documentRequest}/status', [RequestDocumentsController::class, 'update'])->name('requests.status.update');
+    
     // --- Request Documents Routes ---
     Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); 
     Route::get('/requests/{documentRequest}/generate', [DocumentGenerationController::class, 'generate'])->name('requests.generate');
+    Route::get('/requests/{documentRequest}/preview', [DocumentGenerationController::class, 'preview'])->name('requests.preview');
+    
 
     // --- Messages Routes ---
     Route::get('/messages', [MessagesController::class, 'index'])->name('messages');
