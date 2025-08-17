@@ -7,51 +7,45 @@ use App\Models\DocumentRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use PhpOffice\PhpWord\TemplateProcessor;
+use Illuminate\Http\RedirectResponse; // Import RedirectResponse
 
 class DocumentGenerationController extends Controller
 {
     /**
-     * Generate a Word document based on a document request.
+     * Generate a Word document and update the request status.
      *
      * @param  \App\Models\DocumentRequest  $documentRequest
-     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse|RedirectResponse
      */
     public function generate(DocumentRequest $documentRequest)
     {
         // --- NULL CHECK: Ensure the request is valid ---
         $documentType = $documentRequest->documentType;
         if (!$documentType) {
-            abort(500, 'The document request is missing a document type.');
+            return back()->with('error', 'The document request is missing a document type.');
         }
 
         $user = $documentRequest->user;
-        if (!$user) {
-            abort(500, 'The document request is not associated with a user.');
+        if (!$user || !$user->profile) {
+            return back()->with('error', "Generation failed: The user has not completed their profile information.");
         }
-
-        // --- PRIMARY NULL CHECK: Ensure the user has a profile ---
         $profile = $user->profile;
-        if (!$profile) {
-            abort(500, "Generation failed: The user '{$user->email}' has not completed their profile information.");
-        }
 
-        // Get the template path using a dynamic name
+        // Get the template path
         $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
         $templatePath = storage_path("app/templates/{$templateName}");
 
         if (!file_exists($templatePath)) {
-            abort(500, "Template file not found: {$templateName}");
+            return back()->with('error', "Template file not found: {$templateName}");
         }
 
         $templateProcessor = new TemplateProcessor($templatePath);
         $requestData = $documentRequest->form_data;
 
-        // --- DYNAMIC & NULL-SAFE: Build the full name robustly ---
-        // This filters out empty/null parts (like middle_name) to prevent extra spaces
+        // Build the full name robustly
         $nameParts = array_filter([$profile->first_name, $profile->middle_name, $profile->last_name]);
         $fullName = strtoupper(implode(' ', $nameParts));
 
-        // Safely calculate age, providing a default if birthday is null
         $age = $profile->birthday ? Carbon::parse($profile->birthday)->age : 'N/A';
 
         // Set common placeholders
@@ -70,15 +64,16 @@ class DocumentGenerationController extends Controller
                 }
                 $templateProcessor->setValue('DISABILITY_TYPE', $disability);
                 break;
-
-            case 'Solo Parent':
-                // No document-specific fields needed here
-                break;
-            
-            // Add more 'case' blocks here for other document types
+            // Add more cases here
         }
+        
+        // --- BAGONG LOGIC: I-UPDATE ANG STATUS ---
+        $documentRequest->update([
+            'status' => 'Ready for Pickup',
+            'processed_by' => auth()->id(),
+        ]);
 
-        // Dynamically define the download filename
+        // Define the download filename
         $filePrefix = Str::studly($documentType->name);
         $fileName = "{$filePrefix}Cert_{$profile->last_name}.docx";
         $pathToSave = storage_path("app/public/{$fileName}");
