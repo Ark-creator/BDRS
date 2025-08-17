@@ -90,7 +90,11 @@ export default function Announcement({ auth, announcements = [] }) {
                                     {announcements.map((announcement) => (
                                         <tr key={announcement.id}>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">{announcement.title}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{announcement.user.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                                                {announcement.user?.profile?.first_name 
+                                                    ? `${announcement.user.profile.first_name} ${announcement.user.profile.last_name}`
+                                                    : announcement.user?.name || 'Unknown'}
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{new Date(announcement.created_at).toLocaleDateString()}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <Link 

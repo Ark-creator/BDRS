@@ -16,14 +16,15 @@ class AnnouncementController extends Controller
      * Display a listing of the resource.
      */
     public function index()
-    {
-        // Fetch all announcements, get the latest ones first, and load the user relationship
-        $announcements = Announcement::latest()->with('user')->get();
+{
+    $announcements = Announcement::latest()
+        ->with('user.profile') // Critical: load profile
+        ->get();
 
-        return Inertia::render('Admin/Announcement', [
-            'announcements' => $announcements
-        ]);
-    }
+    return Inertia::render('Admin/Announcement', [
+        'announcements' => $announcements
+    ]);
+}
 
     /**
      * Store a newly created resource in storage.

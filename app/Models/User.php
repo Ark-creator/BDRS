@@ -34,7 +34,7 @@ class User extends Authenticatable
     /**
      * Append custom attributes to arrays/JSON.
      */
-    protected $appends = ['full_name'];
+    
 
     /**
      * Attribute casting.
@@ -51,20 +51,21 @@ class User extends Authenticatable
      * Accessor for the full name.
      * Returns "First Middle Last" if available, trims extra spaces.
      */
+    protected $appends = ['full_name'];
     protected function fullName(): Attribute
-    {
-        return Attribute::make(
-            get: fn () => trim(
-                collect([
-                    $this->profile?->first_name,
-                    $this->profile?->middle_name,
-                    $this->profile?->last_name
-                ])
-                ->filter() // remove null/empty parts
-                ->implode(' ')
-            )
-        );
-    }
+{
+    return Attribute::make(
+        get: fn () => trim(
+            collect([
+                $this->profile?->first_name,
+                $this->profile?->middle_name,
+                $this->profile?->last_name
+            ])
+            ->filter()
+            ->implode(' ')
+        )
+    );
+}
 
     /**
      * Relationship: One user has one profile.
