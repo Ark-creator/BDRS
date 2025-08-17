@@ -15,6 +15,7 @@ class DocumentType extends Model
         'price',
         'template_path',
         'requirements_description',
+        'is_archived', // Ito ang idinagdag para gumana ang archive
     ];
 
     /**
