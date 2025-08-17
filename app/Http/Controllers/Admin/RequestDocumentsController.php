@@ -23,7 +23,7 @@ class RequestDocumentsController extends Controller
     public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => 'required|string|in:Processing,Rejected,Claimed,Ready for Pickup, Completed',
+            'status' => 'required|string|in:Processing,Rejected,Claimed,Ready To Pickup, Completed',
             'admin_remarks' => 'nullable|string|max:500', // For rejection reason
         ]);
 

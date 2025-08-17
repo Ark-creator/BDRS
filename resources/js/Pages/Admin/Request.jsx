@@ -86,14 +86,14 @@ export default function Request() {
         const colors = {
             'Pending': 'border-yellow-400 text-yellow-800 bg-yellow-100',
             'Processing': 'border-blue-400 text-blue-800 bg-blue-100',
-            'Ready for Pickup': 'border-green-400 text-green-800 bg-green-100',
+            'Ready to Pickup': 'border-green-400 text-green-800 bg-green-100',
             'Claimed': 'border-gray-400 text-gray-800 bg-gray-100',
             'Rejected': 'border-red-400 text-red-800 bg-red-100',
         };
         return colors[status] || 'border-gray-300 bg-gray-200 text-gray-600';
     };
 
-    const statusOptions = ['Pending', 'Processing', 'Ready for Pickup', 'Claimed', 'Rejected'];
+    const statusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
     return (
         <AuthenticatedLayout header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Requests</h2>}>
