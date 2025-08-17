@@ -86,28 +86,28 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     });
 });
 
-// --- ADMIN ROUTES ---
-// Admins and Super Admins (super admin auto-passes via Gate::before)
 Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
+    
+    // --- Static Pages ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/announcement', fn() => Inertia::render('Admin/Announcement'))->name('announcement');
-    Route::get('/documents', fn() => Inertia::render('Admin/Documents'))->name('documents');
     Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
-    Route::get('/messages', fn() => Inertia::render('Admin/Messages'))->name('messages');
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
     
-    // this is for documents pages fetch the data rendering
-    // Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
-    // update and delete function here
+    // --- Document Types Routes ---
+    Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
     Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
-    Route::delete('/documents/{documentType}', [DocumentsListController::class, 'destroy'])->name('documents.destroy');
-
-    // this is for request documents pages fetch the data rendering
+    Route::patch('/documents/{documentType}/archive', [DocumentsListController::class, 'archive'])->name('documents.archive');
+    Route::get('/documents/archived-data', [DocumentsListController::class, 'getArchivedDocuments'])->name('documents.archived.data');
+    Route::patch('/requests/{documentRequest}/status', [RequestDocumentsController::class, 'update'])->name('requests.status.update');
+    
+    // --- Request Documents Routes ---
     Route::get('/request', [RequestDocumentsController::class, 'index'])->name('request'); 
-        Route::get('/requests/{documentRequest}/generate', [DocumentGenerationController::class, 'generate'])->name('requests.generate');
-// Updated to use controller
+    Route::get('/requests/{documentRequest}/generate', [DocumentGenerationController::class, 'generate'])->name('requests.generate');
+    Route::get('/requests/{documentRequest}/preview', [DocumentGenerationController::class, 'preview'])->name('requests.preview');
+    
 
-    // messages render
+    // --- Messages Routes ---
     Route::get('/messages', [MessagesController::class, 'index'])->name('messages');
     Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');

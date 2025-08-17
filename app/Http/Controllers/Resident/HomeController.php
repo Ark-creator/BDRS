@@ -11,8 +11,8 @@ class HomeController extends Controller
 {
     public function __invoke()
     {
-        // Fetch all document types from the database
-        $documentTypes = DocumentType::all();
+        // Fetch only the document types that are NOT archived
+        $documentTypes = DocumentType::where('is_archived', false)->get();
 
         // Pass them as a prop to your Inertia component
         return Inertia::render('Residents/Home', [

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->decimal('price', 8, 2)->default(0.00);
             $table->string('template_path')->default(''); // <-- FIX: Removed ->change()
             $table->text('requirements_description')->nullable();
+            $table->boolean('is_archived')->default(false);
             $table->timestamps();
         });
     }
