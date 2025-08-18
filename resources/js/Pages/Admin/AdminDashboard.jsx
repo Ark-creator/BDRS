@@ -3,9 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Users, FolderGit, Megaphone, PlusCircle, History, Banknote, MessageSquare, FilePlus, CheckCircle, XCircle, Eye, Building, FileText } from 'lucide-react';
+import { 
+    Users, FolderGit2, Megaphone, PlusCircle, History, Banknote, 
+    MessageSquare, FilePlus, CheckCircle, XCircle, Eye, Building, FileText 
+} from 'lucide-react';
+import SystemStatus from '@/Components/SystemStatus';
 
-// --- Reusable UI Components (No Changes Needed Here) ---
+// --- Reusable UI Components (Walang Pagbabago Dito) ---
 
 const AuroraBackground = () => (
     <div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
@@ -42,7 +46,6 @@ const CustomTooltip = ({ active, payload }) => {
 
 // --- Main Dashboard Component ---
 
-// UPDATED: Accept new props from the controller
 export default function AdminDashboard({ 
     auth, 
     stats = [], 
@@ -53,32 +56,29 @@ export default function AdminDashboard({
     const [chartTimeframe, setChartTimeframe] = useState('Weekly');
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // NEW: Map icon names from props to actual components
     const iconMap = {
-        Users, FolderGit, Banknote, Building
+        'Users': Users,
+        'FolderGit': FolderGit2,
+        'Banknote': Banknote,
+        'Building': Building
     };
 
     const quickActions = [
         { label: "New Request", icon: FilePlus, href: '#' },
-        { label: "New Announcement", icon: Megaphone, href: '#' },
-        { label: "Add Document Type", icon: PlusCircle, href: '#' },
-        { label: "View Full History", icon: History, href: '#' },
+        { label: "New Announcement", icon: Megaphone, href: route('admin.announcements.create') },
+        { label: "Add Document Type", icon: PlusCircle, href: route('admin.documents') },
+        { label: "View Full History", icon: History, href: route('admin.history') },
     ];
      
-    // NOTE: Chart data can also be fetched from the backend, but is kept
-    // here as static data for demonstration as requested.
     const chartData = {
         Weekly: [ { name: 'Mon', reqs: 12 }, { name: 'Tue', reqs: 19 }, { name: 'Wed', reqs: 15 }, { name: 'Thu', reqs: 25 }, { name: 'Fri', reqs: 22 }, { name: 'Sat', reqs: 32 }, { name: 'Sun', reqs: 28 } ],
         Monthly: [ { name: 'Week 1', reqs: 88 }, { name: 'Week 2', reqs: 110 }, { name: 'Week 3', reqs: 140 }, { name: 'Week 4', reqs: 125 } ]
     };
 
-    // Colors for the Pie Chart
     const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#a5b4fc'];
      
-    // NEW: Icon mapping for different activity types from backend
     const notificationIcons = {
         request_completed: CheckCircle,
-        // You can add more types here as you expand your backend logic
         default: FileText,
     };
 
@@ -93,9 +93,19 @@ export default function AdminDashboard({
             <motion.div className="max-w-screen-xl mx-auto sm:px-6 lg:px-8 py-8" variants={containerVariants} initial="hidden" animate="visible">
                 {/* --- HEADER & QUICK ACTIONS --- */}
                 <motion.div variants={itemVariants} className="mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Welcome Back, {auth.user.name}!</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">{today}</p>
-                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* ===== ITO ANG BINAGO PARA MAGING RESPONSIVE ===== */}
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Welcome Back, {auth.user.full_name}!</h1>
+                            <p className="text-gray-500 dark:text-gray-400 mt-1">{today}</p>
+                        </div>
+                        <div className="md:shrink-0">
+                             <SystemStatus />
+                        </div>
+                    </div>
+                    {/* ===== END OF CHANGES ===== */}
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {quickActions.map(action => (
                             <Link key={action.label} href={action.href} className="flex items-center justify-center gap-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-4 rounded-xl shadow-md hover:shadow-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-all">
                                 <action.icon className="text-blue-600 dark:text-blue-400" size={20}/>
@@ -105,19 +115,20 @@ export default function AdminDashboard({
                     </div>
                 </motion.div>
 
-                {/* --- MAIN GRID LAYOUT --- */}
+                {/* --- MAIN GRID LAYOUT (Walang Pagbabago Dito) --- */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* --- MAIN CONTENT (LEFT) --- */}
                     <div className="lg:col-span-2 flex flex-col gap-8">
-                        {/* UPDATED: Uses the `stats` prop from controller */}
                         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {stats.map((stat, index) => {
                                 const IconComponent = iconMap[stat.icon];
-                                return <StatCard key={index} icon={IconComponent} {...stat} />
+                                if (!IconComponent) {
+                                    return <StatCard key={index} icon={FileText} {...stat} title={`Unknown Icon: ${stat.title}`} />;
+                                }
+                                return <StatCard key={index} icon={IconComponent} {...stat} />;
                             })}
                         </motion.div>
 
-                        {/* UPDATED: Uses the `pendingRequests` prop from controller */}
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-lg">Action Required: Pending Requests</h3>
                              <div className="overflow-x-auto">
@@ -153,7 +164,6 @@ export default function AdminDashboard({
 
                     {/* --- SIDEBAR CONTENT (RIGHT) --- */}
                     <div className="lg:col-span-1 flex flex-col gap-8">
-                        {/* UPDATED: Uses the `documentBreakdown` prop from controller */}
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Document Breakdown</h3>
                             <div className="h-56 w-full">
@@ -169,7 +179,6 @@ export default function AdminDashboard({
                             </div>
                         </motion.div>
 
-                        {/* UPDATED: Uses the `recentActivities` prop from controller */}
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
                              <ul className="space-y-4">
@@ -188,7 +197,7 @@ export default function AdminDashboard({
                     </div>
                 </div>
 
-                {/* --- FULL-WIDTH CHART (Data is kept static as per request) --- */}
+                {/* --- FULL-WIDTH CHART --- */}
                 <motion.div variants={itemVariants} className="mt-8 bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">Request Volume</h3>

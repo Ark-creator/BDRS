@@ -13,10 +13,11 @@ class HistoryController extends Controller
 {
     public function index()
     {
-        // Kunin ang lahat ng archived records kasama ang related data
-        $archives = ImmutableDocumentsArchiveHistory::with(['user.profile', 'documentType'])
-            ->latest() // Pagbukud-bukurin ayon sa pinakabago
-            ->paginate(15); // Gumamit ng pagination
+        $archives = ImmutableDocumentsArchiveHistory::with(['user.profile', 'documentType', 'processor.profile'])
+            ->latest()
+            ->paginate(50)
+            ->withQueryString();
+            
 
         return Inertia::render('Admin/History', [
             'archives' => $archives,
