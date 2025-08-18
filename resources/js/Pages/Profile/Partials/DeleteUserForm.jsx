@@ -47,17 +47,34 @@ export default function DeleteUserForm({ className = '' }) {
 
     return (
         <section className={`space-y-6 ${className}`}>
-            <header>
-                <h2 className="text-xl font-bold font-lg text-red-700">
-                    Delete Account
-                </h2>
+           <header>
+                        <div className="flex items-center gap-3">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="text-red-600 dark:text-red-400"
+                                aria-hidden="true"
+                            >
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                <path d="M12 8v4"></path>
+                                <path d="M12 16h.01"></path>
+                            </svg>
 
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Once your account is deleted, all of its resources and data
-                    will be permanently deleted. Before deleting your account,
-                    please download any data or information that you wish to
-                    retain.
-                </p>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                                Delete Account
+                            </h2>
+                        </div>
+
+                    <p className="mt-5 text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+                        Please be fully aware that proceeding with this request will result in the permanent deletion of your account. Upon final confirmation, all data associated with your profile—including your personal details, communication logs, transaction history, and saved preferences—will be permanently expunged from our servers. Access to your account will be terminated immediately and cannot be restored. Before you finalize this decision, we highly recommend you export and save any data you wish to keep, as there will be no further opportunity to retrieve this information.
+                    </p>
             </header>
 
             <DangerButton onClick={confirmUserDeletion}>
@@ -74,7 +91,7 @@ export default function DeleteUserForm({ className = '' }) {
                         Once your account is deleted, all of its resources and
                         data will be permanently deleted. Please enter your
                         password to confirm you would like to permanently delete
-                        your account.
+                        your account. 
                     </p>
 
                     <div className="mt-6">
