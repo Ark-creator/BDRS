@@ -15,7 +15,9 @@ class HistoryController extends Controller
     {
         $archives = ImmutableDocumentsArchiveHistory::with(['user.profile', 'documentType', 'processor.profile'])
             ->latest()
-            ->paginate(15);
+            ->paginate(50)
+            ->withQueryString();
+            
 
         return Inertia::render('Admin/History', [
             'archives' => $archives,
