@@ -5,64 +5,62 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\DocumentRequest;
 use App\Models\User;
-use App\Models\Payment; // Assuming you have a Payment model
+use App\Models\Payment;
+use App\Models\ImmutableDocumentsArchiveHistory; // 1. I-IMPORT ANG ARCHIVE MODEL
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
-    /**
-     * Display the admin dashboard with aggregated data.
-     */
     public function index()
     {
-        // --- STATS CARDS DATA ---
-        $totalResidents = User::where('role', 'resident')->count(); // Count only residents
-        $pendingRequestsCount = DocumentRequest::where('status', 'pending')->count();
-        // Assuming a Payment model and 'completed' status for successful payments
+        // --- STATS CARDS DATA (Walang pagbabago dito) ---
+        $totalResidents = User::where('role', 'resident')->count();
+        $pendingRequestsCount = DocumentRequest::where('status', 'Pending')->count();
         $monthlyRevenue = Payment::where('status', 'completed')
             ->whereMonth('created_at', now()->month)
             ->whereYear('created_at', now()->year)
             ->sum('amount');
 
-        // --- PENDING REQUESTS TABLE DATA (Top 5 for the dashboard) ---
-        $pendingRequests = DocumentRequest::with(['user.profile', 'documentType']) // <--- #1. I-load ang user AT ang profile nito
-    ->where('status', 'pending')
-    ->latest()
-    ->take(5)
-    ->get()
-    ->map(fn ($request) => [
-        'id' => $request->id,
-        'name' => $request->user->full_name, // <--- #2. Gamitin ang "full_name" accessor
-        'docType' => $request->documentType->name,
-        'date' => $request->created_at->format('M d, Y'),
-    ]);
+        // --- PENDING REQUESTS TABLE DATA (Walang pagbabago dito) ---
+        $pendingRequests = DocumentRequest::with(['user.profile', 'documentType'])
+            ->where('status', 'Pending')
+            ->latest()
+            ->take(5)
+            ->get()
+            ->map(fn ($request) => [
+                'id' => $request->id,
+                'name' => $request->user->full_name,
+                'docType' => $request->documentType->name,
+                'date' => $request->created_at->format('M d, Y'),
+            ]);
 
-        // --- DOCUMENT BREAKDOWN PIE CHART DATA ---
+        // --- DOCUMENT BREAKDOWN PIE CHART DATA (Walang pagbabago dito) ---
         $documentBreakdown = DocumentRequest::select('document_type_id', DB::raw('count(*) as value'))
             ->groupBy('document_type_id')
-            ->with('documentType:id,name') // Only select id and name from documentType for efficiency
+            ->with('documentType:id,name')
             ->get()
             ->map(fn ($item) => [
                 'name' => $item->documentType->name,
                 'value' => $item->value,
             ]);
             
-        // --- RECENT ACTIVITY FEED DATA (Latest 5 completed requests) ---
-        $recentActivities = DocumentRequest::with(['user', 'documentType'])
-            ->whereIn('status', ['completed', 'claimed'])
-            ->latest()
+        // --- RECENT ACTIVITY FEED DATA (ITO ANG BINAGO) ---
+        // 2. Kunin ang data mula sa `ImmutableDocumentsArchiveHistory` table
+        $recentActivities = ImmutableDocumentsArchiveHistory::with(['user.profile', 'documentType', 'processor.profile'])
+            ->whereIn('status', ['Claimed', 'Rejected']) // 3. Kunin ang tamang statuses
+            ->latest('created_at') // Pagbukud-bukurin ayon sa kung kailan na-archive
             ->take(5)
             ->get()
-            ->map(fn ($request) => [
-                'id' => $request->id,
-                'user' => $request->user->name,
-                'text' => "processed a request for {$request->documentType->name}.",
-                'time' => $request->updated_at->diffForHumans(),
-                'type' => 'request_completed', // Custom type for icon mapping
+            ->map(fn ($archive) => [
+                'id' => $archive->id,
+                'processor_name' => $archive->processor->full_name ?? 'An Admin', // Pangalan ng admin na nag-proseso
+                'status' => $archive->status,
+                'document_name' => $archive->documentType->name,
+                'time' => $archive->created_at->diffForHumans(), // Oras mula nang ma-archive
+                'type' => $archive->status === 'Claimed' ? 'request_completed' : 'request_rejected', // Para sa icon
             ]);
-
 
         return Inertia::render('Admin/AdminDashboard', [
             'stats' => [
@@ -73,7 +71,7 @@ class DashboardController extends Controller
             ],
             'pendingRequests' => $pendingRequests,
             'documentBreakdown' => $documentBreakdown,
-            'recentActivities' => $recentActivities,
+            'recentActivities' => $recentActivities, // Ipadala ang bagong data
         ]);
     }
 }

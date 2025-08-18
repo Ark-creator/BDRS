@@ -9,15 +9,7 @@ import {
 } from 'lucide-react';
 import SystemStatus from '@/Components/SystemStatus';
 
-// --- Reusable UI Components (Walang Pagbabago Dito) ---
-
-const AuroraBackground = () => (
-    <div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
-        <div className="absolute top-0 -left-4 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-16 -right-4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-3xl animate-pulse delay-1000"></div>
-    </div>
-);
-
+// --- Reusable UI Components ---
 const StatCard = ({ icon: Icon, title, value, color }) => (
     <div className="relative overflow-hidden bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-blue-500/20 hover:-translate-y-1 transition-all duration-300">
         <div className="flex items-start justify-between">
@@ -32,6 +24,7 @@ const StatCard = ({ icon: Icon, title, value, color }) => (
     </div>
 );
 
+// --- IBALIK ANG MGA ITO PARA SA AREA CHART (1 of 2) ---
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     return (
@@ -45,7 +38,6 @@ const CustomTooltip = ({ active, payload }) => {
 
 
 // --- Main Dashboard Component ---
-
 export default function AdminDashboard({ 
     auth, 
     stats = [], 
@@ -53,7 +45,14 @@ export default function AdminDashboard({
     documentBreakdown = [], 
     recentActivities = [] 
 }) {
+    // --- IBALIK ANG MGA ITO PARA SA AREA CHART (2 of 2) ---
     const [chartTimeframe, setChartTimeframe] = useState('Weekly');
+    const chartData = {
+        Weekly: [ { name: 'Mon', reqs: 12 }, { name: 'Tue', reqs: 19 }, { name: 'Wed', reqs: 15 }, { name: 'Thu', reqs: 25 }, { name: 'Fri', reqs: 22 }, { name: 'Sat', reqs: 32 }, { name: 'Sun', reqs: 28 } ],
+        Monthly: [ { name: 'Week 1', reqs: 88 }, { name: 'Week 2', reqs: 110 }, { name: 'Week 3', reqs: 140 }, { name: 'Week 4', reqs: 125 } ]
+    };
+
+
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     const iconMap = {
@@ -64,36 +63,33 @@ export default function AdminDashboard({
     };
 
     const quickActions = [
-        { label: "New Request", icon: FilePlus, href: '#' },
-        { label: "New Announcement", icon: Megaphone, href: route('admin.announcements.create') },
-        { label: "Add Document Type", icon: PlusCircle, href: route('admin.documents') },
-        { label: "View Full History", icon: History, href: route('admin.history') },
+        { label: "View Requests", icon: FilePlus, href: route('admin.request') },
+        { label: "Announcements", icon: Megaphone, href: route('admin.announcements.index') },
+        { label: "Manage Documents", icon: PlusCircle, href: route('admin.documents') },
+        { label: "View History", icon: History, href: route('admin.history') },
     ];
-     
-    const chartData = {
-        Weekly: [ { name: 'Mon', reqs: 12 }, { name: 'Tue', reqs: 19 }, { name: 'Wed', reqs: 15 }, { name: 'Thu', reqs: 25 }, { name: 'Fri', reqs: 22 }, { name: 'Sat', reqs: 32 }, { name: 'Sun', reqs: 28 } ],
-        Monthly: [ { name: 'Week 1', reqs: 88 }, { name: 'Week 2', reqs: 110 }, { name: 'Week 3', reqs: 140 }, { name: 'Week 4', reqs: 125 } ]
-    };
-
-    const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#a5b4fc'];
      
     const notificationIcons = {
         request_completed: CheckCircle,
+        request_rejected: XCircle,
         default: FileText,
     };
-
+    
+    const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#a5b4fc'];
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.07 } } };
     const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
     return (
         <AuthenticatedLayout user={auth.user} >
             <Head title="Admin Dashboard" />
-            <AuroraBackground />
+            
+            <div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
+                <div className="absolute top-0 -left-4 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-3xl animate-pulse"></div>
+                <div className="absolute -bottom-16 -right-4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-3xl animate-pulse delay-1000"></div>
+            </div>
 
             <motion.div className="max-w-screen-xl mx-auto sm:px-6 lg:px-8 py-8" variants={containerVariants} initial="hidden" animate="visible">
-                {/* --- HEADER & QUICK ACTIONS --- */}
                 <motion.div variants={itemVariants} className="mb-8">
-                    {/* ===== ITO ANG BINAGO PARA MAGING RESPONSIVE ===== */}
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6">
                         <div>
                             <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Welcome Back, {auth.user.full_name}!</h1>
@@ -103,8 +99,6 @@ export default function AdminDashboard({
                              <SystemStatus />
                         </div>
                     </div>
-                    {/* ===== END OF CHANGES ===== */}
-                    
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {quickActions.map(action => (
                             <Link key={action.label} href={action.href} className="flex items-center justify-center gap-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-4 rounded-xl shadow-md hover:shadow-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-all">
@@ -115,9 +109,7 @@ export default function AdminDashboard({
                     </div>
                 </motion.div>
 
-                {/* --- MAIN GRID LAYOUT (Walang Pagbabago Dito) --- */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* --- MAIN CONTENT (LEFT) --- */}
                     <div className="lg:col-span-2 flex flex-col gap-8">
                         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {stats.map((stat, index) => {
@@ -148,11 +140,7 @@ export default function AdminDashboard({
                                                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">{req.docType}</td>
                                                  <td className="py-3 px-4 text-sm text-gray-500 dark:text-gray-400">{req.date}</td>
                                                  <td className="py-3 px-4 text-center">
-                                                     <div className="flex justify-center gap-2">
-                                                        <button className="p-2 text-gray-500 hover:text-blue-600 transition-colors"><Eye size={16}/></button>
-                                                        <button className="p-2 text-gray-500 hover:text-green-600 transition-colors"><CheckCircle size={16}/></button>
-                                                        <button className="p-2 text-gray-500 hover:text-red-600 transition-colors"><XCircle size={16}/></button>
-                                                     </div>
+                                                     <Link href={route('admin.request')} className="p-2 text-gray-500 hover:text-blue-600 transition-colors"><Eye size={16}/></Link>
                                                  </td>
                                              </tr>
                                          ))}
@@ -162,7 +150,6 @@ export default function AdminDashboard({
                         </motion.div>
                     </div>
 
-                    {/* --- SIDEBAR CONTENT (RIGHT) --- */}
                     <div className="lg:col-span-1 flex flex-col gap-8">
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Document Breakdown</h3>
@@ -182,22 +169,35 @@ export default function AdminDashboard({
                         <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
                              <ul className="space-y-4">
-                                {recentActivities.map((activity, index) => {
+                                {recentActivities.length > 0 ? recentActivities.map((activity) => {
                                     const Icon = notificationIcons[activity.type] || notificationIcons.default;
+                                    const actionText = activity.status === 'Claimed' ? 'approved' : 'rejected';
+                                    const iconColor = activity.status === 'Claimed' ? 'text-green-500' : 'text-red-500';
+
                                     return (
-                                        <li key={index} className="flex items-center gap-4">
-                                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700"><Icon className="text-gray-500" size={20} /></div>
-                                            <div className="flex-grow"><p className="text-sm text-gray-700 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">Admin</span> {activity.text}</p></div>
-                                            <p className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
+                                        <li key={activity.id} className="flex items-start gap-4">
+                                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+                                                <Icon className={iconColor} size={20} />
+                                            </div>
+                                            <div className="flex-grow">
+                                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-snug">
+                                                    <span className="font-semibold text-gray-900 dark:text-white">{activity.processor_name}</span>
+                                                    {` ${actionText} the request for `}
+                                                    <span className="font-semibold text-gray-900 dark:text-white">{activity.document_name}</span>.
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{activity.time}</p>
+                                            </div>
                                         </li>
                                     );
-                                })}
+                                }) : (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">No recent activities found.</p>
+                                )}
                              </ul>
                         </motion.div>
                     </div>
                 </div>
 
-                {/* --- FULL-WIDTH CHART --- */}
+                {/* --- IBALIK ANG FULL-WIDTH CHART --- */}
                 <motion.div variants={itemVariants} className="mt-8 bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">Request Volume</h3>
