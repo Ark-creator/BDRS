@@ -52,7 +52,6 @@ const StatusBadge = ({ status }) => {
     );
 };
 
-
 // --- Main Page Component ---
 export default function Request() {
     const { flash, documentRequests, filters } = usePage().props;
@@ -69,7 +68,7 @@ export default function Request() {
     });
     const [debouncedFilter] = useDebounce(filter, 300);
 
-    const { data, setData, patch, processing, errors, reset } = useForm({
+    const { data, setData, patch, processing, errors } = useForm({
         status: '',
         admin_remarks: ''
     });
@@ -123,7 +122,7 @@ export default function Request() {
             preserveScroll: true,
         });
     };
-
+    
     const handlePreviewClick = async (request) => {
         setSelectedRequest(request);
         setShowPreviewModal(true);
@@ -185,9 +184,9 @@ export default function Request() {
                             </div>
                         </div>
 
-                        {/* --- RESPONSIVE TABLE/CARD VIEW --- */}
+                        {/* Mobile Card View */}
                         <div className="md:hidden">
-                            {documentRequests.data.length > 0 ? documentRequests.data.map((request) => (
+                            {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request) => (
                                 <div key={request.id} className="border-b dark:border-gray-700 p-4 space-y-3">
                                     <div className="flex justify-between items-start">
                                         <div className="font-bold text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</div>
@@ -219,6 +218,7 @@ export default function Request() {
                             )}
                         </div>
                         
+                        {/* Desktop Table View */}
                         <div className="hidden md:block overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-700/50">
@@ -231,7 +231,7 @@ export default function Request() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    {documentRequests.data.map((request) => (
+                                    {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request) => (
                                         <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{request.document_type?.name || "N/A"}</td>
@@ -258,7 +258,15 @@ export default function Request() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))}
+                                    )) : (
+                                        <tr>
+                                            <td colSpan="5" className="text-center py-16">
+                                                <EmptyStateIcon />
+                                                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No active requests found</h3>
+                                                <p className="mt-1 text-sm text-gray-500">Try adjusting your search or filter.</p>
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -273,12 +281,11 @@ export default function Request() {
                 </div>
             </div>
 
-            {/* Modals */}
             <Modal show={showRejectModal} onClose={() => setShowRejectModal(false)} title="Reject Document Request" maxWidth="md">
                 <form onSubmit={handleRejectSubmit}>
                     <div className="mb-4">
                         <label htmlFor="admin_remarks" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for Rejection</label>
-                        <textarea id="admin_remarks" value={data.admin_remarks} onChange={(e) => setData('admin_remarks', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-900 dark:border-gray-600" rows="4" required></textarea>
+                        <textarea id="admin_remarks" value={data.admin_remarks} onChange={(e) => setData({ ...data, admin_remarks: e.target.value })} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-900 dark:border-gray-600" rows="4" required></textarea>
                         {errors.admin_remarks && <p className="text-red-500 text-xs mt-1">{errors.admin_remarks}</p>}
                     </div>
                     <div className="flex justify-end space-x-2">
