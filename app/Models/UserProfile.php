@@ -30,6 +30,7 @@ class UserProfile extends Model
     'valid_id_front_path',
     'valid_id_back_path',
     'face_image_path',
+    'signature_data'
 ];
 
     /**
