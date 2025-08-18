@@ -240,9 +240,9 @@ export default function UserManagement({ auth, users: initialUsers }) {
                         {/* User Table */}
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-sky-50 border-b border-blue-200" id="users-table-thead">
+                                <thead className="bg-blue-600 text-white" id="users-table-thead">
                                     <tr>
-                                        <th scope="col" onClick={() => handleSort('full_name')} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-sky-100 transition duration-200">
+                                        <th scope="col" onClick={() => handleSort('full_name')} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-800 transition duration-200">
                                             <div className="flex items-center space-x-1">
                                                 <span>Name</span>
                                                 {params.sortBy === 'full_name' && (
@@ -250,7 +250,7 @@ export default function UserManagement({ auth, users: initialUsers }) {
                                                 )}
                                             </div>
                                         </th>
-                                        <th scope="col" onClick={() => handleSort('email')} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-sky-100 transition duration-200">
+                                        <th scope="col" onClick={() => handleSort('email')} className="px-6 py-4 text-left text-xs font-semibolduppercase tracking-wider cursor-pointer hover:bg-blue-800 transition duration-200">
                                             <div className="flex items-center space-x-1">
                                                 <span>Email</span>
                                                 {params.sortBy === 'email' && (
@@ -258,8 +258,8 @@ export default function UserManagement({ auth, users: initialUsers }) {
                                                 )}
                                             </div>
                                         </th>
-                                        <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Role</th>
-                                        <th scope="col" onClick={() => handleSort('created_at')} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-sky-100 transition duration-200">
+                                        <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider hover:bg-blue-800 ">Role</th>
+                                        <th scope="col" onClick={() => handleSort('created_at')} className="px-6 py-4 text-left text-xs font-semibolduppercase tracking-wider cursor-pointer hover:bg-blue-800 transition duration-200">
                                             <div className="flex items-center space-x-1">
                                                 <span>Registered On</span>
                                                 {params.sortBy === 'created_at' && (
