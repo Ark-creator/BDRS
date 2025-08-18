@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+use App\Http\Controllers\Admin\HistoryController;
 
 use App\Http\Controllers\Admin\MessagesCounterController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
@@ -114,7 +115,9 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
 
-     Route::resource('/announcements', AnnouncementController::class);
+    Route::resource('/announcements', AnnouncementController::class);
+
+    Route::get('/history', [HistoryController::class, 'index'])->name('history');
 });
 
 
