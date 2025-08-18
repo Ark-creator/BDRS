@@ -98,7 +98,7 @@ export default function History() {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{archive.document_type?.name}</td>
                                             <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={archive.status} /></td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(archive.created_at).toLocaleDateString()}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{archive.processor?.name || 'N/A'}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{archive.processor?.full_name || 'N/A'}</td>
                                         </tr>
                                     )) : (
                                         <tr>
