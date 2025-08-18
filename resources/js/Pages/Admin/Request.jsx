@@ -56,7 +56,6 @@ const StatusBadge = ({ status }) => {
 // --- Main Page Component ---
 export default function Request() {
     const { flash, documentRequests, filters } = usePage().props;
-
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewContent, setPreviewContent] = useState('');
@@ -70,8 +69,11 @@ export default function Request() {
     });
     const [debouncedFilter] = useDebounce(filter, 300);
 
-    const { data, setData, patch, processing, errors, reset } = useForm({ admin_remarks: '' });
-    
+    const { data, setData, patch, processing, errors, reset } = useForm({
+        status: '',
+        admin_remarks: ''
+    });
+
     const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
     const actionStatusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
@@ -85,7 +87,6 @@ export default function Request() {
             isInitialMount.current = false;
             return;
         }
-
         router.get(route('admin.request'), debouncedFilter, {
             preserveState: true,
             replace: true,
@@ -94,7 +95,10 @@ export default function Request() {
 
     const openRejectModal = (request) => {
         setSelectedRequest(request);
-        reset();
+        setData({
+            status: 'Rejected',
+            admin_remarks: ''
+        });
         setShowRejectModal(true);
     };
 
@@ -103,8 +107,7 @@ export default function Request() {
             openRejectModal(request);
             return;
         }
-        
-        router.patch(route('admin.requests.status.update', request.id), { status: newStatus }, { 
+        router.patch(route('admin.requests.status.update', request.id), { status: newStatus }, {
             preserveScroll: true,
             onSuccess: () => toast.success(`Request status updated to "${newStatus}".`),
             onError: () => toast.error('Failed to update status.')
@@ -114,18 +117,13 @@ export default function Request() {
     const handleRejectSubmit = (e) => {
         e.preventDefault();
         patch(route('admin.requests.status.update', selectedRequest.id), {
-            status: 'Rejected',
-            admin_remarks: data.admin_remarks
-        }, {
-            onSuccess: () => { 
-                setShowRejectModal(false); 
-                reset(); 
-                toast.success('Request has been rejected and archived.');
+            onSuccess: () => {
+                setShowRejectModal(false);
             },
             preserveScroll: true,
         });
     };
-    
+
     const handlePreviewClick = async (request) => {
         setSelectedRequest(request);
         setShowPreviewModal(true);
@@ -148,45 +146,37 @@ export default function Request() {
             <Toaster position="bottom-right" />
             <style>{`
                 .document-preview-container { background-color: #fff; max-width: 8.5in; min-height: 11in; margin: 1rem auto; padding: 1in; box-shadow: 0 0 15px rgba(0,0,0,0.1); font-family: 'Times New Roman', serif; color: #000; }
-                .document-preview-content { text-align: center; }
-                .header-logo { margin-bottom: 2rem; }
-                .header-logo img { max-width: 100px; margin: 0 auto; }
-                .document-preview-container h1 { font-size: 24px; font-weight: bold; margin-bottom: 2rem; }
-                .document-preview-container p { font-size: 14px; line-height: 1.6; text-align: justify; margin-bottom: 1.5rem; }
-                .signature-area { margin-top: 5rem; text-align: center; }
             `}</style>
 
-            <div className="py-12 bg-gray-50 dark:bg-gray-900">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div className="py-6 md:py-12">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-2xl sm:rounded-lg">
                         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                            <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between">
+                            <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
-                                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Manage Active Requests</h1>
+                                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Manage Active Requests</h1>
                                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">View and process all ongoing document requests.</p>
                                 </div>
-                                <div className="mt-4 md:mt-0 flex items-center gap-4">
-                                    <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon /></div>
-                                        <input 
-                                            id="search-input"
-                                            type="text"
-                                            placeholder="Search name or document..."
-                                            value={filter.search}
-                                            onChange={e => setFilter({...filter, search: e.target.value})}
-                                            className="block w-full md:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                        />
-                                    </div>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><SearchIcon /></div>
+                                    <input
+                                        id="search-input"
+                                        type="text"
+                                        placeholder="Search name or document..."
+                                        value={filter.search}
+                                        onChange={e => setFilter({ ...filter, search: e.target.value })}
+                                        className="block w-full md:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                                    />
                                 </div>
                             </div>
                         </div>
 
                         <div id="status-filter-tabs" className="p-4 border-b border-gray-200 dark:border-gray-700">
-                            <div className="flex space-x-1">
+                            <div className="flex flex-wrap gap-2">
                                 {filterStatusOptions.map(status => (
-                                    <button 
+                                    <button
                                         key={status}
-                                        onClick={() => setFilter({...filter, status})}
+                                        onClick={() => setFilter({ ...filter, status })}
                                         className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter.status === status ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                                     >
                                         {status}
@@ -195,7 +185,41 @@ export default function Request() {
                             </div>
                         </div>
 
-                        <div id="requests-table" className="overflow-x-auto">
+                        {/* --- RESPONSIVE TABLE/CARD VIEW --- */}
+                        <div className="md:hidden">
+                            {documentRequests.data.length > 0 ? documentRequests.data.map((request) => (
+                                <div key={request.id} className="border-b dark:border-gray-700 p-4 space-y-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="font-bold text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</div>
+                                        <StatusBadge status={request.status} />
+                                    </div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                        <p><span className="font-semibold">Document:</span> {request.document_type?.name || "N/A"}</p>
+                                        <p><span className="font-semibold">Date:</span> {new Date(request.created_at).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 pt-2 border-t dark:border-gray-600">
+                                        <span className="text-sm font-medium">Actions:</span>
+                                        <select
+                                            value={request.status}
+                                            onChange={(e) => handleStatusChange(request, e.target.value)}
+                                            className="w-full text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500"
+                                        >
+                                            <option value={request.status} disabled>{request.status}</option>
+                                            {actionStatusOptions.filter(status => status !== request.status).map(status => (
+                                                <option key={status} value={status}>{status}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                             )) : (
+                                <div className="text-center py-16">
+                                    <EmptyStateIcon />
+                                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No active requests found</h3>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="hidden md:block overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead className="bg-gray-50 dark:bg-gray-700/50">
                                     <tr>
@@ -207,7 +231,7 @@ export default function Request() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                    {documentRequests.data.length > 0 ? documentRequests.data.map((request) => (
+                                    {documentRequests.data.map((request) => (
                                         <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{request.document_type?.name || "N/A"}</td>
@@ -215,7 +239,7 @@ export default function Request() {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(request.created_at).toLocaleDateString()}</td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div className="flex items-center gap-2">
-                                                    <select 
+                                                    <select
                                                         value={request.status}
                                                         onChange={(e) => handleStatusChange(request, e.target.value)}
                                                         className="text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:ring-1 focus:ring-blue-500"
@@ -234,19 +258,12 @@ export default function Request() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    )) : (
-                                        <tr>
-                                            <td colSpan="5" className="text-center py-16">
-                                                <EmptyStateIcon />
-                                                <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No active requests found</h3>
-                                                <p className="mt-1 text-sm text-gray-500">Try adjusting your search or filter.</p>
-                                            </td>
-                                        </tr>
-                                    )}
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
-                        <Pagination 
+
+                        <Pagination
                             links={documentRequests.links}
                             from={documentRequests.from}
                             to={documentRequests.to}
@@ -256,6 +273,7 @@ export default function Request() {
                 </div>
             </div>
 
+            {/* Modals */}
             <Modal show={showRejectModal} onClose={() => setShowRejectModal(false)} title="Reject Document Request" maxWidth="md">
                 <form onSubmit={handleRejectSubmit}>
                     <div className="mb-4">
