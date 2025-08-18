@@ -7,7 +7,7 @@ import TextInput from '@/Components/TextInput';
 import InputError from '@/Components/InputError';
 import SelectInput from '@/Components/SelectInput'; // Assuming you have a standard SelectInput component
 
-export default function PWD({ auth, documentType }) {
+export default function pwd({ auth, documentType }) {
     
     // --- UPDATED useForm state to include disability fields ---
     const { data, setData, post, processing, errors } = useForm({

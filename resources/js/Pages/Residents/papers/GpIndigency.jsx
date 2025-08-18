@@ -1,82 +1,100 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
 import React from 'react';
+import { Head, useForm } from '@inertiajs/react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import PrimaryButton from '@/Components/PrimaryButton';
+import InputLabel from '@/Components/InputLabel';
+import TextInput from '@/Components/TextInput';
+import InputError from '@/Components/InputError';
+import SelectInput from '@/Components/SelectInput'; // Assuming you have this component
 
-export default function GpIndigency({ auth }) {
+export default function RequestGpIndigency({ auth, documentType }) {
+    
+    // --- useForm state adapted for GP Indigency purpose fields ---
+    const { data, setData, post, processing, errors } = useForm({
+        purpose: '',            // For the dropdown selection
+        other_purpose: '',      // For the 'Others' text input
+        document_type_id: documentType.id,
+    });
+
+    // List of purpose options for the dropdown
+    const purposeOptions = [
+        'Medical Assistance',
+        'Educational Assistance / Scholarship',
+        'Legal Aid / PAO Requirement',
+        'Burial / Funeral Assistance',
+        'First Time Jobseeker Requirement (RA 11261)',
+        'Livelihood Program Application',
+    ];
+
+    const submit = (e) => {
+        e.preventDefault();
+        // The 'data' object now includes the purpose and other_purpose
+        post(route('residents.request.store'));
+    };
+
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Request for GP (General Purpose) Indigency</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Request: {documentType.name}</h2>}
         >
-            <Head title="GP Indigency" />
+            <Head title={`Request ${documentType.name}`} />
 
             <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900 dark:text-gray-100">
-                            
-                            {/*
-                            =========================================================
-                            Dito mo ilalagay ang content para sa GP Indigency page.
-                            =========================================================
-                            SAMPLE LANG TO
-                            */}
-
-                            <h3 className="text-lg font-medium leading-6 text-gray-900 dark:text-gray-100">
-                                GP (General Purpose) Indigency Request Form
-                            </h3>
-                            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                                This certificate is for general use. Please state your specific purpose below.
+                <div className="max-w-3xl mx-auto sm:px-6 lg:px-8">
+                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                        <div className="mb-6">
+                            <h3 className="text-lg font-bold">Requirements:</h3>
+                            <p className="mt-1 text-sm text-gray-600">
+                                {documentType.requirements_description || 'No specific requirements listed. Please proceed with your request.'}
                             </p>
-
-                            <form className="mt-6 space-y-6">
-                                {/* Form Field: Full Name */}
-                                <div>
-                                    <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
-                                    <input
-                                        type="text"
-                                        name="full_name"
-                                        id="full_name"
-                                        defaultValue={auth.user.name}
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white"
-                                        readOnly
-                                    />
-                                </div>
-
-                                {/* Form Field: Address */}
-                                <div>
-                                    <label htmlFor="address" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Complete Address</label>
-                                    <textarea
-                                        name="address"
-                                        id="address"
-                                        rows="2"
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white"
-                                        placeholder="Your complete address"
-                                    ></textarea>
-                                </div>
-
-                                {/* Form Field: Purpose */}
-                                <div>
-                                    <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Specific Purpose</label>
-                                    <input
-                                        type="text"
-                                        name="purpose"
-                                        id="purpose"
-                                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-900 dark:border-gray-600 dark:text-white"
-                                        placeholder="e.g., For legal aid, processing of documents, etc."
-                                    />
-                                </div>
-                                
-                                <div className="flex justify-end">
-                                    <button
-                                        type="submit"
-                                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                    >
-                                        Submit Request
-                                    </button>
-                                </div>
-                            </form>
                         </div>
+
+                        <form onSubmit={submit} className="space-y-6">
+                            <input type="hidden" name="document_type_id" value={data.document_type_id} />
+
+                            {/* --- Purpose Dropdown --- */}
+                            <div>
+                                <InputLabel htmlFor="purpose" value="Specific Purpose" />
+                                <SelectInput
+                                    id="purpose"
+                                    name="purpose"
+                                    value={data.purpose}
+                                    className="mt-1 block w-full"
+                                    onChange={(e) => setData('purpose', e.target.value)}
+                                    required
+                                >
+                                    <option value="" disabled>-- Select a purpose --</option>
+                                    {purposeOptions.map(option => (
+                                        <option key={option} value={option}>{option}</option>
+                                    ))}
+                                    <option value="Others">Others (Please specify)</option>
+                                </SelectInput>
+                                <InputError message={errors.purpose} className="mt-2" />
+                            </div>
+
+                            {/* --- Conditional Input for "Others" --- */}
+                            {data.purpose === 'Others' && (
+                                <div>
+                                    <InputLabel htmlFor="other_purpose" value="Please Specify Your Purpose" />
+                                    <TextInput
+                                        id="other_purpose"
+                                        name="other_purpose"
+                                        value={data.other_purpose}
+                                        onChange={(e) => setData('other_purpose', e.target.value)}
+                                        className="mt-1 block w-full"
+                                        required
+                                        placeholder="Enter your specific purpose here"
+                                    />
+                                    <InputError message={errors.other_purpose} className="mt-2" />
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end">
+                                <PrimaryButton disabled={processing}>
+                                    Submit Request
+                                </PrimaryButton>
+                            </div>
+                        </form>
                     </div>
                 </div>
             </div>

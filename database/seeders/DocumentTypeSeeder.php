@@ -42,7 +42,7 @@ class DocumentTypeSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Certificate of Residency',
+                'name' => 'Residency',
                 'description' => 'A certificate proving barangay residency.',
                 'template_path' => 'templates/cert_residency.blade.php',
                 'created_at' => now(),
