@@ -5,6 +5,7 @@ import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer
 import { TypeAnimation } from 'react-type-animation';
 import clsx from 'clsx';
 import Footer from '@/Components/Residents/Footer';
+import { Menu, X } from 'lucide-react';
 
 const FlagPH = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" className={className}>
@@ -183,6 +184,7 @@ const AuroraBackground = () => (
 export default function Welcome({ auth }) {
     const [scrolled, setScrolled] = useState(false);
     const [language, setLanguage] = useState('en');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
@@ -213,16 +215,27 @@ export default function Welcome({ auth }) {
             <Head title={t.title} />
             <div className="relative overflow-x-hidden bg-sky-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 isolate">
                 <motion.div className="fixed top-0 left-0 right-0 h-1 bg-blue-600 origin-left z-50" style={{ scaleX }} />
-                
-                <header className={clsx("fixed top-0 left-0 right-0 z-30 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
-                       <nav className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
-                         <div className="flex lg:flex-1">
+                 <header className={clsx("fixed top-0 left-0 right-0 z-30 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
+                    <nav className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
+                        <div className="flex lg:flex-1">
                             <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
                                 <img className="h-10 w-auto rounded-full ring-2 ring-white/50" src="/images/gapanlogo.png" alt="Barangay Logo" />
                                 <span className="font-bold text-lg text-slate-800 dark:text-white">Doconnect</span>
                             </Link>
                         </div>
-                        <div className="flex flex-1 justify-end items-center gap-x-2 sm:gap-x-4">
+                    
+                        <div className="flex lg:hidden">
+                            <button
+                                type="button"
+                                className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700 dark:text-gray-300"
+                                onClick={() => setIsMobileMenuOpen(true)}
+                            >
+                                <span className="sr-only">Open main menu</span>
+                                <Menu className="h-6 w-6" aria-hidden="true" />
+                            </button>
+                        </div>
+
+                        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-4">
                             <div className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 flex text-sm font-semibold">
                                 <button onClick={() => setLanguage('en')} className={clsx('px-3 py-1 rounded-full transition-colors flex items-center gap-2', language === 'en' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400')}>
                                     <FlagUSA className="h-4 w-5 rounded-sm" /> EN
@@ -235,13 +248,79 @@ export default function Welcome({ auth }) {
                                 <Link href={route('dashboard')} className="rounded-md px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">{t.dashboard}</Link>
                             ) : (
                                 <>
-                                    <Link href={route('login')} className="hidden sm:block rounded-md px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 transition hover:text-slate-900 dark:hover:text-white">{t.login}</Link>
+                                    <Link href={route('login')} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">{t.login}</Link>
                                     <Link href={route('register')} className="rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline-blue-600 transition-colors">{t.register}</Link>
                                 </>
                             )}
                         </div>
                     </nav>
-                </header>
+<AnimatePresence>
+    {isMobileMenuOpen && (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="lg:hidden"
+        >
+            {/* Darkened background overlay */}
+            <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+            
+            {/* Sliding menu panel */}
+            <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col overflow-y-auto bg-slate-50 dark:bg-slate-800 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10"
+            >
+                <div className="p-6">
+                    <div className="flex items-center justify-between">
+                        <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
+                             <img className="h-8 w-auto rounded-full" src="/images/gapanlogo.png" alt="Barangay Logo" />
+                            <span className="font-bold text-lg text-slate-800 dark:text-white">Doconnect</span>
+                        </Link>
+                        <button
+                            type="button"
+                            className="-m-2.5 rounded-md p-2.5 text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                        >
+                            <span className="sr-only">Close menu</span>
+                            <X className="h-6 w-6" aria-hidden="true" />
+                        </button>
+                    </div>
+                    <div className="mt-8 flow-root">
+                        <div className="-my-6 divide-y divide-gray-200/10 dark:divide-gray-700/50">
+                            <div className="space-y-4 py-6">
+                                {auth.user ? (
+                                     <Link href={route('dashboard')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.dashboard}</Link>
+                                ) : (
+                                    <>
+                                        <Link href={route('login')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.login}</Link>
+                                        <Link href={route('register')} className="block rounded-lg bg-blue-600 py-3 px-4 text-center text-base font-semibold leading-7 text-white shadow-sm hover:bg-blue-700">{t.register}</Link>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {/* Language switcher is pushed to the bottom */}
+                <div className="mt-auto border-t border-gray-200 dark:border-gray-700/50 p-6">
+                    <div className="p-1 rounded-full bg-slate-200 dark:bg-slate-700 flex text-sm font-semibold">
+                        <button onClick={() => setLanguage('en')} className={clsx('w-full px-3 py-2 rounded-full transition-colors flex items-center justify-center gap-2', language === 'en' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 dark:text-slate-300')}>
+                            <FlagUSA className="h-4 w-5 rounded-sm" /> EN
+                        </button>
+                        <button onClick={() => setLanguage('tg')} className={clsx('w-full px-3 py-2 rounded-full transition-colors flex items-center justify-center gap-2', language === 'tg' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 dark:text-slate-300')}>
+                            <FlagPH className="h-4 w-5 rounded-sm" /> TG
+                        </button>
+                    </div>
+                </div>
+            </motion.div>
+        </motion.div>
+    )}
+</AnimatePresence>
+                   
+                </header>                
+                    
 
                 <main className="relative z-10">
                     <div className="min-h-screen flex items-center relative overflow-hidden">
