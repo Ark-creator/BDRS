@@ -44,12 +44,36 @@ class RequestDocumentsController extends Controller
         ]);
     }
 
+  public function setPaymentAmount(Request $request, DocumentRequest $documentRequest): RedirectResponse
+    {
+        // 1. We only want this to work for Business Permits
+        if ($documentRequest->documentType->name !== 'Barangay Business Permit') {
+            return back()->with('error', 'This action is not applicable for this document type.');
+        }
+
+        // 2. Validate the incoming amount
+        $validated = $request->validate([
+            'payment_amount' => 'required|numeric|min:0|max:999999.99',
+        ]);
+
+        // 3. Update the request with the amount and new status
+        $documentRequest->update([
+            'payment_amount' => $validated['payment_amount'],
+            'status' => 'For Payment', // This is our new, custom status
+        ]);
+
+        // 4. (Optional) You could trigger an email or SMS notification to the user here.
+
+        return back()->with('success', 'Payment amount has been set. The user will be notified to proceed with payment.');
+    }
+
+
     public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
-        // --- 2. ITO ANG BINAGO ---
         $validated = $request->validate([
-            'status' => 'required|string|in:Pending,Processing,Rejected,Ready to Pickup,Claimed', 
-            // Gawing required ang remarks KUNG ang status ay 'Rejected'
+            // --- UPDATE THIS LINE ---
+            // Add 'For Payment' to the list of valid statuses
+            'status' => 'required|string|in:Pending,Processing,For Payment,Rejected,Ready to Pickup,Claimed',
             'admin_remarks' => [
                 Rule::requiredIf($request->status === 'Rejected'),
                 'nullable',
@@ -57,12 +81,11 @@ class RequestDocumentsController extends Controller
                 'max:500'
             ],
         ]);
-    
+
         $documentRequest->status = $validated['status'];
-        // Gagamitin na natin ang validated remarks dahil sigurado nang may laman ito kung rejected
         $documentRequest->admin_remarks = $validated['admin_remarks'] ?? null;
         $documentRequest->processed_by = auth()->id();
-        
+
         if ($validated['status'] === 'Claimed' || $validated['status'] === 'Rejected') {
             ImmutableDocumentsArchiveHistory::create([
                 'user_id' => $documentRequest->user_id,
@@ -73,14 +96,14 @@ class RequestDocumentsController extends Controller
                 'processed_by' => $documentRequest->processed_by,
                 'original_created_at' => $documentRequest->created_at,
             ]);
-    
+
             $documentRequest->delete();
-    
+
             return back()->with('success', 'Request has been archived successfully.');
         }
-        
+
         $documentRequest->save();
-    
+
         return back()->with('success', 'Request status updated successfully.');
     }
 }
