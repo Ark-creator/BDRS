@@ -27,13 +27,16 @@ class DocumentGenerationController extends Controller
             return back()->with('error', "Generation failed: The user has not completed their profile information.");
         }
 
-        // --- START: SIGNATURE VALIDATION ---
-        // Check if the document requires a signature and if it exists in the user's profile.
+        // --- Prepare data for the template ---
+        $requestData = $documentRequest->form_data; // This now contains the signature path
         $isResidency = str_contains(strtolower($documentType->name), 'residency');
-        if ($isResidency && empty($profile->signature_data)) {
-            return back()->with('error', "Generation failed: The user's signature is missing from their profile.");
+        
+        // --- START: CORRECTED SIGNATURE VALIDATION ---
+        // We now check for the signature path within the request's own form_data.
+        if ($isResidency && empty($requestData['signature_path'])) {
+            return back()->with('error', "Generation failed: The signature is missing from this document request.");
         }
-        // --- END: SIGNATURE VALIDATION ---
+        // --- END: CORRECTED SIGNATURE VALIDATION ---
 
         // Construct template path from document type name
         $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
@@ -45,8 +48,7 @@ class DocumentGenerationController extends Controller
 
         $templateProcessor = new TemplateProcessor($templatePath);
 
-        // --- Prepare data for the template ---
-        $requestData = $documentRequest->form_data;
+        // --- Prepare common data values ---
         $nameParts = array_filter([$profile->first_name, $profile->middle_name, $profile->last_name]);
         $fullName = strtoupper(implode(' ', $nameParts));
         $age = $profile->birthday ? Carbon::parse($profile->birthday)->age : 'N/A';
@@ -73,21 +75,25 @@ class DocumentGenerationController extends Controller
                 break;
         }
 
-        // --- CORRECT SIGNATURE INJECTION ---
-        // This is the only block needed. It reads the signature path from the user's profile
-        // and injects the saved image file directly into the Word document.
-        if ($isResidency && $profile->signature_data) {
-            $signatureFullPath = storage_path('app/public/' . $profile->signature_data);
+        // --- CORRECTED SIGNATURE INJECTION ---
+        // Fetch the signature path from the request's form_data.
+        $signaturePath = $requestData['signature_path'] ?? null;
+    // dd($signaturePath); 
+
+        if ($isResidency && $signaturePath) {
+            // The signature was saved to the 'local' disk, which is storage/app/
+            $signatureFullPath = storage_path('app/private/' . $signaturePath);
+
             if (file_exists($signatureFullPath)) {
                 $templateProcessor->setImageValue('USER_SIGNATURE', [
                     'path' => $signatureFullPath,
-                    'width' => 150,
-                    'height' => 75,
-                    'ratio' => false
+                    'width' => 100,
+                    'height' => 50,
+                    'ratio' => true
                 ]);
             } else {
-                // Optional: Handle cases where the path exists in DB but file is missing
-                // For now, it will just skip adding the image. You could add an error here.
+                // Optional: Handle cases where the path exists but the file is missing.
+                return back()->with('error', 'Generation failed: Signature file not found on server.');
             }
         }
 
