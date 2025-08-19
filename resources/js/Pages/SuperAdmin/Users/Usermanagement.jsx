@@ -189,7 +189,7 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
                                 <tbody className="bg-white divide-y divide-gray-100">
                                     {localUsers.length > 0 ? (
                                         localUsers.map((user, index) => (
-                                            <tr key={user.id} className={`transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} ${user.id === auth.user.id ? 'border-l-4 border-blue-500' : ''} hover:bg-blue-100`}>
+                                            <tr key={user.id} className={`transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-100'} ${user.id === auth.user.id ? 'border-l-4 border-blue-500' : ''} hover:bg-blue-100`}>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.full_name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -241,7 +241,7 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
             key={index}
             href={link.url}
             preserveState
-            className={`px-3 py-1 rounded-md transition duration-200 ${link.active ? 'bg-blue-600 text-white font-bold' : 'text-gray-700 hover:bg-gray-200'}`}
+            className={`px-3 py-1 rounded-md transition duration-200 ${link.active ? 'bg-blue-600 text-white font-bold' : 'hover:text-white hover:bg-blue-600'}`}
             dangerouslySetInnerHTML={{ __html: link.label }}
         />
     ) : (

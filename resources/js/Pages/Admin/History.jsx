@@ -194,8 +194,8 @@ export default function History() {
                                                 preserveScroll
                                                 className={clsx(
                                                     'px-3 py-2 text-sm rounded-md leading-4 transition-colors duration-200',
-                                                    !link.url ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 dark:text-gray-300 hover:bg-sky-100 dark:hover:bg-gray-700',
-                                                    link.active ? 'bg-blue-600 text-white font-semibold shadow-md hover:bg-blue-700' : 'bg-white dark:bg-gray-800'
+                                                    !link.url ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 dark:text-gray-300 hover:bg-blue-600 hover:text-white dark:hover:bg-gray-700',
+                                                    link.active ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-white dark:bg-gray-800'
                                                 )}
                                             >
                                                 {label}
