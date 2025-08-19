@@ -18,7 +18,6 @@ const SaveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-
 const CancelIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>;
 const RestoreIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5" /><path strokeLinecap="round" strokeLinejoin="round" d="M4 9a9 9 0 0114.13-6.36M20 15a9 9 0 01-14.13 6.36" /></svg>;
 const ViewArchiveIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>;
-// NOTE: SortIcon component is removed as requested.
 
 // --- Modal Component (for viewing archived list) ---
 const Modal = ({ children, show, onClose, title }) => {
@@ -30,7 +29,7 @@ const Modal = ({ children, show, onClose, title }) => {
             onClick={onClose}
         >
             <div 
-                className="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl transform transition-all" 
+                className="bg-white p-6 rounded-lg shadow-xl w-full max-w-3xl transform transition-all" 
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center pb-3 border-b border-gray-200">
@@ -58,7 +57,7 @@ export default function Documents() {
     const [isLoadingModal, setIsLoadingModal] = useState(false);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
-    const { data, setData, patch, processing, errors, clearErrors, reset } = useForm({
+    const { data, setData, patch, processing, errors, clearErrors } = useForm({
         name: '',
         description: '',
     });
@@ -70,10 +69,10 @@ export default function Documents() {
             sortableItems.sort((a, b) => {
                 const aValue = a[sortConfig.key] || '';
                 const bValue = b[sortConfig.key] || '';
-                if (aValue < bValue) {
+                if (aValue.toLowerCase() < bValue.toLowerCase()) {
                     return sortConfig.direction === 'ascending' ? -1 : 1;
                 }
-                if (aValue > bValue) {
+                if (aValue.toLowerCase() > bValue.toLowerCase()) {
                     return sortConfig.direction === 'ascending' ? 1 : -1;
                 }
                 return 0;
@@ -194,8 +193,6 @@ export default function Documents() {
             if (result.isConfirmed) {
                 router.patch(route('admin.documents.archive', docType.id), {}, {
                     preserveScroll: true,
-                    onSuccess: () => toast.success(`"${docType.name}" has been archived.`),
-                    onError: () => toast.error('Failed to archive the document.'),
                 });
             }
         });
@@ -216,9 +213,7 @@ export default function Documents() {
                     preserveScroll: true,
                     onSuccess: () => {
                         setArchivedDocs(prevDocs => prevDocs.filter(doc => doc.id !== docType.id));
-                        toast.success(`"${docType.name}" has been restored.`);
                     },
-                    onError: () => toast.error('Failed to restore the document.'),
                 });
             }
         });
@@ -284,7 +279,6 @@ export default function Documents() {
                                         <th className="px-6 py-4 text-left text-xs font-semibold  uppercase tracking-wider cursor-pointer hover:bg-blue-800  transition duration-200" onClick={() => requestSort('name')}>
                                             <div className="flex items-center space-x-1">
                                                 <span>Name</span>
-                                                {/* --- SORT INDICATOR CHANGE --- */}
                                                 {sortConfig.key === 'name' && (
                                                     <span className="text-xs">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
                                                 )}
@@ -293,7 +287,6 @@ export default function Documents() {
                                         <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-800  transition duration-200" onClick={() => requestSort('description')}>
                                             <div className="flex items-center space-x-1">
                                                 <span>Description</span>
-                                                {/* --- SORT INDICATOR CHANGE --- */}
                                                 {sortConfig.key === 'description' && (
                                                      <span className="text-xs">{sortConfig.direction === 'ascending' ? '↑' : '↓'}</span>
                                                 )}
@@ -360,6 +353,7 @@ export default function Documents() {
                            <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Archived By</th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -367,7 +361,10 @@ export default function Documents() {
                                 {archivedDocs.length > 0 ? (
                                     archivedDocs.map(doc => (
                                         <tr key={doc.id}>
-                                            <td className="px-6 py-4 whitespace-nowrap">{doc.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-800">{doc.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {doc.archived_by ? doc.archived_by.full_name : 'N/A'}
+                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <button onClick={() => handleRestore(doc)} className="flex items-center px-3 py-1.5 bg-green-100 text-green-800 text-xs font-bold rounded-md hover:bg-green-200 transition-colors">
                                                     <RestoreIcon /> <span className="ml-1">Restore</span>
@@ -376,7 +373,7 @@ export default function Documents() {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan="2" className="px-6 py-4 text-center text-gray-500">No archived documents found.</td></tr>
+                                    <tr><td colSpan="3" className="px-6 py-4 text-center text-gray-500">No archived documents found.</td></tr>
                                 )}
                             </tbody>
                         </table>
