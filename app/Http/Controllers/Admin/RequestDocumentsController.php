@@ -75,7 +75,7 @@ class RequestDocumentsController extends Controller
         $validated = $request->validate([
             // --- UPDATE THIS LINE ---
             // Add 'For Payment' to the list of valid statuses
-            'status' => 'required|string|in:Pending,Processing,For Payment,Rejected,Ready to Pickup,Claimed',
+            'status' => 'required|string|in:Assess For Payment,Processing,For Payment,Rejected,Ready to Pickup,Claimed',
             'admin_remarks' => [
                 Rule::requiredIf($request->status === 'Rejected'),
                 'nullable',

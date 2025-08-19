@@ -88,8 +88,8 @@ export default function Request() {
         payment_amount: '',
     });
 
-    const filterStatusOptions = ['All', 'Pending', 'For Payment', 'Processing', 'Ready to Pickup'];
-    const actionStatusOptions = ['Pending', 'Processing', 'For Payment', 'Ready to Pickup', 'Claimed', 'Rejected'];
+    const filterStatusOptions = ['All', 'Assess For Payment', 'For Payment', 'Processing', 'Ready to Pickup'];
+    const actionStatusOptions = ['Assess For Payment', 'Processing', 'For Payment', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
     const startTour = () => {
         const driverObj = driver({
@@ -192,7 +192,7 @@ export default function Request() {
     const renderActions = (request, index) => {
         const isBusinessPermit = request.document_type?.name === 'Brgy Business Permit';
         
-        if (isBusinessPermit && request.status === 'Pending') {
+        if (isBusinessPermit && request.status === 'Assess For Payment') {
             return (
                 <button
                     onClick={() => {
