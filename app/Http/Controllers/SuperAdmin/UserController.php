@@ -52,18 +52,25 @@ class UserController extends Controller
      */
     public function updateRole(Request $request, User $user)
     {
-        if ($user->id === auth()->id() && $request->role !== 'super_admin') {
+        // This check prevents a super admin from demoting themselves, which is still good.
+        if ($user->id === auth()->id()) {
             return Redirect::back()->with('error', 'You cannot change your own role.');
         }
 
         $request->validate([
-            'role' => ['required', 'string', Rule::in(['resident', 'admin', 'super_admin'])],
+            // BAGUHIN ITO: Alisin ang 'super_admin' sa listahan ng mga pinapayagang role.
+            'role' => ['required', 'string', Rule::in(['resident', 'admin'])],
         ]);
+
+        // Prevent changing the role of another super admin via this method.
+        if ($user->role === 'super_admin') {
+             return Redirect::back()->with('error', 'Cannot change the role of another Super Admin.');
+        }
 
         $user->role = $request->role;
         $user->save();
 
-        return Redirect::back()->with('success', 'User role updated successfully.');
+        return Redirect::back()->with('success', "{$user->profile->first_name}'s role updated successfully.");
     }
 
     /**

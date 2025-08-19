@@ -193,11 +193,19 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.full_name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                    {updatingUser === user.id ? ( <LoadingSpinner />) : (
-                                                        <select id={`user-role-selector-${user.id}`} value={user.role} onChange={(e) => handleRoleChange(e, user)} className={`block w-auto rounded-md px-3 py-1 text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${roleBadgeClasses[user.role]} disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed`} disabled={user.id === auth.user.id && user.role === 'super_admin'}>
+                                                    {updatingUser === user.id ? (
+                                                        <LoadingSpinner />
+                                                    ) : (
+                                                        <select
+                                                            id={`user-role-selector-${user.id}`}
+                                                            value={user.role}
+                                                            onChange={(e) => handleRoleChange(e, user)}
+                                                            className={`block w-auto rounded-md px-3 py-1 text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${roleBadgeClasses[user.role]} disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed`}
+                                                            disabled={user.id === auth.user.id && user.role === 'super_admin'}
+                                                        >
                                                             <option value="resident">Resident</option>
                                                             <option value="admin">Admin</option>
-                                                            <option value="super_admin">Super Admin</option>
+                                                            {/* <option value="super_admin">Super Admin</option> */}
                                                         </select>
                                                     )}
                                                 </td>
