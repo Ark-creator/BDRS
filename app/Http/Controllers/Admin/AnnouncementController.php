@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Admin/AnnouncementController.php
 
 namespace App\Http\Controllers\Admin;
 
@@ -8,6 +7,7 @@ use App\Models\Announcement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage; // Added for file deletion
 use Inertia\Inertia;
 
 class AnnouncementController extends Controller
@@ -16,15 +16,17 @@ class AnnouncementController extends Controller
      * Display a listing of the resource.
      */
     public function index()
-{
-    $announcements = Announcement::latest()
-        ->with('user.profile') // Critical: load profile
-        ->get();
+    {
+        // Changed to eager load user without profile for simplicity,
+        // as the frontend only uses user.name
+        $announcements = Announcement::latest()
+            ->with('user')
+            ->get();
 
-    return Inertia::render('Admin/Announcement', [
-        'announcements' => $announcements
-    ]);
-}
+        return Inertia::render('Admin/Announcement', [
+            'announcements' => $announcements
+        ]);
+    }
 
     /**
      * Store a newly created resource in storage.
@@ -36,7 +38,8 @@ class AnnouncementController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'link' => 'nullable|url',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
+            // Changed max size to 10MB (10240 KB)
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:10240',
         ]);
 
         $imagePath = $request->file('image')->store('announcements', 'public');
@@ -58,8 +61,10 @@ class AnnouncementController extends Controller
      */
     public function destroy(Announcement $announcement)
     {
-        // Optional: Delete the image file from storage
-        // Storage::disk('public')->delete($announcement->image);
+        // Delete the image file from storage if it exists
+        if ($announcement->image) {
+            Storage::disk('public')->delete($announcement->image);
+        }
 
         $announcement->delete();
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement deleted successfully.');

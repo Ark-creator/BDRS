@@ -48,13 +48,11 @@ export default function Announcement({ auth, announcements = [] }) {
             onSuccess: () => {
                 reset();
                 setImagePreview(null);
-                // NEW: Show success toast on creation
                 toast.success('Announcement created successfully!');
             },
         });
     };
 
-    // NEW: Function to handle deletion with SweetAlert confirmation
     const handleDelete = (id) => {
         Swal.fire({
             title: 'Are you sure?',
@@ -125,7 +123,7 @@ export default function Announcement({ auth, announcements = [] }) {
                                                 <div className="flex flex-col items-center justify-center space-y-2 text-slate-500 dark:text-slate-400">
                                                     <UploadCloud className="h-10 w-10" />
                                                     <p className="text-sm font-semibold">Click to upload or drag & drop</p>
-                                                    <p className="text-xs">PNG, JPG, GIF up to 2MB</p>
+                                                    <p className="text-xs">PNG, JPG, GIF up to 10MB</p>
                                                 </div>
                                             )}
                                             <input id="image" name="image" type="file" className="sr-only" onChange={handleFileChange} required />
@@ -154,7 +152,7 @@ export default function Announcement({ auth, announcements = [] }) {
                             {announcements.length > 0 ? (
                                 announcements.map((announcement) => (
                                     <div key={announcement.id} className="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 shadow-lg rounded-2xl overflow-hidden flex flex-col md:flex-row transition-shadow duration-300 hover:shadow-blue-500/20">
-                                        <img src={`/storage/${announcement.image_path}`} alt={announcement.title} className="w-full md:w-1/3 h-48 md:h-auto object-cover" />
+                                        <img src={announcement.image_url} alt={announcement.title} className="w-full md:w-1/3 h-48 md:h-auto object-cover" />
                                         <div className="p-6 flex flex-col justify-between flex-1">
                                             <div>
                                                 <div className="flex items-center justify-between">
@@ -178,7 +176,7 @@ export default function Announcement({ auth, announcements = [] }) {
                                             <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                                                 <div className="flex items-center gap-2">
                                                     <User size={14} />
-                                                    <span>{announcement.user?.name || 'Unknown'}</span>
+                                                    <span>{announcement.user?.full_name || 'Unknown'}</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <CalendarDays size={14} />

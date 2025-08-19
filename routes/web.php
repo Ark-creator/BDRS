@@ -92,7 +92,7 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     
     // --- Static Pages ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/announcement', fn() => Inertia::render('Admin/Announcement'))->name('announcement');
+    // The conflicting '/announcement' route has been removed.
     Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
     
@@ -108,15 +108,14 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::get('/requests/{documentRequest}/generate', [DocumentGenerationController::class, 'generate'])->name('requests.generate');
     Route::get('/requests/{documentRequest}/preview', [DocumentGenerationController::class, 'preview'])->name('requests.preview');
     
-
     // --- Messages Routes ---
     Route::get('/messages', [MessagesController::class, 'index'])->name('messages');
     Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
 
+    // --- Resourceful Routes ---
     Route::resource('/announcements', AnnouncementController::class);
-
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
 });
 
