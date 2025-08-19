@@ -3,6 +3,8 @@ import { Head, Link } from '@inertiajs/react';
 import { useState, useRef } from 'react';
 import Footer from '@/Components/Residents/Footer';
 import Announcements from '@/Components/Residents/Announcements';
+import { motion } from 'framer-motion';
+import { FileText, ArrowRight } from 'lucide-react'; 
 
 const DocumentIcon = ({ documentName }) => {
     const icons = {
@@ -97,36 +99,66 @@ export default function Home({ auth, documentTypes, announcements = [] }) {
                                     </button>
                                 </div>
                             </div>
-                            
-                            {showRequestCards && (
-                                <div ref={documentsSectionRef} className="bg-white py-16 sm:py-24">
-                                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                                        <div className="text-center">
-                                            <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Select a Document</h2>
-                                            <p className="mt-4 max-w-2xl mx-auto text-lg text-slate-500">
-                                                Click on a card to start your request.
-                                            </p>
-                                        </div>
-                                        <div className="mt-12 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                                            {/* We now map over the `documentTypes` prop from the database */}
-                                            {documentTypes.map((docType) => (
+
+                        {showRequestCards && (
+                            <motion.div 
+                                ref={documentsSectionRef} 
+                                className="bg-slate-50 dark:bg-slate-900/70 py-20 sm:py-28"
+                                initial="hidden"
+                                whileInView="visible"
+                                viewport={{ once: true, amount: 0.1 }}
+                                transition={{ staggerChildren: 0.1 }}
+                            >
+                                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                                    <div className="text-center">
+                                        <motion.div 
+                                            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }}}
+                                            className="flex justify-center items-center gap-3"
+                                        >
+                                            <FileText className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                                            <h2 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+                                                Select a Document
+                                            </h2>
+                                        </motion.div>
+                                        <motion.p 
+                                            variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.5, delay: 0.1 } }}}
+                                            className="mt-4 max-w-2xl mx-auto text-lg text-slate-600 dark:text-slate-400"
+                                        >
+                                            Choose the document you need. Clicking a card will take you to the request form.
+                                        </motion.p>
+                                    </div>
+                                    
+                                    <div className="mt-16 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                                        {documentTypes.map((docType, index) => (
+                                            <motion.div 
+                                                key={docType.id} 
+                                                variants={{
+                                                    hidden: { opacity: 0, y: 30, scale: 0.95 },
+                                                    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, delay: index * 0.05 } }
+                                                }}
+                                            >
                                                 <Link 
-                                                    key={docType.id} 
                                                     href={route('residents.request.create', docType.id)} 
-                                                    className="block group"
+                                                    className="block group h-full"
                                                 >
-                                                    <div className="bg-slate-50 rounded-xl ring-1 ring-slate-200 p-6 h-full flex flex-col items-center justify-center text-center text-slate-700 hover:ring-blue-500 hover:shadow-md transition-all duration-300 transform hover:-translate-y-1">
-                                                        <div className="p-4 rounded-full bg-white text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                                    <div className="relative bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-6 h-full flex flex-col items-center justify-center text-center text-slate-800 dark:text-slate-200 shadow-sm hover:shadow-xl hover:shadow-blue-500/10 hover:border-blue-500 dark:hover:border-blue-600 transition-all duration-300 transform hover:-translate-y-2">
+                                                        <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-700/50 text-blue-600 dark:text-blue-400 group-hover:bg-blue-100 dark:group-hover:bg-blue-900/50 transition-colors duration-300">
                                                             <DocumentIcon documentName={docType.name} />
                                                         </div>
-                                                        <h4 className="mt-4 text-sm font-semibold">{docType.name}</h4>
+                                                        <h4 className="mt-4 text-lg font-bold tracking-tight">{docType.name}</h4>
+                                                        <p className="mt-1 text-md text-slate-500 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Request Now</p>
+                                                        
+                                                        <div className="absolute top-4 right-4 text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform -rotate-45 group-hover:rotate-0">
+                                                        <ArrowRight size={16} />
+                                                        </div>
                                                     </div>
                                                 </Link>
-                                            ))}
-                                        </div>
+                                            </motion.div>
+                                        ))}
                                     </div>
                                 </div>
-                            )}
+                            </motion.div>
+                        )}
                         </div>
                     </main>
                     <Footer />
