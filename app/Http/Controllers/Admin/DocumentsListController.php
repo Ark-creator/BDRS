@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\DocumentType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse; // Import JsonResponse
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,19 +32,35 @@ class DocumentsListController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
         ]);
+        
         $documentType->update($validated);
+        
         return redirect()->route('admin.documents')->with('success', 'Document type updated successfully.');
     }
 
     /**
-     * Toggles the archive status of a document type.
+     * Toggles the archive status of a document type and records the user.
      */
     public function archive(DocumentType $documentType): RedirectResponse
     {
-        // This line toggles the value between true (1) and false (0)
-        $documentType->update(['is_archived' => !$documentType->is_archived]);
-        
-        $message = $documentType->is_archived ? 'Document type archived successfully.' : 'Document type restored successfully.';
+        $isCurrentlyArchived = $documentType->is_archived;
+        $message = '';
+
+        if ($isCurrentlyArchived) {
+            // ACTION: Restore the document
+            $documentType->update([
+                'is_archived' => false,
+                'archived_by' => null // Clear the user ID on restore
+            ]);
+            $message = 'Document type restored successfully.';
+        } else {
+            // ACTION: Archive the document
+            $documentType->update([
+                'is_archived' => true,
+                'archived_by' => Auth::id() // Set the current user's ID
+            ]);
+            $message = 'Document type archived successfully.';
+        }
         
         return back()->with('success', $message);
     }
@@ -53,7 +70,12 @@ class DocumentsListController extends Controller
      */
     public function getArchivedDocuments(): JsonResponse
     {
-        $archivedDocuments = DocumentType::where('is_archived', true)->get();
+        // Load the entire 'archivedBy' relationship.
+        // Laravel will automatically append 'full_name' from your User model.
+        $archivedDocuments = DocumentType::where('is_archived', true)
+                                           ->with('archivedBy')
+                                           ->get();
+                                           
         return response()->json([
             'archivedDocuments' => $archivedDocuments
         ]);
