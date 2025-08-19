@@ -122,9 +122,20 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
 
 // --- SUPER ADMIN ROUTES ---
 // Only superadmins (because gate check is strict)
-Route::middleware(['auth', 'can:be-super-admin'])->prefix('superadmin')->name('superadmin.')->group(function () {
+Route::middleware(['auth', 'can:be-super-admin'])
+    ->prefix('superadmin')
+    ->name('superadmin.')
+    ->group(function () {
+    
+    // This route shows the list of users on the management page.
     Route::get('/users', [SuperAdminUserController::class, 'index'])->name('users.index');
+    
+    // This route handles changing ONLY the user's role via the dropdown.
     Route::patch('/users/{user}/update-role', [SuperAdminUserController::class, 'updateRole'])->name('users.updateRole');
+    
+    // ADD THIS NEW LINE: This route handles updating the user's details (name, email, etc.) from the edit modal.
+    Route::patch('/users/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
+
 });
 
 // Auth scaffolding routes
