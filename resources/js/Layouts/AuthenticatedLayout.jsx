@@ -525,6 +525,9 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 <div className="font-medium text-base text-gray-800 dark:text-gray-200">{user.name}</div>
                                                 <div className="font-medium text-sm text-gray-500 truncate">{user.email}</div>
                                             </div>
+                                                <Dropdown.Link href={route("residents.requests.index")}>
+                                                    My Requests
+                                                </Dropdown.Link>
                                             <Dropdown.Link href={route("profile.edit")}>Profile</Dropdown.Link>
                                             <Dropdown.Link href={route("logout")} method="post" as="button">Log Out</Dropdown.Link>
                                         </Dropdown.Content>

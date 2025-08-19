@@ -68,7 +68,11 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     
     // ADD this new generic route for storing the request
     Route::post('/request', [DocumentRequestController::class, 'store'])->name('request.store');
+Route::get('/my-requests', [DocumentRequestController::class, 'index'])
+    ->name('requests.index');
 
+    Route::post('/my-requests/{documentRequest}/pay', [DocumentRequestController::class, 'submitPayment'])
+    ->name('requests.submit-payment');
 
     Route::prefix('papers')->name('papers.')->group(function() {
         Route::get('/akap', fn() => Inertia::render('Residents/papers/Akap'))->name('akap');
@@ -96,6 +100,8 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
     
+     Route::post('/requests/{documentRequest}/set-payment', [RequestDocumentsController::class, 'setPaymentAmount'])
+         ->name('requests.set-payment');
     // --- Document Types Routes ---
     Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
     Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
@@ -121,6 +127,9 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     ->except(['update']);
     Route::resource('/announcements', AnnouncementController::class);
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
+
+    Route::get('/requests/{documentRequest}/receipt', [RequestDocumentsController::class, 'showReceipt'])
+         ->name('requests.receipt');
 });
 
 

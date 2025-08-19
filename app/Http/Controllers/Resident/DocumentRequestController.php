@@ -116,6 +116,51 @@ class DocumentRequestController extends Controller
 
         return redirect()
             ->route('residents.home') // Consider redirecting to a "my requests" page
+         
             ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
     }
+
+    public function index()
+{
+    $requests = DocumentRequest::where('user_id', Auth::id())
+        ->with('documentType') // Eager load the document name
+        ->latest() // Show the newest requests first
+        ->paginate(10);
+
+    return Inertia::render('Residents/MyRequests', [
+        'requests' => $requests,
+    ]);
+}
+
+  public function submitPayment(Request $request, DocumentRequest $documentRequest)
+    {
+        // Authorization Check 1: Ensure the user owns this request.
+        if ($documentRequest->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Authorization Check 2: Ensure the request is actually awaiting payment.
+        if ($documentRequest->status !== 'For Payment') {
+            return back()->with('error', 'This request is not currently awaiting payment.');
+        }
+
+        $validated = $request->validate([
+            'receipt' => 'required|image|mimes:jpg,jpeg,png|max:2048', // 2MB Max size
+        ]);
+
+        // Store the uploaded receipt file in 'storage/app/public/receipts'
+// Store the uploaded receipt file in 'storage/app/receipts' (which is private)
+$path = $validated['receipt']->store('receipts', 'local');
+        // Update the document request record in the database
+        $documentRequest->update([
+            'payment_receipt_path' => $path,
+            'payment_status' => 'paid', // Mark as paid
+            'paid_at' => now(),
+            'status' => 'Processing', // Move the request to the next stage for the admin
+        ]);
+
+        return redirect()->route('residents.requests.index')
+               ->with('success', 'Payment submitted successfully! Your request is now being processed.');
+    }
+
 }

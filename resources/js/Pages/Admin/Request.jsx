@@ -16,6 +16,10 @@ const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const SearchIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" /></svg>;
 const EmptyStateIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 const LoadingSpinner = () => <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>;
+const PesoIcon = () => <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M14.25 7.756a4.5 4.5 0 1 0 0 8.488M7.5 10.5h5.25m-5.25 3h5.25M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>;
+// --- NEW ---
+const ReceiptIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 2a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V4a2 2 0 00-2-2H5zm0 2h10v12H5V4zm2 2a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm0 4a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1zm0 4a1 1 0 011-1h4a1 1 0 110 2H8a1 1 0 01-1-1z" clipRule="evenodd" /></svg>;
+
 
 // --- Reusable Components ---
 const Modal = ({ children, show, onClose, title, maxWidth = '4xl' }) => {
@@ -44,13 +48,14 @@ const StatusBadge = ({ status }) => {
     const colors = {
         'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
         'Pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+        'For Payment': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
         'Processing': 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
         'Ready to Pickup': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
         'Claimed': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
     };
     return (
         <span className={`px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-1.5 ${colors[status] || 'bg-gray-200'}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${colors[status]?.replace(/text-(yellow|sky|blue|green|red)-[0-9]{2,3}/, 'bg-$1-500').split(' ')[1]}`}></span>
+            <span className={`h-1.5 w-1.5 rounded-full ${colors[status]?.replace(/text-(yellow|sky|blue|green|red|orange)-[0-9]{2,3}/, 'bg-$1-500').split(' ')[1]}`}></span>
             {status}
         </span>
     );
@@ -59,7 +64,12 @@ const StatusBadge = ({ status }) => {
 // --- Main Page Component ---
 export default function Request() {
     const { flash, documentRequests, filters } = usePage().props;
+    
+    // --- NEW ---
+    const [showReceiptModal, setShowReceiptModal] = useState(false);
+
     const [showRejectModal, setShowRejectModal] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
     const [previewContent, setPreviewContent] = useState('');
     const [isPreviewLoading, setIsPreviewLoading] = useState(false);
@@ -72,15 +82,15 @@ export default function Request() {
     });
     const [debouncedFilter] = useDebounce(filter, 300);
 
-    const { data, setData, patch, processing, errors } = useForm({
+    const { data, setData, patch, processing, errors, reset } = useForm({
         status: '',
-        admin_remarks: ''
+        admin_remarks: '',
+        payment_amount: '',
     });
 
-    const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
-    const actionStatusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
+    const filterStatusOptions = ['All', 'Pending', 'For Payment', 'Processing', 'Ready to Pickup'];
+    const actionStatusOptions = ['Pending', 'Processing', 'For Payment', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
-    // --- DRIVER.JS TOUR LOGIC ---
     const startTour = () => {
         const driverObj = driver({
             showProgress: true,
@@ -96,7 +106,6 @@ export default function Request() {
         });
         driverObj.drive();
     };
-
 
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
@@ -145,8 +154,73 @@ export default function Request() {
         });
     };
     
+    const handlePaymentSubmit = (e) => {
+        e.preventDefault();
+        router.post(route('admin.requests.set-payment', selectedRequest.id), {
+            payment_amount: data.payment_amount,
+        }, {
+            onSuccess: () => {
+                setShowPaymentModal(false);
+                toast.success('Payment amount set successfully!');
+            },
+            onError: (errs) => {
+                if (errs.payment_amount) {
+                    toast.error(errs.payment_amount);
+                } else {
+                    toast.error('Failed to set payment amount.');
+                }
+            },
+            preserveScroll: true,
+        });
+    };
+
     const handlePreviewClick = async (request) => {
-        // ... (No change here)
+        setSelectedRequest(request);
+        setShowPreviewModal(true);
+        setIsPreviewLoading(true);
+        try {
+            const response = await axios.get(route('admin.requests.preview', request.id));
+            setPreviewContent(response.data.html);
+        } catch (error) {
+            toast.error('Could not load preview.');
+            setPreviewContent('<p class="text-red-500">Error loading document preview.</p>');
+        } finally {
+            setIsPreviewLoading(false);
+        }
+    };
+
+    const renderActions = (request, index) => {
+        const isBusinessPermit = request.document_type?.name === 'Brgy Business Permit';
+        
+        if (isBusinessPermit && request.status === 'Pending') {
+            return (
+                <button
+                    onClick={() => {
+                        setSelectedRequest(request);
+                        reset('payment_amount');
+                        setShowPaymentModal(true);
+                    }}
+                    className="flex items-center gap-x-2 w-full justify-center md:w-auto px-3 py-1 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition"
+                >
+                    <PesoIcon />
+                    Assess Payment
+                </button>
+            );
+        }
+        
+        return (
+            <select
+                id={index === 0 ? "actions_item" : undefined}
+                value={request.status}
+                onChange={(e) => handleStatusChange(request, e.target.value)}
+                className="w-full text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+            >
+                <option value={request.status} disabled>{request.status}</option>
+                {actionStatusOptions.filter(status => status !== request.status).map(status => (
+                    <option key={status} value={status}>{status}</option>
+                ))}
+            </select>
+        );
     };
 
     return (
@@ -155,7 +229,7 @@ export default function Request() {
             <Toaster position="bottom-right" />
             <style>{`.driverjs-theme { background-color: #fff; color: #333; }`}</style>
 
-            <div className="py-6 md:py-12 bg-slate-50">
+            <div className="py-6 md:py-12 bg-slate-50 dark:bg-gray-900">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-md sm:rounded-lg">
                         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -205,7 +279,6 @@ export default function Request() {
                         </div>
 
                         <div id="requests-list-container">
-                            {/* Mobile Card View */}
                             <div className="md:hidden">
                                 {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
                                     <div key={request.id} className="border-b dark:border-gray-700 p-4 space-y-3">
@@ -218,17 +291,22 @@ export default function Request() {
                                             <p><span className="font-semibold">Date:</span> {new Date(request.created_at).toLocaleDateString()}</p>
                                         </div>
                                         <div className={`flex items-center gap-2 pt-2 border-t dark:border-gray-600 ${index === 0 ? 'actions-column-item' : ''}`}>
-                                            <span className="text-sm font-medium">Actions:</span>
-                                            <select
-                                                value={request.status}
-                                                onChange={(e) => handleStatusChange(request, e.target.value)}
-                                                className="w-full text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                            >
-                                                <option value={request.status} disabled>{request.status}</option>
-                                                {actionStatusOptions.filter(status => status !== request.status).map(status => (
-                                                    <option key={status} value={status}>{status}</option>
-                                                ))}
-                                            </select>
+                                            <div className="w-full">
+                                                {renderActions(request, index)}
+                                            </div>
+                                            {/* --- NEW: View Receipt button for mobile --- */}
+                                            {request.payment_receipt_url && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedRequest(request);
+                                                        setShowReceiptModal(true);
+                                                    }}
+                                                    title="View Payment Receipt"
+                                                    className="p-2 text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-gray-700 rounded-md transition shrink-0"
+                                                >
+                                                    <ReceiptIcon />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 )) : (
@@ -239,16 +317,15 @@ export default function Request() {
                                 )}
                             </div>
                             
-                            {/* Desktop Table View */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead className="bg-blue-600 text-white">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Requestor</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Document</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Status</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase actions-column">Actions</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Requestor</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Document</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Date</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase actions-column">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -260,16 +337,22 @@ export default function Request() {
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(request.created_at).toLocaleDateString()}</td>
                                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${index === 0 ? 'actions-column-item' : ''}`}>
                                                     <div className="flex items-center gap-2">
-                                                        <select  id="actions_item"
-                                                            value={request.status}
-                                                            onChange={(e) => handleStatusChange(request, e.target.value)}
-                                                            className="text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                                                        >
-                                                            <option value={request.status} disabled>{request.status}</option>
-                                                            {actionStatusOptions.filter(status => status !== request.status).map(status => (
-                                                                <option key={status} value={status}>{status}</option>
-                                                            ))}
-                                                        </select>
+                                                        {renderActions(request, index)}
+
+                                                        {/* --- NEW: View Receipt button for desktop --- */}
+                                                        {request.payment_receipt_url && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedRequest(request);
+                                                                    setShowReceiptModal(true);
+                                                                }}
+                                                                title="View Payment Receipt"
+                                                                className="p-2 text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-gray-700 rounded-md transition"
+                                                            >
+                                                                <ReceiptIcon />
+                                                            </button>
+                                                        )}
+
                                                         {request.status === 'Processing' && (
                                                             <>
                                                                 <button onClick={() => handlePreviewClick(request)} title="Preview" className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"><EyeIcon /></button>
@@ -318,6 +401,87 @@ export default function Request() {
                         <button type="submit" disabled={processing} className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50">Confirm Rejection</button>
                     </div>
                 </form>
+            </Modal>
+            
+            <Modal show={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Set Payment Amount" maxWidth="md">
+                <div className="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700">
+                    <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">Request Details</h4>
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span className="text-gray-500 dark:text-gray-400">Requestor:</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{selectedRequest?.user?.full_name || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500 dark:text-gray-400">Business Name:</span>
+                            <span className="font-medium text-gray-900 dark:text-white text-right">{selectedRequest?.form_data?.business_name || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-500 dark:text-gray-400">Business Type:</span>
+                            <span className="font-medium text-gray-900 dark:text-white text-right">{selectedRequest?.form_data?.business_type || 'N/A'}</span>
+                        </div>
+                        <div className="flex flex-col text-left">
+                            <span className="text-gray-500 dark:text-gray-400">Business Address:</span>
+                            <span className="font-medium text-gray-900 dark:text-white mt-1 text-right">{selectedRequest?.form_data?.business_address || 'N/A'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <form onSubmit={handlePaymentSubmit}>
+                    <div className="mb-4">
+                        <label htmlFor="payment_amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Enter Assessed Amount (PHP)
+                        </label>
+                        <div className="relative mt-1 rounded-md shadow-sm">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                <span className="text-gray-500 sm:text-sm">₱</span>
+                            </div>
+                            <input
+                                id="payment_amount"
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={data.payment_amount}
+                                onChange={(e) => setData('payment_amount', e.target.value)}
+                                className="block w-full rounded-md border-gray-300 pl-7 pr-3 py-2 shadow-sm dark:bg-gray-900 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                placeholder="0.00"
+                                autoFocus
+                                required
+                            />
+                        </div>
+                        {errors.payment_amount && <p className="text-red-500 text-xs mt-1">{errors.payment_amount}</p>}
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                        <button type="button" onClick={() => setShowPaymentModal(false)} className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Cancel</button>
+                        <button type="submit" disabled={processing} className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+                            {processing ? 'Saving...' : 'Set Amount & Notify User'}
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+            
+            {/* --- NEW RECEIPT MODAL --- */}
+            <Modal show={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="Payment Receipt" maxWidth="md">
+                {selectedRequest?.payment_receipt_url ? (
+                    <div>
+                        <img 
+                            src={selectedRequest.payment_receipt_url} 
+                            alt="Payment Receipt" 
+                            className="w-full h-auto rounded-lg border dark:border-gray-600"
+                        />
+                         <div className="text-center mt-4">
+                            <a 
+                                href={selectedRequest.payment_receipt_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline dark:text-blue-400"
+                            >
+                                Open image in new tab
+                            </a>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="text-center text-gray-500">Receipt image could not be loaded or is not available.</p>
+                )}
             </Modal>
             
             <Modal show={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={`Preview: ${selectedRequest?.document_type?.name || ''}`}>
