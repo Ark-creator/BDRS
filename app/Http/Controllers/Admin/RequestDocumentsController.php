@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Http\Controllers\Controller;
-use App\Models\DocumentRequest;
 use Inertia\Inertia;
-use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
-use App\Models\ImmutableDocumentsArchiveHistory;
 use Inertia\Response;
+use Illuminate\Http\Request;
+use App\Models\DocumentRequest;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
+use App\Models\ImmutableDocumentsArchiveHistory;
 use Illuminate\Validation\Rule; // <-- 1. IDAGDAG ITO
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RequestDocumentsController extends Controller
 {
@@ -47,7 +49,7 @@ class RequestDocumentsController extends Controller
   public function setPaymentAmount(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
         // 1. We only want this to work for Business Permits
-        if ($documentRequest->documentType->name !== 'Barangay Business Permit') {
+        if ($documentRequest->documentType->name !== 'Brgy Business Permit') {
             return back()->with('error', 'This action is not applicable for this document type.');
         }
 
@@ -106,4 +108,21 @@ class RequestDocumentsController extends Controller
 
         return back()->with('success', 'Request status updated successfully.');
     }
+
+     public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
+    {
+        // 1. Check for the file path
+        if (!$documentRequest->payment_receipt_path) {
+            abort(404, 'Receipt path not found.');
+        }
+
+        // 2. Check if the file exists on the 'local' disk
+        if (!Storage::disk('local')->exists($documentRequest->payment_receipt_path)) {
+            abort(404, 'Receipt file not found.');
+        }
+
+        // 3. Securely stream the file as a response
+        return Storage::disk('local')->response($documentRequest->payment_receipt_path);
+    }
+
 }
