@@ -240,7 +240,7 @@ export default function Documents() {
 
             <div className="py-12 bg-slate-50 min-h-screen">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-lg rounded-xl border border-gray-200">
+                    <div className="bg-white overflow-hidden shadow-md rounded-xl border border-gray-200">
                         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
                             <div id="page-title">
                                 <h2 className="text-3xl font-extrabold text-gray-900 tracking-tight">
@@ -274,9 +274,9 @@ export default function Documents() {
 
                         <div className="overflow-x-auto">
                             <table className="min-w-full">
-                                <thead id="document-table-thead" className="bg-sky-50 border-b border-blue-200">
+                                <thead id="document-table-thead" className="bg-blue-600 text-white">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-sky-100 transition duration-200" onClick={() => requestSort('name')}>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold  uppercase tracking-wider cursor-pointer hover:bg-blue-800  transition duration-200" onClick={() => requestSort('name')}>
                                             <div className="flex items-center space-x-1">
                                                 <span>Name</span>
                                                 {sortConfig.key === 'name' && (
@@ -284,7 +284,7 @@ export default function Documents() {
                                                 )}
                                             </div>
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider cursor-pointer hover:bg-sky-100 transition duration-200" onClick={() => requestSort('description')}>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer hover:bg-blue-800  transition duration-200" onClick={() => requestSort('description')}>
                                             <div className="flex items-center space-x-1">
                                                 <span>Description</span>
                                                 {sortConfig.key === 'description' && (
@@ -292,7 +292,7 @@ export default function Documents() {
                                                 )}
                                             </div>
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
+                                        <th className="px-6 py-4 text-left text-xs font-semibold hover:bg-blue-800  uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">

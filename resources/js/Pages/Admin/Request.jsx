@@ -90,7 +90,7 @@ export default function Request() {
                 { element: '#search-input', popover: { title: 'Search', description: 'Quickly find a specific request by typing the resident\'s name or the document type.' } },
                 { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Click these buttons to filter the list and see only the requests with that status.' } },
                 { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all the active requests. On mobile, it appears as cards, and on desktop, as a table.' } },
-                { element: '.actions-column-item', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
+                { element: '#actions_item', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
                 { element: '#pagination-section', popover: { title: 'Pagination', description: 'Use these controls to navigate between different pages of requests.' } }
             ]
         });
@@ -155,9 +155,9 @@ export default function Request() {
             <Toaster position="bottom-right" />
             <style>{`.driverjs-theme { background-color: #fff; color: #333; }`}</style>
 
-            <div className="py-6 md:py-12">
+            <div className="py-6 md:py-12 bg-slate-50">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-2xl sm:rounded-lg">
+                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-md sm:rounded-lg">
                         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                             <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
@@ -242,25 +242,25 @@ export default function Request() {
                             {/* Desktop Table View */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                                    <thead className="bg-gray-50 dark:bg-gray-700/50">
+                                    <thead className="bg-blue-600 text-white">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Requestor</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Document</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Status</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase actions-column">Actions</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Requestor</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Document</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase">Date</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800  dark:text-gray-300 uppercase actions-column">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                         {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
-                                            <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                            <tr key={request.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{request.document_type?.name || "N/A"}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={request.status} /></td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(request.created_at).toLocaleDateString()}</td>
                                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${index === 0 ? 'actions-column-item' : ''}`}>
                                                     <div className="flex items-center gap-2">
-                                                        <select
+                                                        <select  id="actions_item"
                                                             value={request.status}
                                                             onChange={(e) => handleStatusChange(request, e.target.value)}
                                                             className="text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"

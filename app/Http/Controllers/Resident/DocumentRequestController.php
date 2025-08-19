@@ -32,7 +32,7 @@ class DocumentRequestController extends Controller
     
     {
 
-            dd($request->all());
+            // dd($request->all());
 
         $validated = $request->validate([
             'document_type_id' => 'required|exists:document_types,id',

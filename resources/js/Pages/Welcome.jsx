@@ -174,7 +174,7 @@ const FaqItem = ({ question, answer }) => {
 const AuroraBackground = () => (
     <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10">
         <motion.div 
-            className="absolute top-[20%] left-[10%] w-[40rem] h-[40rem] bg-gradient-to-tr from-sky-200 to-blue-500 rounded-full blur-3xl"
+            className="absolute top-[20%] left-[1%] w-[40rem] h-[40rem] bg-gradient-to-tr from-sky-200 to-blue-500 rounded-full blur-3xl"
             animate={{ x: [-20, 20, -20], y: [-20, 20, -20], rotate: [0, 5, 0], opacity: [0.15, 0.25, 0.15] }}
             transition={{ duration: 20, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }}
         />
