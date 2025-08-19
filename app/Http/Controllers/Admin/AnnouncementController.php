@@ -17,13 +17,22 @@ class AnnouncementController extends Controller
      */
     public function index()
     {
-        // Changed to eager load user without profile for simplicity,
-        // as the frontend only uses user.name
         $announcements = Announcement::latest()
-            ->with('user')
-            ->get();
+            ->with('user') // Siguraduhing may 'user' relationship ang Announcement model mo
+            ->paginate(5) // Gumagamit tayo ng paginate
+            ->through(fn ($announcement) => [
+                'id' => $announcement->id,
+                'tag' => $announcement->tag,
+                'title' => $announcement->title,
+                'description' => $announcement->description,
+                'link' => $announcement->link,
+                'image_url' => $announcement->image_url, // Siguraduhing may image_url accessor ka
+                'created_at' => $announcement->created_at,
+                'user' => $announcement->user,
+            ]);
 
         return Inertia::render('Admin/Announcement', [
+            // ANG PANGALAN NG PROP AY DAPAT 'announcements'
             'announcements' => $announcements
         ]);
     }
@@ -59,6 +68,33 @@ class AnnouncementController extends Controller
     /**
      * Remove the specified resource from storage.
      */
+
+     public function update(Request $request, Announcement $announcement)
+    {
+        $validated = $request->validate([
+            'tag' => 'required|string|max:50',
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'link' => 'nullable|url',
+            // Image is now optional on update
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
+        ]);
+
+        // Handle image update
+        if ($request->hasFile('image')) {
+            // 1. Delete the old image
+            if ($announcement->image) {
+                Storage::disk('public')->delete($announcement->image);
+            }
+            // 2. Store the new image
+            $validated['image'] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement->update($validated);
+
+        return Redirect::route('admin.announcements.index')->with('success', 'Announcement updated successfully.');
+    }
+
     public function destroy(Announcement $announcement)
     {
         // Delete the image file from storage if it exists

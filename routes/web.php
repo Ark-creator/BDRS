@@ -115,6 +115,10 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
 
     // --- Resourceful Routes ---
+    Route::resource('announcements', AnnouncementController::class)
+    ->names('admin.announcements')
+    // Kailangan nating i-override ang update route para gumamit ng POST
+    ->except(['update']);
     Route::resource('/announcements', AnnouncementController::class);
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
 });
