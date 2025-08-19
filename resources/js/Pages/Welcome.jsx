@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { FileText, Megaphone, Users, ArrowRight, UserPlus, MousePointerClick, CheckCircle, ChevronDown, HelpCircle, MessageCircleQuestion } from 'lucide-react';
+import { FileText, Megaphone, Users, ArrowRight, UserPlus, MousePointerClick, CheckCircle, ChevronDown, HelpCircle, MessageCircleQuestion, Menu, X } from 'lucide-react';
 import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer-motion';
 import { TypeAnimation } from 'react-type-animation';
 import clsx from 'clsx';
 import Footer from '@/Components/Residents/Footer';
-import { Menu, X } from 'lucide-react';
 
+// --- ICONS (Walang pagbabago dito) ---
 const FlagPH = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" className={className}>
         <rect fill="#0038A8" width="9" height="3" />
@@ -24,6 +24,7 @@ const FlagUSA = ({ className }) => (
     </svg>
 );
 
+// --- CONTENT OBJECT WITH NAVIGATION LINKS ---
 const content = {
     en: {
         title: "Doconnect",
@@ -34,6 +35,11 @@ const content = {
         login: "Log In",
         register: "Register",
         dashboard: "Dashboard",
+        navLinks: [
+            { name: "How It Works", href: "#how-it-works" },
+            { name: "Services", href: "#services" },
+            { name: "FAQ", href: "#faq" },
+        ],
         howItWorksTitle: "How It Works",
         howItWorksSubtitle: "Get your documents in three simple steps.",
         step1Title: "1. Register an Account",
@@ -71,6 +77,11 @@ const content = {
         login: "Mag-login",
         register: "Mag-rehistro",
         dashboard: "Dashboard",
+        navLinks: [
+            { name: "Paano Ito Gumagana", href: "#how-it-works" },
+            { name: "Mga Serbisyo", href: "#services" },
+            { name: "FAQ", href: "#faq" },
+        ],
         howItWorksTitle: "Paano Ito Gumagana?",
         howItWorksSubtitle: "Kunin ang iyong dokumento sa tatlong simpleng hakbang.",
         step1Title: "1. Mag-rehistro",
@@ -101,6 +112,7 @@ const content = {
     }
 };
 
+// --- REUSABLE COMPONENTS (Walang pagbabago dito) ---
 const ServiceCard = ({ icon, title, description }) => (
     <motion.div 
         className="bg-white/50 dark:bg-slate-800/50 p-6 rounded-2xl shadow-lg backdrop-blur-sm ring-1 ring-black/5 transition-shadow duration-300 hover:shadow-blue-500/20 hover:shadow-2xl"
@@ -213,9 +225,16 @@ export default function Welcome({ auth }) {
     return (
         <>
             <Head title={t.title} />
+
+            <style>{`
+              html {
+                scroll-behavior: smooth;
+              }
+            `}</style>
             <div className="relative overflow-x-hidden bg-sky-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 isolate">
                 <motion.div className="fixed top-0 left-0 right-0 h-1 bg-blue-600 origin-left z-50" style={{ scaleX }} />
-                 <header className={clsx("fixed top-0 left-0 right-0 z-30 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
+                
+                <header className={clsx("fixed top-0 left-0 right-0 z-30 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
                     <nav className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
                         <div className="flex lg:flex-1">
                             <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
@@ -233,6 +252,14 @@ export default function Welcome({ auth }) {
                                 <span className="sr-only">Open main menu</span>
                                 <Menu className="h-6 w-6" aria-hidden="true" />
                             </button>
+                        </div>
+
+                        <div className="hidden lg:flex lg:gap-x-8">
+                            {t.navLinks.map((item) => (
+                                <a key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                    {item.name}
+                                </a>
+                            ))}
                         </div>
 
                         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-4">
@@ -254,74 +281,82 @@ export default function Welcome({ auth }) {
                             )}
                         </div>
                     </nav>
-<AnimatePresence>
-    {isMobileMenuOpen && (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="lg:hidden"
-        >
-            {/* Darkened background overlay */}
-            <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-            
-            {/* Sliding menu panel */}
-            <motion.div
-                initial={{ x: '100%' }}
-                animate={{ x: 0 }}
-                exit={{ x: '100%' }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col overflow-y-auto bg-slate-50 dark:bg-slate-800 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10"
-            >
-                <div className="p-6">
-                    <div className="flex items-center justify-between">
-                        <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
-                             <img className="h-8 w-auto rounded-full" src="/images/gapanlogo.png" alt="Barangay Logo" />
-                            <span className="font-bold text-lg text-slate-800 dark:text-white">Doconnect</span>
-                        </Link>
-                        <button
-                            type="button"
-                            className="-m-2.5 rounded-md p-2.5 text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
-                            onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                            <span className="sr-only">Close menu</span>
-                            <X className="h-6 w-6" aria-hidden="true" />
-                        </button>
-                    </div>
-                    <div className="mt-8 flow-root">
-                        <div className="-my-6 divide-y divide-gray-200/10 dark:divide-gray-700/50">
-                            <div className="space-y-4 py-6">
-                                {auth.user ? (
-                                     <Link href={route('dashboard')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.dashboard}</Link>
-                                ) : (
-                                    <>
-                                        <Link href={route('login')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.login}</Link>
-                                        <Link href={route('register')} className="block rounded-lg bg-blue-600 py-3 px-4 text-center text-base font-semibold leading-7 text-white shadow-sm hover:bg-blue-700">{t.register}</Link>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {/* Language switcher is pushed to the bottom */}
-                <div className="mt-auto border-t border-gray-200 dark:border-gray-700/50 p-6">
-                    <div className="p-1 rounded-full bg-slate-200 dark:bg-slate-700 flex text-sm font-semibold">
-                        <button onClick={() => setLanguage('en')} className={clsx('w-full px-3 py-2 rounded-full transition-colors flex items-center justify-center gap-2', language === 'en' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 dark:text-slate-300')}>
-                            <FlagUSA className="h-4 w-5 rounded-sm" /> EN
-                        </button>
-                        <button onClick={() => setLanguage('tg')} className={clsx('w-full px-3 py-2 rounded-full transition-colors flex items-center justify-center gap-2', language === 'tg' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 dark:text-slate-300')}>
-                            <FlagPH className="h-4 w-5 rounded-sm" /> TG
-                        </button>
-                    </div>
-                </div>
-            </motion.div>
-        </motion.div>
-    )}
-</AnimatePresence>
-                   
-                </header>                
-                    
 
+                    <AnimatePresence>
+                        {isMobileMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="lg:hidden"
+                            >
+                                <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+                                
+                                <motion.div
+                                    initial={{ x: '100%' }}
+                                    animate={{ x: 0 }}
+                                    exit={{ x: '100%' }}
+                                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                                    className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col overflow-y-auto bg-slate-50 dark:bg-slate-800 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10"
+                                >
+                                    <div className="p-6">
+                                        <div className="flex items-center justify-between">
+                                            <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
+                                                <img className="h-8 w-auto rounded-full" src="/images/gapanlogo.png" alt="Barangay Logo" />
+                                                <span className="font-bold text-lg text-slate-800 dark:text-white">Doconnect</span>
+                                            </Link>
+                                            <button
+                                                type="button"
+                                                className="-m-2.5 rounded-md p-2.5 text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
+                                                onClick={() => setIsMobileMenuOpen(false)}
+                                            >
+                                                <span className="sr-only">Close menu</span>
+                                                <X className="h-6 w-6" aria-hidden="true" />
+                                            </button>
+                                        </div>
+                                        <div className="mt-8 flow-root">
+                                            <div className="-my-6 divide-y divide-gray-200/10 dark:divide-gray-700/50">
+                                                <div className="space-y-2 py-6">
+                                                    {t.navLinks.map((item) => (
+                                                        <a
+                                                            key={item.name}
+                                                            href={item.href}
+                                                            onClick={() => setIsMobileMenuOpen(false)}
+                                                            className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
+                                                        >
+                                                            {item.name}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                                <div className="space-y-4 py-6">
+                                                    {auth.user ? (
+                                                        <Link href={route('dashboard')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.dashboard}</Link>
+                                                    ) : (
+                                                        <>
+                                                            <Link href={route('login')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.login}</Link>
+                                                            <Link href={route('register')} className="block rounded-lg bg-blue-600 py-3 px-4 text-center text-base font-semibold leading-7 text-white shadow-sm hover:bg-blue-700">{t.register}</Link>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-auto border-t border-gray-200 dark:border-gray-700/50 p-6">
+                                        <div className="p-1 rounded-full bg-slate-200 dark:bg-slate-700 flex text-sm font-semibold">
+                                            <button onClick={() => setLanguage('en')} className={clsx('w-full px-3 py-2 rounded-full transition-colors flex items-center justify-center gap-2', language === 'en' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 dark:text-slate-300')}>
+                                                <FlagUSA className="h-4 w-5 rounded-sm" /> EN
+                                            </button>
+                                            <button onClick={() => setLanguage('tg')} className={clsx('w-full px-3 py-2 rounded-full transition-colors flex items-center justify-center gap-2', language === 'tg' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 dark:text-slate-300')}>
+                                                <FlagPH className="h-4 w-5 rounded-sm" /> TG
+                                            </button>
+                                        </div>
+                                    </div>
+                                </motion.div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </header>              
+                
                 <main className="relative z-10">
                     <div className="min-h-screen flex items-center relative overflow-hidden">
                         <AuroraBackground />
@@ -333,8 +368,8 @@ export default function Welcome({ auth }) {
                                         sequence={[
                                             t.heroTitle,
                                             3000,
-                                            '', // Ito ang mag-trigger ng delete
-                                            500 // Maikling pause bago mag-loop
+                                            '', 
+                                            500 
                                         ]}
                                         wrapper="h1"
                                         speed={70}
@@ -359,7 +394,7 @@ export default function Welcome({ auth }) {
                         </div>
                     </div>
 
-                    <section className="py-20 sm:py-28 relative bg-white dark:bg-slate-900/70 backdrop-blur-sm">
+                    <section id="how-it-works" className="py-20 sm:py-28 relative bg-white dark:bg-slate-900/70 backdrop-blur-sm">
                         <div className="absolute inset-0 bg-[url('/images/grid.svg')] [mask-image:linear-gradient(to_bottom,white,transparent,white)] dark:opacity-20" />
                         <div className="relative max-w-7xl mx-auto px-6 text-center">
                             <motion.div initial="hidden" whileInView="visible" variants={staggerContainer} viewport={{ once: true }}>
@@ -378,7 +413,7 @@ export default function Welcome({ auth }) {
                         </div>
                     </section>
 
-                    <section className="relative py-20 sm:py-28 overflow-hidden">
+                    <section id="services" className="relative py-20 sm:py-28 overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-full">
                             <svg className="absolute -top-40 -left-20 w-[80rem] h-auto text-sky-100/50 dark:text-blue-900/20" width="1280" height="1280" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1096.5 528c-303 62-436 220.5-436 436s133 374 436 436 436-133 436-436c0-215.5-133-374-436-436Zm-872 0C-88.5 590 44.5 748.5 44.5 964s-133 374-436 436-436-133-436-436c0-215.5 133-374 436-436Z" fill="currentColor"/></svg>
                         </div>
@@ -395,7 +430,7 @@ export default function Welcome({ auth }) {
                         </div>
                     </section>
 
-                    <section className="py-20 sm:py-28 bg-white dark:bg-slate-900/70">
+                    <section id="faq" className="py-20 sm:py-28 bg-white dark:bg-slate-900/70">
                         <div className="max-w-3xl mx-auto px-6">
                             <motion.div 
                                 initial="hidden" 

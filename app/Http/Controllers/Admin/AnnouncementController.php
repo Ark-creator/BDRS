@@ -76,21 +76,30 @@ class AnnouncementController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'link' => 'nullable|url',
-            // Image is now optional on update
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ]);
 
-        // Handle image update
+        // 1. Prepare data for update, initially excluding the image.
+        $updateData = [
+            'tag' => $validated['tag'],
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'link' => $validated['link'],
+        ];
+
+        // 2. Check if a new image was uploaded.
         if ($request->hasFile('image')) {
-            // 1. Delete the old image
+            // Delete the old image from storage
             if ($announcement->image) {
                 Storage::disk('public')->delete($announcement->image);
             }
-            // 2. Store the new image
-            $validated['image'] = $request->file('image')->store('announcements', 'public');
+            // Store the new image and add it to our update data array.
+            $updateData['image'] = $request->file('image')->store('announcements', 'public');
         }
 
-        $announcement->update($validated);
+        // 3. Update the announcement with the prepared data.
+        // This now only includes the 'image' key if a new one was uploaded.
+        $announcement->update($updateData);
 
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement updated successfully.');
     }
