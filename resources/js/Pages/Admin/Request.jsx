@@ -123,18 +123,19 @@ export default function Request() {
     const filterStatusOptions = ['All', 'Pending', 'Waiting for Payment', 'Processing', 'Ready to Pickup'];
     const actionStatusOptions = ['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
-    // --- REAL-TIME LISTENER WITH LOGGING ---
+    // --- FIX: Add this useEffect to sync local state with props ---
+    // This ensures that when Inertia updates the documentRequests prop (after a filter or status change),
+    // our local state `displayedRequests` is also updated, forcing the component to re-render.
     useEffect(() => {
-        console.log('Attempting to connect to Echo and listen for events...');
+        setDisplayedRequests(documentRequests);
+    }, [documentRequests]); // This effect runs whenever the `documentRequests` prop changes.
 
+    // --- REAL-TIME LISTENER ---
+    useEffect(() => {
         if (window.Echo) {
             const channel = window.Echo.private('admin-requests');
 
-            console.log('Subscribing to private channel: admin-requests');
-
             channel.listen('.NewDocumentRequest', (event) => {
-                console.log('SUCCESS: New request received via Reverb:', event.request);
-                
                 toast.success(`New request from ${event.request.user.full_name}!`, {
                     position: "bottom-right",
                 });
@@ -151,16 +152,12 @@ export default function Request() {
                 });
             });
 
-            // Cleanup function to leave the channel when the component unmounts
             return () => {
-                console.log('Leaving channel: admin-requests');
                 channel.stopListening('.NewDocumentRequest');
                 window.Echo.leave('admin-requests');
             };
-        } else {
-            console.error('Laravel Echo is not defined on the window object.');
         }
-    }, []); // Empty dependency array ensures this effect runs only once
+    }, []);
 
     const startTour = () => {
         const driverObj = driver({
@@ -191,9 +188,6 @@ export default function Request() {
         router.get(route('admin.request'), debouncedFilter, {
             preserveState: true,
             replace: true,
-            onSuccess: (page) => {
-                setDisplayedRequests(page.props.documentRequests);
-            }
         });
     }, [debouncedFilter]);
 
