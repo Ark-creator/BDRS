@@ -14,6 +14,7 @@ class ImmutableDocumentsArchiveHistory extends Model
     protected $table = 'immutable_documents_archive_history';
 
     protected $fillable = [
+        'original_request_id', // Para sa ID ng original request
         'user_id',
         'document_type_id',
         'form_data',

@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\DocumentRequestStatusUpdated; // <-- 1. IMPORT THE NEW EVENT
+use App\Events\DocumentRequestStatusUpdated;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\Request;
@@ -61,7 +61,6 @@ class RequestDocumentsController extends Controller
             'status' => 'Waiting for Payment',
         ]);
 
-        // 2. DISPATCH THE EVENT AFTER UPDATING
         DocumentRequestStatusUpdated::dispatch($documentRequest);
 
         return back()->with('success', 'Payment amount has been set. The user will be notified.');
@@ -84,9 +83,10 @@ class RequestDocumentsController extends Controller
         $documentRequest->processed_by = auth()->id();
 
         if ($validated['status'] === 'Claimed' || $validated['status'] === 'Rejected') {
-            // Logic for archiving...
-            // We don't dispatch an event here because the item is removed from the list.
             ImmutableDocumentsArchiveHistory::create([
+                // --- FIX: ADD THIS LINE ---
+                'original_request_id' => $documentRequest->id,
+                
                 'user_id' => $documentRequest->user_id,
                 'document_type_id' => $documentRequest->document_type_id,
                 'form_data' => $documentRequest->form_data,
@@ -95,13 +95,14 @@ class RequestDocumentsController extends Controller
                 'processed_by' => $documentRequest->processed_by,
                 'original_created_at' => $documentRequest->created_at,
             ]);
+
             $documentRequest->delete();
+
             return back()->with('success', 'Request has been archived successfully.');
         }
 
         $documentRequest->save();
 
-        // 3. DISPATCH THE EVENT AFTER SAVING
         DocumentRequestStatusUpdated::dispatch($documentRequest);
 
         return back()->with('success', 'Request status updated successfully.');
