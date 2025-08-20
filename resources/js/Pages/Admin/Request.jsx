@@ -294,7 +294,7 @@ export default function Request() {
 
             <div className="py-6 md:py-12 bg-slate-50 dark:bg-slate-900">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
-                    <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md sm:rounded-lg">
+                    <div className="bg-white dark:bg-slate-800shadow-md sm:rounded-lg">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                             <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
@@ -388,13 +388,13 @@ export default function Request() {
                             {/* DESKTOP VIEW */}
                             <div className="hidden md:block">
                                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                                    <thead className="bg-slate-50 dark:bg-slate-700/50">
+                                    <thead className="bg-blue-600 text-white">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Requestor</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Document</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider actions-column">Actions</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Requestor</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Document</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Date</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider actions-column">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">

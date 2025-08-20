@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
 import { FileText, Megaphone, Users, ArrowRight, UserPlus, MousePointerClick, CheckCircle, ChevronDown, HelpCircle, Menu, X } from 'lucide-react';
 import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer-motion';
@@ -282,7 +282,7 @@ export default function Welcome({ auth }) {
                                 </button>
                             </div>
                             {auth.user ? (
-                                <Link href={route('Home')} className="rounded-md px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">{t.dashboard}</Link>
+                                <Link href={route('residents.home')} className="rounded-md px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">{t.dashboard}</Link>
                             ) : (
                                 <>
                                     <Link href={route('login')} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">{t.login}</Link>
@@ -307,7 +307,7 @@ export default function Welcome({ auth }) {
                                     animate={{ x: 0 }}
                                     exit={{ x: '100%' }}
                                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                                    className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col overflow-y-auto bg-slate-50 dark:bg-slate-800 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10"
+                                    className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col bg-slate-50 dark:bg-slate-800 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10"
                                 >
                                     <div className="p-6">
                                         <div className="flex items-center justify-between">
@@ -340,11 +340,17 @@ export default function Welcome({ auth }) {
                                                 </div>
                                                 <div className="space-y-4 py-6">
                                                     {auth.user ? (
-                                                        <Link href={route('dashboard')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.dashboard}</Link>
+                                                        <Link 
+                                                            href={route('residents.home')} 
+                                                            onClick={() => setIsMobileMenuOpen(false)}
+                                                            className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                                                        >
+                                                            {t.dashboard}
+                                                        </Link>
                                                     ) : (
                                                         <>
-                                                            <Link href={route('login')} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.login}</Link>
-                                                            <Link href={route('register')} className="block rounded-lg bg-blue-600 py-3 px-4 text-center text-base font-semibold leading-7 text-white shadow-sm hover:bg-blue-700">{t.register}</Link>
+                                                            <Link href={route('login')} onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.login}</Link>
+                                                            <Link href={route('register')} onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-blue-600 py-3 px-4 text-center text-base font-semibold leading-7 text-white shadow-sm hover:bg-blue-700">{t.register}</Link>
                                                         </>
                                                     )}
                                                 </div>
@@ -365,7 +371,7 @@ export default function Welcome({ auth }) {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </header>                  
+                </header>              
                 
                 <main className="relative z-10">
                     <div className="min-h-screen flex items-center relative overflow-hidden">

@@ -234,7 +234,7 @@ export default function MyRequests({ auth, requests }) {
                             ) : (
                                 view === 'active' ? (
                                     <EmptyState icon={<Info size={24} />} title="No Active Requests" message="You currently have no ongoing document requests.">
-                                        <Link href={route('residents.documents.create')} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
+                                        <Link href={route('residents.home')} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
                                             Request a Document
                                         </Link>
                                     </EmptyState>
