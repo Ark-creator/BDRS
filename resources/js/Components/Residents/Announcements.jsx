@@ -28,10 +28,30 @@ const AnnouncementPopover = ({ announcement, onClose }) => {
                     <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 leading-tight">
                         {announcement.title}
                     </h2>
-                    {/* Ito na ang may paragraph formatting */}
-                    <p className="mt-4 text-base text-slate-600 leading-relaxed max-h-[60vh] overflow-y-auto whitespace-pre-line">
+                    {/* Paragraph formatting for the description */}
+                    <p className="mt-4 text-base text-slate-600 leading-relaxed max-h-[50vh] overflow-y-auto whitespace-pre-line">
                         {announcement.description}
                     </p>
+                    
+                    {/* START: UPDATED CODE */}
+                    {/* Conditionally render the link if it exists in the database */}
+                    {announcement.link && (
+                        <div className="mt-6">
+                            <a
+                                href={announcement.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 font-semibold px-4 py-2 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+                            >
+                                <span>Visit Link for More Info</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                                </svg>
+                            </a>
+                        </div>
+                    )}
+                    {/* END: UPDATED CODE */}
+
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 text-slate-500 hover:text-slate-800"
@@ -107,7 +127,8 @@ export default function Announcements({ announcements }) {
     };
 
     const currentAnnouncement = announcements[currentIndex];
-    const isDescriptionTruncated = currentAnnouncement.description.length > DESCRIPTION_LIMIT;
+    // Check if the link exists OR if the description is long enough to be truncated
+    const shouldShowReadMore = currentAnnouncement.link || currentAnnouncement.description.length > DESCRIPTION_LIMIT;
     
     return (
         <>
@@ -147,7 +168,8 @@ export default function Announcements({ announcements }) {
                                     {currentAnnouncement.description}
                                 </p>
                                 <div className="mt-8">
-                                    {isDescriptionTruncated && (
+                                    {/* The "Read More" button now appears if the description is too long OR a link exists */}
+                                    {shouldShowReadMore && (
                                         <button 
                                             onClick={() => handleReadMoreClick(currentAnnouncement)}
                                             className="inline-block bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg shadow-md hover:bg-blue-700 transition-all transform hover:scale-105"

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DocumentType extends Model
 {
@@ -15,7 +16,8 @@ class DocumentType extends Model
         'price',
         'template_path',
         'requirements_description',
-        'is_archived', // Ito ang idinagdag para gumana ang archive
+        'is_archived',
+        'archived_by',
     ];
 
     /**
@@ -24,5 +26,17 @@ class DocumentType extends Model
     public function documentRequests()
     {
         return $this->hasMany(DocumentRequest::class);
+    }
+
+    /**
+     * Get the user who archived the document type.
+     */
+    public function archivedBy(): BelongsTo
+    {
+        // Provide a default object with a 'full_name' attribute for deleted users.
+        return $this->belongsTo(User::class, 'archived_by')
+                    ->withDefault(function ($user, $documentType) {
+                        $user->full_name = 'Deleted User';
+                    });
     }
 }

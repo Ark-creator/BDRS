@@ -19,6 +19,10 @@ return new class extends Migration
             $table->string('template_path')->default(''); // <-- FIX: Removed ->change()
             $table->text('requirements_description')->nullable();
             $table->boolean('is_archived')->default(false);
+            $table->foreignId('archived_by')
+                  ->nullable()
+                  ->constrained('users')
+                  ->onDelete('set null');
             $table->timestamps();
         });
     }

@@ -3,18 +3,18 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Users, FolderGit, Megaphone, PlusCircle, History, Banknote, MessageSquare, FilePlus, CheckCircle, XCircle, Eye, Building, FileText } from 'lucide-react';
+import { 
+    Users, FolderGit2, Megaphone, PlusCircle, History, Banknote, 
+    MessageSquare, FilePlus, CheckCircle, XCircle, Eye, Building, FileText, HelpCircle // 1. I-IMPORT ANG HELP ICON
+} from 'lucide-react';
+import SystemStatus from '@/Components/SystemStatus';
+
+// 2. I-IMPORT ANG DRIVER.JS
+import { driver } from "driver.js";
+import "driver.js/dist/driver.css";
 
 // --- Reusable UI Components ---
-
-const AuroraBackground = () => (
-    <div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
-        <div className="absolute top-0 -left-4 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-16 -right-4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-3xl animate-pulse delay-1000"></div>
-    </div>
-);
-
-const StatCard = ({ icon: Icon, title, value, change, color }) => (
+const StatCard = ({ icon: Icon, title, value, color }) => (
     <div className="relative overflow-hidden bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg hover:shadow-blue-500/20 hover:-translate-y-1 transition-all duration-300">
         <div className="flex items-start justify-between">
             <div>
@@ -41,73 +41,88 @@ const CustomTooltip = ({ active, payload }) => {
 
 
 // --- Main Dashboard Component ---
-
-export default function AdminDashboard({ auth }) {
+export default function AdminDashboard({ 
+    auth, 
+    stats = [], 
+    pendingRequests = [], 
+    documentBreakdown = [], 
+    recentActivities = [] 
+}) {
     const [chartTimeframe, setChartTimeframe] = useState('Weekly');
-    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-    // --- Hard-Coded Sample Data (Mas Pinarami) ---
-    const stats = [
-        { icon: Users, title: "Total Residents", value: "1,428", color: { bg: 'bg-blue-100 dark:bg-blue-900/50', text: 'text-blue-600 dark:text-blue-300' } },
-        { icon: FolderGit, title: "Pending Requests", value: "16", color: { bg: 'bg-yellow-100 dark:bg-yellow-900/50', text: 'text-yellow-600 dark:text-yellow-300' } },
-        { icon: Banknote, title: "Revenue (This Month)", value: "₱15,750", color: { bg: 'bg-green-100 dark:bg-green-900/50', text: 'text-green-600 dark:text-green-300' } },
-        { icon: Building, title: "System Status", value: "Operational", color: { bg: 'bg-teal-100 dark:bg-teal-900/50', text: 'text-teal-600 dark:text-teal-300' } }
-    ];
-
-    const quickActions = [
-        { label: "New Request", icon: FilePlus, href: '#' },
-        { label: "New Announcement", icon: Megaphone, href: '#' },
-        { label: "Add Document Type", icon: PlusCircle, href: '#' },
-        { label: "View Full History", icon: History, href: '#' },
-    ];
-    
     const chartData = {
         Weekly: [ { name: 'Mon', reqs: 12 }, { name: 'Tue', reqs: 19 }, { name: 'Wed', reqs: 15 }, { name: 'Thu', reqs: 25 }, { name: 'Fri', reqs: 22 }, { name: 'Sat', reqs: 32 }, { name: 'Sun', reqs: 28 } ],
         Monthly: [ { name: 'Week 1', reqs: 88 }, { name: 'Week 2', reqs: 110 }, { name: 'Week 3', reqs: 140 }, { name: 'Week 4', reqs: 125 } ]
     };
 
-    const documentBreakdownData = [
-        { name: 'Barangay Clearance', value: 400 },
-        { name: 'Cert. of Residency', value: 300 },
-        { name: 'Cert. of Indigency', value: 200 },
-        { name: 'Other Docs', value: 150 },
-    ];
-    const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'];
-    
-    const pendingRequests = [
-        { id: 'REQ-001', name: 'Juan Dela Cruz', docType: 'Barangay Clearance', date: 'Aug 15, 2025' },
-        { id: 'REQ-002', name: 'Maria Clara', docType: 'Certificate of Residency', date: 'Aug 15, 2025' },
-        { id: 'REQ-003', name: 'Crisostomo Ibarra', docType: 'Certificate of Indigency', date: 'Aug 14, 2025' },
-        { id: 'REQ-004', name: 'Elias', docType: 'PWD Certificate', date: 'Aug 14, 2025' },
-    ];
+    const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    const recentActivities = [
-        { type: "request", user: "Maria Clara", text: "submitted a new document request.", time: "5m ago" },
-        { type: "payment", user: "Crisostomo Ibarra", text: "paid for a document.", time: "1h ago" },
-        { type: "announcement", user: "Admin", text: "posted a new announcement.", time: "3h ago" },
-        { type: "message", user: "Elias", text: "sent a new message.", time: "5h ago" },
-        { type: "user_added", user: "Admin", text: "added a new resident account.", time: "Yesterday" }
-    ];
-
-    const notificationIcons = {
-        request: FilePlus, payment: Banknote, announcement: Megaphone,
-        message: MessageSquare, user_added: Users
+    const iconMap = {
+        'Users': Users,
+        'FolderGit': FolderGit2,
+        'Banknote': Banknote,
+        'Building': Building
     };
 
+    const quickActions = [
+        { label: "View Requests", icon: FilePlus, href: route('admin.request') },
+        { label: "Announcements", icon: Megaphone, href: route('admin.announcements.index') },
+        { label: "Manage Documents", icon: PlusCircle, href: route('admin.documents') },
+        { label: "View History", icon: History, href: route('admin.history') },
+    ];
+     
+    const notificationIcons = {
+        request_completed: CheckCircle,
+        request_rejected: XCircle,
+        default: FileText,
+    };
+    
+    const COLORS = ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#a5b4fc'];
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.07 } } };
     const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
+    
+    // 3. IDAGDAG ANG TOUR LOGIC
+    const startTour = () => {
+        const driverObj = driver({
+            showProgress: true,
+            popoverClass: 'driverjs-theme', // Gamitin ang theme class mula sa iyong layout
+            steps: [
+                { element: '#dashboard-header', popover: { title: 'Welcome!', description: 'This is your main dashboard, providing a high-level overview of your system\'s activity.' } },
+                { element: '#stats-cards', popover: { title: 'Key Statistics', description: 'These cards show your most important metrics at a glance, like total residents and pending requests.' } },
+                { element: '#quick-actions', popover: { title: 'Quick Actions', description: 'Use these buttons for quick access to common tasks like viewing requests or creating announcements.' } },
+                { element: '#pending-requests-card', popover: { title: 'Pending Requests', description: 'This table shows the most recent requests that require your immediate attention.' } },
+                { element: '#document-breakdown-card', popover: { title: 'Document Breakdown', description: 'This chart visualizes which documents are most frequently requested.' } },
+                { element: '#recent-activity-card', popover: { title: 'Recent Activity', description: 'This feed shows the latest completed or rejected requests processed by the admin team.' } },
+                { element: '#request-volume-chart', popover: { title: 'Request Volume', description: 'This chart tracks the volume of document requests over time, helping you identify trends.' } }
+            ]
+        });
+        driverObj.drive();
+    };
 
     return (
         <AuthenticatedLayout user={auth.user} >
             <Head title="Admin Dashboard" />
-            <AuroraBackground />
+            
+            <div className="absolute inset-0 -z-10 h-full w-full overflow-hidden">
+                <div className="absolute top-0 -left-4 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-3xl animate-pulse"></div>
+                <div className="absolute -bottom-16 -right-4 h-[500px] w-[500px] rounded-full bg-indigo-500/10 blur-3xl animate-pulse delay-1000"></div>
+            </div>
 
             <motion.div className="max-w-screen-xl mx-auto sm:px-6 lg:px-8 py-8" variants={containerVariants} initial="hidden" animate="visible">
-                {/* --- HEADER & QUICK ACTIONS --- */}
                 <motion.div variants={itemVariants} className="mb-8">
-                    <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Welcome Back, {auth.user.name}!</h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">{today}</p>
-                    <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4 mb-6" id="dashboard-header">
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">Welcome Back, {auth.user.full_name}!</h1>
+                            <p className="text-gray-500 dark:text-gray-400 mt-1">{today}</p>
+                        </div>
+                        {/* 4. IDAGDAG ANG TOUR BUTTON DITO */}
+                        <div className="flex items-center gap-2 md:shrink-0">
+                             <SystemStatus />
+                             <button onClick={startTour} className="p-2 rounded-lg bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors" title="Start Tour">
+                                 <HelpCircle size={20} />
+                             </button>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4" id="quick-actions">
                         {quickActions.map(action => (
                             <Link key={action.label} href={action.href} className="flex items-center justify-center gap-3 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm p-4 rounded-xl shadow-md hover:shadow-lg hover:bg-blue-50 dark:hover:bg-gray-700 transition-all">
                                 <action.icon className="text-blue-600 dark:text-blue-400" size={20}/>
@@ -117,16 +132,19 @@ export default function AdminDashboard({ auth }) {
                     </div>
                 </motion.div>
 
-                {/* --- MAIN GRID LAYOUT --- */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* --- MAIN CONTENT (LEFT) --- */}
                     <div className="lg:col-span-2 flex flex-col gap-8">
-                        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {stats.map((stat, index) => <StatCard key={index} {...stat} />)}
+                        <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6" id="stats-cards">
+                            {stats.map((stat, index) => {
+                                const IconComponent = iconMap[stat.icon];
+                                if (!IconComponent) {
+                                    return <StatCard key={index} icon={FileText} {...stat} title={`Unknown Icon: ${stat.title}`} />;
+                                }
+                                return <StatCard key={index} icon={IconComponent} {...stat} />;
+                            })}
                         </motion.div>
 
-                        {/* --- NEW: PENDING REQUESTS TABLE --- */}
-                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg" id="pending-requests-card">
                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4 text-lg">Action Required: Pending Requests</h3>
                              <div className="overflow-x-auto">
                                  <table className="w-full text-left">
@@ -145,11 +163,7 @@ export default function AdminDashboard({ auth }) {
                                                  <td className="py-3 px-4 text-sm text-gray-600 dark:text-gray-300">{req.docType}</td>
                                                  <td className="py-3 px-4 text-sm text-gray-500 dark:text-gray-400">{req.date}</td>
                                                  <td className="py-3 px-4 text-center">
-                                                     <div className="flex justify-center gap-2">
-                                                        <button className="p-2 text-gray-500 hover:text-blue-600 transition-colors"><Eye size={16}/></button>
-                                                        <button className="p-2 text-gray-500 hover:text-green-600 transition-colors"><CheckCircle size={16}/></button>
-                                                        <button className="p-2 text-gray-500 hover:text-red-600 transition-colors"><XCircle size={16}/></button>
-                                                     </div>
+                                                     <Link href={route('admin.request')} className="p-2 text-gray-500 hover:text-blue-600 transition-colors"><Eye size={16}/></Link>
                                                  </td>
                                              </tr>
                                          ))}
@@ -159,16 +173,14 @@ export default function AdminDashboard({ auth }) {
                         </motion.div>
                     </div>
 
-                    {/* --- SIDEBAR CONTENT (RIGHT) --- */}
                     <div className="lg:col-span-1 flex flex-col gap-8">
-                        {/* --- NEW: DOCUMENT BREAKDOWN DONUT CHART --- */}
-                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg" id="document-breakdown-card">
                             <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Document Breakdown</h3>
                             <div className="h-56 w-full">
                                 <ResponsiveContainer>
                                     <PieChart>
-                                        <Pie data={documentBreakdownData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" paddingAngle={5}>
-                                            {documentBreakdownData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                                        <Pie data={documentBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={70} fill="#8884d8" paddingAngle={5}>
+                                            {documentBreakdown.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                                         </Pie>
                                         <Tooltip />
                                         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '12px' }}/>
@@ -177,28 +189,38 @@ export default function AdminDashboard({ auth }) {
                             </div>
                         </motion.div>
 
-                        {/* --- RECENT ACTIVITY --- */}
-                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                        <motion.div variants={itemVariants} className="bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg" id="recent-activity-card">
                              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Activity</h3>
                              <ul className="space-y-4">
-                                
-                                {recentActivities.map((activity, index) => {
-                                    const Icon = notificationIcons[activity.type];
+                                {recentActivities.length > 0 ? recentActivities.map((activity) => {
+                                    const Icon = notificationIcons[activity.type] || notificationIcons.default;
+                                    const actionText = activity.status === 'Claimed' ? 'approved' : 'rejected';
+                                    const iconColor = activity.status === 'Claimed' ? 'text-green-500' : 'text-red-500';
+
                                     return (
-                                        <li key={index} className="flex items-center gap-4">
-                                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700"><Icon className="text-gray-500" size={20} /></div>
-                                            <div className="flex-grow"><p className="text-sm text-gray-700 dark:text-gray-300"><span className="font-semibold text-gray-900 dark:text-white">{activity.user}</span> {activity.text}</p></div>
-                                            <p className="flex-shrink-0 text-xs text-gray-500 dark:text-gray-400">{activity.time}</p>
+                                        <li key={activity.id} className="flex items-start gap-4">
+                                            <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
+                                                <Icon className={iconColor} size={20} />
+                                            </div>
+                                            <div className="flex-grow">
+                                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-snug">
+                                                    <span className="font-semibold text-gray-900 dark:text-white">{activity.processor_name}</span>
+                                                    {` ${actionText} the request for `}
+                                                    <span className="font-semibold text-gray-900 dark:text-white">{activity.document_name}</span>.
+                                                </p>
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{activity.time}</p>
+                                            </div>
                                         </li>
                                     );
-                                })}
+                                }) : (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">No recent activities found.</p>
+                                )}
                              </ul>
                         </motion.div>
                     </div>
                 </div>
 
-                {/* --- FULL-WIDTH CHART --- */}
-                <motion.div variants={itemVariants} className="mt-8 bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg">
+                <motion.div variants={itemVariants} className="mt-8 bg-white/70 dark:bg-gray-800/60 backdrop-blur-sm p-6 rounded-2xl shadow-lg" id="request-volume-chart">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-lg">Request Volume</h3>
                         <div className="flex gap-1 bg-gray-100 dark:bg-gray-900/50 p-1 rounded-lg text-sm">

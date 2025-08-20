@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+use App\Http\Controllers\Admin\HistoryController;
 
 use App\Http\Controllers\Admin\MessagesCounterController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
@@ -41,9 +42,12 @@ Route::post('/validate-phone', [ValidationController::class, 'checkPhone'])->nam
 // ... other routes like Route::post('/register', ...)
 // --- GENERAL AUTHENTICATED ROUTES ---
 Route::middleware(['auth'])->group(function () {
+    // Route::get('resident/home', function () {
+    //     return Inertia::render('Dashboard');
+    // })->middleware(['can:be-resident'])->name('dashboard');
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->middleware(['can:be-resident'])->name('dashboard');
+        return redirect()->route('residents.home');
+    })->name('Home');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -67,7 +71,11 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     
     // ADD this new generic route for storing the request
     Route::post('/request', [DocumentRequestController::class, 'store'])->name('request.store');
+Route::get('/my-requests', [DocumentRequestController::class, 'index'])
+    ->name('requests.index');
 
+    Route::post('/my-requests/{documentRequest}/pay', [DocumentRequestController::class, 'submitPayment'])
+    ->name('requests.submit-payment');
 
     Route::prefix('papers')->name('papers.')->group(function() {
         Route::get('/akap', fn() => Inertia::render('Residents/papers/Akap'))->name('akap');
@@ -91,10 +99,12 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     
     // --- Static Pages ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/announcement', fn() => Inertia::render('Admin/Announcement'))->name('announcement');
+    // The conflicting '/announcement' route has been removed.
     Route::get('/history', fn() => Inertia::render('Admin/History'))->name('history');
     Route::get('/payment', fn() => Inertia::render('Admin/Payment'))->name('payment');
     
+     Route::post('/requests/{documentRequest}/set-payment', [RequestDocumentsController::class, 'setPaymentAmount'])
+         ->name('requests.set-payment');
     // --- Document Types Routes ---
     Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
     Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
@@ -107,22 +117,41 @@ Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->gr
     Route::get('/requests/{documentRequest}/generate', [DocumentGenerationController::class, 'generate'])->name('requests.generate');
     Route::get('/requests/{documentRequest}/preview', [DocumentGenerationController::class, 'preview'])->name('requests.preview');
     
-
     // --- Messages Routes ---
     Route::get('/messages', [MessagesController::class, 'index'])->name('messages');
     Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
 
-     Route::resource('/announcements', AnnouncementController::class);
+    // --- Resourceful Routes ---
+    Route::resource('announcements', AnnouncementController::class)
+    ->names('admin.announcements')
+    // Kailangan nating i-override ang update route para gumamit ng POST
+    ->except(['update']);
+    Route::resource('/announcements', AnnouncementController::class);
+    Route::get('/history', [HistoryController::class, 'index'])->name('history');
+
+    Route::get('/requests/{documentRequest}/receipt', [RequestDocumentsController::class, 'showReceipt'])
+         ->name('requests.receipt');
 });
 
 
 // --- SUPER ADMIN ROUTES ---
 // Only superadmins (because gate check is strict)
-Route::middleware(['auth', 'can:be-super-admin'])->prefix('superadmin')->name('superadmin.')->group(function () {
+Route::middleware(['auth', 'can:be-super-admin'])
+    ->prefix('superadmin')
+    ->name('superadmin.')
+    ->group(function () {
+    
+    // This route shows the list of users on the management page.
     Route::get('/users', [SuperAdminUserController::class, 'index'])->name('users.index');
+    
+    // This route handles changing ONLY the user's role via the dropdown.
     Route::patch('/users/{user}/update-role', [SuperAdminUserController::class, 'updateRole'])->name('users.updateRole');
+    
+    // ADD THIS NEW LINE: This route handles updating the user's details (name, email, etc.) from the edit modal.
+    Route::patch('/users/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
+
 });
 
 // Auth scaffolding routes
