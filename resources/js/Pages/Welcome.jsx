@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { FileText, Megaphone, Users, ArrowRight, UserPlus, MousePointerClick, CheckCircle, ChevronDown, HelpCircle, MessageCircleQuestion, Menu, X } from 'lucide-react';
+import { FileText, Megaphone, Users, ArrowRight, UserPlus, MousePointerClick, CheckCircle, ChevronDown, HelpCircle, Menu, X } from 'lucide-react';
 import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer-motion';
 import { TypeAnimation } from 'react-type-animation';
 import clsx from 'clsx';
 import Footer from '@/Components/Residents/Footer';
 
-// --- ICONS (Walang pagbabago dito) ---
 const FlagPH = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" className={className}>
         <rect fill="#0038A8" width="9" height="3" />
@@ -24,7 +23,7 @@ const FlagUSA = ({ className }) => (
     </svg>
 );
 
-// --- CONTENT OBJECT WITH NAVIGATION LINKS ---
+
 const content = {
     en: {
         title: "Doconnect",
@@ -112,7 +111,6 @@ const content = {
     }
 };
 
-// --- REUSABLE COMPONENTS (Walang pagbabago dito) ---
 const ServiceCard = ({ icon, title, description }) => (
     <motion.div 
         className="bg-white/50 dark:bg-slate-800/50 p-6 rounded-2xl shadow-lg backdrop-blur-sm ring-1 ring-black/5 transition-shadow duration-300 hover:shadow-blue-500/20 hover:shadow-2xl"
@@ -210,6 +208,17 @@ export default function Welcome({ auth }) {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    useEffect(() => {
+        if (isMobileMenuOpen) {
+            document.body.classList.add('overflow-hidden');
+        } else {
+            document.body.classList.remove('overflow-hidden');
+        }
+        return () => {
+            document.body.classList.remove('overflow-hidden');
+        };
+    }, [isMobileMenuOpen]);
+
     const t = content[language];
 
     const slideInUp = {
@@ -234,16 +243,16 @@ export default function Welcome({ auth }) {
             <div className="relative overflow-x-hidden bg-sky-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 isolate">
                 <motion.div className="fixed top-0 left-0 right-0 h-1 bg-blue-600 origin-left z-50" style={{ scaleX }} />
                 
-                <header className={clsx("fixed top-0 left-0 right-0 z-30 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
-                    <nav className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
-                        <div className="flex lg:flex-1">
+                <header className={clsx("fixed top-0 left-0 right-0 z-40 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
+                    <nav className="flex items-center justify-between p-4 md:px-8 max-w-7xl mx-auto" aria-label="Global">
+                        <div className="flex md:flex-1">
                             <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
                                 <img className="h-10 w-auto rounded-full ring-2 ring-white/50" src="/images/gapanlogo.png" alt="Barangay Logo" />
                                 <span className="font-bold text-lg text-slate-800 dark:text-white">Doconnect</span>
                             </Link>
                         </div>
                     
-                        <div className="flex lg:hidden">
+                        <div className="flex md:hidden">
                             <button
                                 type="button"
                                 className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700 dark:text-gray-300"
@@ -254,7 +263,7 @@ export default function Welcome({ auth }) {
                             </button>
                         </div>
 
-                        <div className="hidden lg:flex lg:gap-x-8">
+                        <div className="hidden md:flex md:gap-x-8">
                             {t.navLinks.map((item) => (
                                 <a key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                     {item.name}
@@ -262,7 +271,7 @@ export default function Welcome({ auth }) {
                             ))}
                         </div>
 
-                        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-4">
+                        <div className="hidden md:flex md:flex-1 md:justify-end md:items-center md:gap-x-4">
                             <div className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 flex text-sm font-semibold">
                                 <button onClick={() => setLanguage('en')} className={clsx('px-3 py-1 rounded-full transition-colors flex items-center gap-2', language === 'en' ? 'bg-blue-600 text-white shadow' : 'text-slate-600 dark:text-slate-400')}>
                                     <FlagUSA className="h-4 w-5 rounded-sm" /> EN
@@ -288,7 +297,7 @@ export default function Welcome({ auth }) {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="lg:hidden"
+                                className="md:hidden"
                             >
                                 <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
                                 
@@ -355,15 +364,15 @@ export default function Welcome({ auth }) {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </header>              
+                </header>                  
                 
                 <main className="relative z-10">
                     <div className="min-h-screen flex items-center relative overflow-hidden">
                         <AuroraBackground />
-                        <div className="flex flex-col lg:grid lg:grid-cols-2 items-center gap-8 max-w-7xl mx-auto px-6 pt-28 pb-16 lg:pt-24 lg:pb-12 z-10">
-                            <motion.div className="text-center lg:text-left" initial="hidden" animate="visible" variants={staggerContainer}>
+                        <div className="flex flex-col md:grid md:grid-cols-2 items-center gap-8 max-w-7xl mx-auto px-6 pt-28 pb-16 md:pt-24 md:pb-12 z-10">
+                            <motion.div className="text-center md:text-left" initial="hidden" animate="visible" variants={staggerContainer}>
                                 <motion.span variants={slideInUp} className="inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-900/50 px-3 py-1 text-sm font-medium text-sky-800 dark:text-sky-300">{t.tagline}</motion.span>
-                                <motion.div variants={slideInUp} className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white min-h-[140px] md:min-h-[160px] lg:min-h-0">
+                                <motion.div variants={slideInUp} className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white min-h-[140px] md:min-h-[160px] md:min-h-0">
                                     <TypeAnimation
                                         sequence={[
                                             t.heroTitle,
@@ -378,15 +387,15 @@ export default function Welcome({ auth }) {
                                         repeat={Infinity}
                                     />
                                 </motion.div>
-                                <motion.p variants={slideInUp} className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto lg:mx-0">{t.heroSubtitle}</motion.p>
-                                <motion.div variants={slideInUp} className="mt-8 flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
+                                <motion.p variants={slideInUp} className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto md:mx-0">{t.heroSubtitle}</motion.p>
+                                <motion.div variants={slideInUp} className="mt-8 flex flex-col sm:flex-row justify-center md:justify-start gap-4">
                                     <Link href={route('register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-lg hover:bg-blue-700 focus-visible:outline-blue-600 transition-transform hover:scale-105">
                                         {t.getStarted}
                                         <ArrowRight size={20} />
                                     </Link>
                                 </motion.div>
                             </motion.div>
-                             <motion.div className="w-full mt-10 lg:mt-0" initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }}>
+                             <motion.div className="w-full mt-10 md:mt-0" initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }}>
                                 <video src="/images/solid.mp4" className="w-full h-auto rounded-xl" autoPlay loop muted playsInline>
                                     Your browser does not support the video tag.
                                 </video>
