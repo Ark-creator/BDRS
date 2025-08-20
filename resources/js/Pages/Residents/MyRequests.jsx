@@ -1,17 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, Link } from '@inertiajs/react';
 import Pagination from '@/Components/Pagination';
+import Footer from '@/Components/Residents/Footer';
+import { 
+    FileText, History, Info, X, UploadCloud, CheckCircle2, 
+    XCircle, Clock, LoaderCircle, ThumbsUp, Hourglass, HelpCircle, Ticket
+} from 'lucide-react';
+import clsx from 'clsx';
 
-// --- Reusable Components (Modal and StatusBadge) ---
+const StatusBadge = ({ status }) => {
+    const statusConfig = {
+        'Rejected': { badgeClasses: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300', icon: <XCircle className="h-4 w-4" /> },
+        'Claimed': { badgeClasses: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300', icon: <CheckCircle2 className="h-4 w-4" /> },
+        'Processing': { badgeClasses: 'bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300', icon: <LoaderCircle className="h-4 w-4 animate-spin" /> },
+        'Pending': { badgeClasses: 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300', icon: <Clock className="h-4 w-4" /> },
+        'Waiting for Payment': { badgeClasses: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300', icon: <Hourglass className="h-4 w-4" /> },
+        'For Payment': { badgeClasses: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300', icon: <Hourglass className="h-4 w-4" /> },
+        'Ready to Pickup': { badgeClasses: 'bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-300', icon: <ThumbsUp className="h-4 w-4" /> },
+        'default': { badgeClasses: 'bg-slate-100 text-slate-800 dark:bg-slate-700/80 dark:text-slate-300', icon: <HelpCircle className="h-4 w-4" /> }
+    };
+    const currentConfig = statusConfig[status] || statusConfig['default'];
+
+    return (
+        <span className={`px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-2 ${currentConfig.badgeClasses}`}>
+            {currentConfig.icon}
+            <span>{status || 'Unknown'}</span>
+        </span>
+    );
+};
+
+
 const Modal = ({ children, show, onClose, title }) => {
     if (!show) return null;
     return (
-        <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-5 border-b dark:border-gray-700">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">&times;</button>
+                    <button onClick={onClose} className="text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full p-1.5 transition-colors">
+                        <X size={20} />
+                    </button>
                 </div>
                 <div className="p-6">{children}</div>
             </div>
@@ -19,30 +48,110 @@ const Modal = ({ children, show, onClose, title }) => {
     );
 };
 
-const StatusBadge = ({ status }) => {
-    const colors = {
-        'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-        'Pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-        'For Payment': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-        'Processing': 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
-        'Ready to Pickup': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-        'Claimed': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-    };
+const ClaimVoucherModal = ({ show, onClose, request }) => {
+    if (!request) return null;
+
+    const claimVoucher = request.claim_voucher || `DOC-REQ-${request.id}`;
+
     return (
-        <span className={`px-3 py-1 text-xs font-semibold rounded-full ${colors[status] || 'bg-gray-200'}`}>
-            {status}
-        </span>
+        <Modal show={show} onClose={onClose} title="Claim Your Document">
+            <div className="text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Present this voucher code to the barangay personnel to claim your document.
+                </p>
+                <div className="mt-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-lg border dark:border-slate-700">
+                    <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-widest">VOUCHER CODE</p>
+                    <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-gray-200 tracking-wider">{claimVoucher}</p>
+                </div>
+                <div className="mt-6 text-left text-sm text-gray-800 dark:text-gray-200 space-y-2 border-t dark:border-slate-700 pt-4">
+                    <p><strong>Requestor:</strong> {request.user.name}</p>
+                    <p><strong>Document:</strong> {request.document_type.name}</p>
+                </div>
+            </div>
+        </Modal>
     );
 };
 
-// --- Main Page Component ---
-export default function MyRequests({ requests }) {
+const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
+    return (
+        <div className="bg-white dark:bg-gray-800/50 overflow-hidden shadow-sm border dark:border-gray-700 rounded-xl transition-shadow hover:shadow-md">
+            <div className="p-6 flex flex-col md:flex-row justify-between items-start gap-6">
+                <div className="flex-grow">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full">
+                            <FileText className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+                        </div>
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{request.document_type.name}</h3>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 ml-11">
+                        Requested on: {new Date(request.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                </div>
+                
+                <div className="flex flex-col items-start md:items-end gap-4 w-full md:w-auto md:min-w-[280px] shrink-0">
+                    <StatusBadge status={request.status} />
+
+                    {request.status === 'Ready to Pickup' && (
+                         <button 
+                            onClick={() => openVoucherModal(request)}
+                            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-lime-600 text-white font-semibold rounded-lg hover:bg-lime-700 transition-transform hover:scale-105 shadow-sm"
+                        >
+                            <Ticket size={16}/>
+                            View Claim Voucher
+                        </button>
+                    )}
+
+                    {request.document_type.name === 'Brgy Business Permit' && request.status === 'Waiting for Payment' && (
+                        <div className="mt-2 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-center w-full border border-blue-200 dark:border-blue-800">
+                            <p className="text-sm text-gray-600 dark:text-gray-300">Amount to Pay:</p>
+                            <p className="font-bold text-3xl text-blue-800 dark:text-blue-300 my-1">
+                                ₱{parseFloat(request.payment_amount).toFixed(2)}
+                            </p>
+                            <button 
+                                onClick={() => openPaymentModal(request)}
+                                className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-transform hover:scale-105 shadow-sm"
+                            >
+                                <UploadCloud size={16}/>
+                                Upload Receipt
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const EmptyState = ({ icon, title, message, children }) => (
+    <div className="text-center py-16 px-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border-2 border-dashed dark:border-gray-700">
+        <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+            {icon}
+        </div>
+        <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{message}</p>
+        {children && <div className="mt-6">{children}</div>}
+    </div>
+);
+
+export default function MyRequests({ auth, requests }) {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [showVoucherModal, setShowVoucherModal] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
+    const [view, setView] = useState('active');
 
     const { data, setData, post, processing, errors, reset, progress } = useForm({
         receipt: null,
     });
+
+    const { activeRequests, pastRequests } = useMemo(() => {
+        const activeStatuses = ['Pending', 'Processing', 'Ready to Pickup', 'For Payment', 'Waiting for Payment'];
+        const pastStatuses = ['Claimed', 'Rejected'];
+        
+        return {
+            activeRequests: requests.data.filter(r => activeStatuses.includes(r.status)),
+            pastRequests: requests.data.filter(r => pastStatuses.includes(r.status))
+        };
+    }, [requests.data]);
 
     const openPaymentModal = (request) => {
         setSelectedRequest(request);
@@ -50,69 +159,79 @@ export default function MyRequests({ requests }) {
         setShowPaymentModal(true);
     };
 
+    const openVoucherModal = (request) => {
+        setSelectedRequest(request);
+        setShowVoucherModal(true);
+    };
+
     const handlePaymentSubmit = (e) => {
         e.preventDefault();
-        if (!data.receipt) {
-            alert('Please select a receipt file to upload.');
-            return;
-        }
+        if (!data.receipt) return;
         post(route('residents.requests.submit-payment', selectedRequest.id), {
             onSuccess: () => setShowPaymentModal(false),
         });
     };
 
+    const currentList = view === 'active' ? activeRequests : pastRequests;
+
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout user={auth.user}>
             <Head title="My Document Requests" />
 
-            <div className="py-12">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700">
-                            <h2 className="text-2xl font-bold">My Document Requests</h2>
-                            <p className="text-gray-500 mt-1">Track the status of all your submitted documents here.</p>
-                        </div>
-
-                        <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {requests.data.length > 0 ? (
-                                requests.data.map(request => (
-                                    <div key={request.id} className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div>
-                                            <h3 className="font-bold text-lg text-blue-700 dark:text-blue-400">{request.document_type.name}</h3>
-                                            <p className="text-sm text-gray-500 mt-1">
-                                                Requested on: {new Date(request.created_at).toLocaleDateString()}
-                                            </p>
-                                        </div>
-                                        
-                                        <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto">
-                                            <StatusBadge status={request.status} />
-
-                                            {request.document_type.name === 'Brgy Business Permit' && request.status === 'Waiting for Payment' && (
-                                                <div className="mt-2 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-center w-full border border-blue-200 dark:border-blue-800">
-                                                    <p className="text-sm text-gray-600 dark:text-gray-300">Amount to Pay:</p>
-                                                    <p className="font-bold text-2xl text-blue-800 dark:text-blue-300">
-                                                        ₱{parseFloat(request.payment_amount).toFixed(2)}
-                                                    </p>
-                                                    <button 
-                                                        onClick={() => openPaymentModal(request)}
-                                                        className="mt-3 w-full px-4 py-2 bg-blue-600 text-white font-semibold rounded-md hover:bg-blue-700 transition"
-                                                    >
-                                                        Upload Receipt
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="p-6 text-center text-gray-500">
-                                    You have not made any requests yet.
-                                </div>
-                            )}
+            <div className="py-12 bg-slate-50 dark:bg-slate-900/90 min-h-screen">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
+                    <div className="px-4 sm:px-0">
+                        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">My Requests</h1>
+                        <p className="mt-2 text-md text-gray-600 dark:text-gray-400">
+                            Track your active document requests and view your completed or past requests.
+                        </p>
+                    </div>
+                
+                    <div className="bg-white dark:bg-gray-800 shadow-lg rounded-xl">
+                        <div className="border-b border-gray-200 dark:border-gray-700">
+                            <nav className="flex -mb-px p-4" aria-label="Tabs">
+                                <button
+                                    onClick={() => setView('active')}
+                                    className={clsx('flex items-center gap-2 shrink-0 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors', view === 'active' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50')}
+                                >
+                                    <FileText size={16} /> Active Requests
+                                </button>
+                                <button
+                                    onClick={() => setView('past')}
+                                    className={clsx('ml-2 flex items-center gap-2 shrink-0 px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors', view === 'past' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700/50')}
+                                >
+                                    <History size={16} /> Past Requests
+                                </button>
+                            </nav>
                         </div>
                         
+                        <div className="p-6">
+                            {currentList.length > 0 ? (
+                                <div className="space-y-6">
+                                    {currentList.map(request => (
+                                        <RequestCard 
+                                            key={request.id} 
+                                            request={request} 
+                                            openPaymentModal={openPaymentModal}
+                                            openVoucherModal={openVoucherModal} 
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                view === 'active' ? (
+                                    <EmptyState icon={<Info size={24} />} title="No Active Requests" message="You currently have no ongoing document requests.">
+                                        <Link href={route('residents.documents.create')} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition shadow-sm">
+                                            Request a Document
+                                        </Link>
+                                    </EmptyState>
+                                ) : (
+                                    <EmptyState icon={<History size={24} />} title="No Past Requests Dahil Wala Pa Backend Ni Bosszxc Jeyem M4p4gm4aL" message="Your history of completed or rejected requests will appear here." />
+                                )
+                            )}
+                        </div>
+
                         {requests.data.length > 0 && (
-                            <div className="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700">
+                            <div className="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 rounded-b-xl">
                                 <Pagination links={requests.links} />
                             </div>
                         )}
@@ -120,8 +239,14 @@ export default function MyRequests({ requests }) {
                 </div>
             </div>
 
+            <ClaimVoucherModal 
+                show={showVoucherModal} 
+                onClose={() => setShowVoucherModal(false)} 
+                request={selectedRequest} 
+            />
+
             <Modal show={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Submit Proof of Payment">
-                <div className="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700">
+                 <div className="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700">
                     <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">Payment Instructions</h4>
                     <ol className="list-decimal list-inside text-sm text-gray-600 dark:text-gray-300 space-y-1 mb-4">
                         <li>Scan the QR code below to pay the exact amount.</li>
@@ -129,23 +254,18 @@ export default function MyRequests({ requests }) {
                         <li>Upload the screenshot in the form below.</li>
                     </ol>
                     <div className="text-sm space-y-3">
-                        <div>
-                            <p className="font-semibold text-gray-700 dark:text-gray-200">GCash Payment</p>
-                            
-                            {/* --- NEW QR CODE SECTION --- */}
-                            <div className="text-center my-2">
-                                <img 
-                                    src="/images/gcash_qr_code.png" 
-                                    alt="GCash QR Code"
-                                    className="w-40 h-40 mx-auto rounded-lg border p-1"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Scan to Pay</p>
-                            </div>
-                            {/* --- END NEW SECTION --- */}
-                            
-                            <p className="text-gray-600 dark:text-gray-300">Account Name: B. San Isidro Treasury</p>
-                            <p className="text-gray-600 dark:text-gray-300">Account Number: 0912-345-6789</p>
+                        <div className="text-center my-2">
+                            <img 
+                                src="/images/gcash_qr_code.png" 
+                                alt="GCash QR Code"
+                                className="w-40 h-40 mx-auto rounded-lg border p-1 bg-white"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Scan to Pay</p>
                         </div>
+                        <p className="text-center font-medium text-gray-700 dark:text-gray-200">
+                            GCash Name: B. San Isidro Treasury<br/>
+                            GCash Number: 0912-345-6789
+                        </p>
                     </div>
                 </div>
                 <form onSubmit={handlePaymentSubmit}>
@@ -162,23 +282,23 @@ export default function MyRequests({ requests }) {
                             required
                         />
                         {progress && (
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-3">
                                 <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${progress.percentage}%` }}></div>
                             </div>
                         )}
                         {errors.receipt && <p className="text-red-500 text-xs mt-2">{errors.receipt}</p>}
                     </div>
-
-                    <div className="flex justify-end space-x-2 pt-4 border-t dark:border-gray-700 mt-6">
-                        <button type="button" onClick={() => setShowPaymentModal(false)} className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500">
+                    <div className="flex justify-end space-x-3 pt-4 border-t dark:border-gray-700 mt-6">
+                        <button type="button" onClick={() => setShowPaymentModal(false)} className="px-4 py-2 rounded-lg text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 font-semibold text-sm">
                             Cancel
                         </button>
-                        <button type="submit" disabled={processing} className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
+                        <button type="submit" disabled={processing} className="px-4 py-2 rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 font-semibold text-sm flex items-center gap-2">
                             {processing ? 'Uploading...' : 'Submit Payment'}
                         </button>
                     </div>
                 </form>
             </Modal>
+            <Footer />
         </AuthenticatedLayout>
     );
 }
