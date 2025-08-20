@@ -87,7 +87,7 @@ export default function MyRequests({ requests }) {
                                         <div className="flex flex-col items-start md:items-end gap-3 w-full md:w-auto">
                                             <StatusBadge status={request.status} />
 
-                                            {request.document_type.name === 'Brgy Business Permit' && request.status === 'For Payment' && (
+                                            {request.document_type.name === 'Brgy Business Permit' && request.status === 'Waiting for Payment' && (
                                                 <div className="mt-2 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-center w-full border border-blue-200 dark:border-blue-800">
                                                     <p className="text-sm text-gray-600 dark:text-gray-300">Amount to Pay:</p>
                                                     <p className="font-bold text-2xl text-blue-800 dark:text-blue-300">
