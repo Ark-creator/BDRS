@@ -34,7 +34,7 @@ const content = {
         getStarted: "Get Started",
         login: "Log In",
         register: "Register",
-        dashboard: "Home",
+        dashboard: "My Account",
         navLinks: [
             { name: "How It Works", href: "#how-it-works" },
             { name: "Services", href: "#services" },

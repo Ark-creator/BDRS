@@ -10,6 +10,7 @@ use App\Models\DocumentRequest;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use App\Events\DocumentRequestCreated; // This is already correctly imported
 
 class DocumentRequestController extends Controller
 {
@@ -107,32 +108,34 @@ class DocumentRequestController extends Controller
         }
 
         // 4. Create the document request record
-        DocumentRequest::create([
+        $newRequest = DocumentRequest::create([
             'user_id'          => auth()->id(),
             'document_type_id' => $commonValidated['document_type_id'],
             'status'           => 'Pending',
             'form_data'        => $formData, // $formData is now dynamically built
         ]);
 
+        // 5. Dispatch the event to broadcast the new request
+        DocumentRequestCreated::dispatch($newRequest);
+
         return redirect()
             ->route('residents.home') // Consider redirecting to a "my requests" page
-         
             ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
     }
 
     public function index()
-{
-    $requests = DocumentRequest::where('user_id', Auth::id())
-        ->with('documentType') // Eager load the document name
-        ->latest() // Show the newest requests first
-        ->paginate(10);
+    {
+        $requests = DocumentRequest::where('user_id', Auth::id())
+            ->with('documentType') // Eager load the document name
+            ->latest() // Show the newest requests first
+            ->paginate(10);
 
-    return Inertia::render('Residents/MyRequests', [
-        'requests' => $requests,
-    ]);
-}
+        return Inertia::render('Residents/MyRequests', [
+            'requests' => $requests,
+        ]);
+    }
 
-  public function submitPayment(Request $request, DocumentRequest $documentRequest)
+    public function submitPayment(Request $request, DocumentRequest $documentRequest)
     {
         // Authorization Check 1: Ensure the user owns this request.
         if ($documentRequest->user_id !== Auth::id()) {
@@ -148,9 +151,9 @@ class DocumentRequestController extends Controller
             'receipt' => 'required|image|mimes:jpg,jpeg,png|max:2048', // 2MB Max size
         ]);
 
-        // Store the uploaded receipt file in 'storage/app/public/receipts'
-// Store the uploaded receipt file in 'storage/app/receipts' (which is private)
-$path = $validated['receipt']->store('receipts', 'local');
+        // Store the uploaded receipt file in 'storage/app/receipts' (which is private)
+        $path = $validated['receipt']->store('receipts', 'local');
+
         // Update the document request record in the database
         $documentRequest->update([
             'payment_receipt_path' => $path,
@@ -160,7 +163,6 @@ $path = $validated['receipt']->store('receipts', 'local');
         ]);
 
         return redirect()->route('residents.requests.index')
-               ->with('success', 'Payment submitted successfully! Your request is now being processed.');
+            ->with('success', 'Payment submitted successfully! Your request is now being processed.');
     }
-
 }

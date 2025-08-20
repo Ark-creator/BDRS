@@ -8,12 +8,12 @@ import { useDebounce } from 'use-debounce';
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
-import { 
-    Eye, 
-    Download, 
-    Search, 
-    FileX2, 
-    LoaderCircle, 
+import {
+    Eye,
+    Download,
+    Search,
+    FileX2,
+    LoaderCircle,
     CircleDollarSign,
     ReceiptText,
     HelpCircle,
@@ -23,7 +23,7 @@ import {
     PackageCheck,
     CheckCircle2,
     Hourglass,
-     ThumbsUp,
+    ThumbsUp,
 } from 'lucide-react';
 
 // --- Reusable Components ---
@@ -71,13 +71,17 @@ const StatusBadge = ({ status }) => {
             badgeClasses: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
             icon: <Hourglass className="h-4 w-4" />
         },
+        'Ready to Pickup': {
+            badgeClasses: 'bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-300',
+            icon: <ThumbsUp className="h-4 w-4" />
+        },
         'Place an Amount to Pay': {
             badgeClasses: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300',
             icon: <CircleDollarSign className="h-4 w-4" />
         },
         'default': {
-           badgeClasses: 'bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-300',
-            icon: <ThumbsUp className="h-4 w-4" />
+           badgeClasses: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
+            icon: <HelpCircle className="h-4 w-4" />
         }
     };
     const currentConfig = statusConfig[status] || statusConfig['default'];
@@ -94,6 +98,7 @@ const StatusBadge = ({ status }) => {
 export default function Request() {
     const { flash, documentRequests, filters } = usePage().props;
     
+    const [displayedRequests, setDisplayedRequests] = useState(documentRequests);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -115,23 +120,59 @@ export default function Request() {
         payment_amount: '',
     });
     
-    // Adjusted filter options to include new payment statuses
     const filterStatusOptions = ['All', 'Pending', 'Waiting for Payment', 'Processing', 'Ready to Pickup'];
-    // Adjusted action options for the dropdown
     const actionStatusOptions = ['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
+    // --- REAL-TIME LISTENER WITH LOGGING ---
+    useEffect(() => {
+        console.log('Attempting to connect to Echo and listen for events...');
+
+        if (window.Echo) {
+            const channel = window.Echo.private('admin-requests');
+
+            console.log('Subscribing to private channel: admin-requests');
+
+            channel.listen('.NewDocumentRequest', (event) => {
+                console.log('SUCCESS: New request received via Reverb:', event.request);
+                
+                toast.success(`New request from ${event.request.user.full_name}!`, {
+                    position: "bottom-right",
+                });
+
+                setDisplayedRequests(currentRequests => {
+                    const newRequestData = [event.request, ...currentRequests.data];
+                    const uniqueRequests = Array.from(new Map(newRequestData.map(item => [item.id, item])).values());
+
+                    return {
+                        ...currentRequests,
+                        data: uniqueRequests,
+                        total: currentRequests.total + 1,
+                    };
+                });
+            });
+
+            // Cleanup function to leave the channel when the component unmounts
+            return () => {
+                console.log('Leaving channel: admin-requests');
+                channel.stopListening('.NewDocumentRequest');
+                window.Echo.leave('admin-requests');
+            };
+        } else {
+            console.error('Laravel Echo is not defined on the window object.');
+        }
+    }, []); // Empty dependency array ensures this effect runs only once
 
     const startTour = () => {
         const driverObj = driver({
             showProgress: true,
             popoverClass: 'driverjs-theme',
             steps: [
-                { element: '#header-section', popover: { title: 'Manage Requests', description: 'This is the main header. You can find the title and the search bar here.' } },
-                { element: '#search-input', popover: { title: 'Search', description: 'Quickly find a specific request by typing the resident\'s name or the document type.' } },
-                { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Click these buttons to filter the list and see only the requests with that status.' } },
-                { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all the active requests. On mobile, it appears as cards, and on desktop, as a table.' } },
-                { element: '#actions-item', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
-                { element: '#pagination-section', popover: { title: 'Pagination', description: 'Use these controls to navigate between different pages of requests.' } }
+                { element: '#header-section', popover: { title: 'Manage Requests', description: 'This is the main header.' } },
+                { element: '#search-input', popover: { title: 'Search', description: 'Find a request by name or document type.' } },
+                { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Filter requests by their current status.' } },
+                { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all active requests.' } },
+                { element: '#actions-item', popover: { title: 'Actions', description: 'Change the status of a request here.' } },
+                { element: '#pagination-section', popover: { title: 'Pagination', description: 'Navigate between pages of requests.' } }
             ]
         });
         driverObj.drive();
@@ -150,6 +191,9 @@ export default function Request() {
         router.get(route('admin.request'), debouncedFilter, {
             preserveState: true,
             replace: true,
+            onSuccess: (page) => {
+                setDisplayedRequests(page.props.documentRequests);
+            }
         });
     }, [debouncedFilter]);
 
@@ -189,11 +233,7 @@ export default function Request() {
                 toast.success('Payment amount set successfully!');
             },
             onError: (errs) => {
-                if (errs.payment_amount) {
-                    toast.error(errs.payment_amount);
-                } else {
-                    toast.error('Failed to set payment amount.');
-                }
+                toast.error(errs.payment_amount || 'Failed to set payment amount.');
             },
             preserveScroll: true,
         });
@@ -233,12 +273,12 @@ export default function Request() {
             );
         }
         if (isBusinessPermit && request.status === 'Waiting for Payment') {
-            return <div className="text-xs text-slate-500 bold">Waiting for payment</div>;
+            return <div className="text-xs text-slate-500 font-bold">Waiting for payment</div>;
         }
 
         return (
             <select
-                id={index === 0 ? "actions_item" : undefined}
+                id={index === 0 ? "actions-item" : undefined}
                 value={request.status}
                 onChange={(e) => handleStatusChange(request, e.target.value)}
                 className="w-full text-xs border-slate-300 rounded-md py-1.5 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-blue-500 focus:border-blue-500"
@@ -303,8 +343,9 @@ export default function Request() {
                         </div>
 
                         <div id="requests-list-container">
+                            {/* MOBILE VIEW */}
                             <div className="md:hidden">
-                                {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
+                                {(displayedRequests.data && displayedRequests.data.length > 0) ? displayedRequests.data.map((request, index) => (
                                     <div key={request.id} className="border-b dark:border-slate-700 p-4 space-y-4">
                                         <div className="flex justify-between items-start gap-3">
                                             <div className="flex items-center gap-3">
@@ -349,20 +390,21 @@ export default function Request() {
                                 )}
                             </div>
                             
+                            {/* DESKTOP VIEW */}
                             <div className="hidden md:block">
                                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                                    <thead className="bg-blue-600 text-white">
+                                    <thead className="bg-slate-50 dark:bg-slate-700/50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Requestor</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Document</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Status</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider actions-column">Actions</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Requestor</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Document</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Date</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider actions-column">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                                        {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
-                                            <tr key={request.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100">
+                                        {(displayedRequests.data && displayedRequests.data.length > 0) ? displayedRequests.data.map((request, index) => (
+                                            <tr key={request.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-blue-600 dark:text-blue-400 shrink-0">
@@ -380,7 +422,7 @@ export default function Request() {
                                                     {new Date(request.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                                                 </td>
                                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${index === 0 ? 'actions-column-item' : ''}`}>
-                                                    <div className="flex items-center gap-2" id="actions-item">
+                                                    <div className="flex items-center gap-2" id={index === 0 ? "actions-item" : undefined}>
                                                         <div className="w-40">
                                                             {renderActions(request, index)}
                                                         </div>
@@ -412,13 +454,13 @@ export default function Request() {
                             </div>
                         </div>
 
-                        {documentRequests.data.length > 0 && (
+                        {displayedRequests.data.length > 0 && (
                              <div id="pagination-section">
                                 <Pagination
-                                    links={documentRequests.links}
-                                    from={documentRequests.from}
-                                    to={documentRequests.to}
-                                    total={documentRequests.total}
+                                    links={displayedRequests.links}
+                                    from={displayedRequests.from}
+                                    to={displayedRequests.to}
+                                    total={displayedRequests.total}
                                 />
                             </div>
                         )}
