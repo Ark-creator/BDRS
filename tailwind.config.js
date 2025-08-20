@@ -11,14 +11,21 @@ export default {
     ],
 
     darkMode: true,
-
-    theme: {
-        extend: {
-            fontFamily: {
+    
+  theme: {
+    extend: {
+      animation: {
+        'gradient': 'gradient 8s linear infinite',
+      },
+       fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+      keyframes: {
+        'gradient': {
+          to: { 'background-position': '200% center' },
         },
+      }
     },
-
-    plugins: [forms],
-};
+  },
+  plugins: [forms],
+}

@@ -64,8 +64,8 @@ const ClaimVoucherModal = ({ show, onClose, request }) => {
                     <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-gray-200 tracking-wider">{claimVoucher}</p>
                 </div>
                 <div className="mt-6 text-left text-sm text-gray-800 dark:text-gray-200 space-y-2 border-t dark:border-slate-700 pt-4">
-                    <p><strong>Requestor:</strong> {request.user.name}</p>
-                    <p><strong>Document:</strong> {request.document_type.name}</p>
+                    <p><strong>Requestor:</strong> {request.user?.name || 'N/A'}</p>
+                    <p><strong>Document:</strong> {request.document_type?.name || 'N/A'}</p>
                 </div>
             </div>
         </Modal>
@@ -73,6 +73,19 @@ const ClaimVoucherModal = ({ show, onClose, request }) => {
 };
 
 const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
+    
+    // ===== DEBUGGING CODE: Tingnan ang laman ng bawat request object sa console =====
+    console.log('Rendering Request Card Data:', {
+        id: request.id,
+        status: request.status,
+        doc_type_name: request.document_type?.name, // Gumamit ng optional chaining (?.),
+        payment_amount: request.payment_amount
+    });
+    // ==============================================================================
+
+    const needsPayment = request.document_type?.name === 'Brgy Business Permit' &&
+                         (request.status === 'Waiting for Payment' || request.status === 'For Payment');
+
     return (
         <div className="bg-white dark:bg-gray-800/50 overflow-hidden shadow-sm border dark:border-gray-700 rounded-xl transition-shadow hover:shadow-md">
             <div className="p-6 flex flex-col md:flex-row justify-between items-start gap-6">
@@ -81,7 +94,7 @@ const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
                         <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-full">
                             <FileText className="w-5 h-5 text-blue-600 dark:text-blue-300" />
                         </div>
-                        <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{request.document_type.name}</h3>
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{request.document_type?.name || 'Unknown Document'}</h3>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 ml-11">
                         Requested on: {new Date(request.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -100,8 +113,9 @@ const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
                             View Claim Voucher
                         </button>
                     )}
-
-                    {request.document_type.name === 'Brgy Business Permit' && request.status === 'Waiting for Payment' && (
+                    
+                    {/* ===== Ginamit ang "needsPayment" variable para mas malinis ===== */}
+                    {needsPayment && (
                         <div className="mt-2 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-center w-full border border-blue-200 dark:border-blue-800">
                             <p className="text-sm text-gray-600 dark:text-gray-300">Amount to Pay:</p>
                             <p className="font-bold text-3xl text-blue-800 dark:text-blue-300 my-1">
@@ -225,7 +239,7 @@ export default function MyRequests({ auth, requests }) {
                                         </Link>
                                     </EmptyState>
                                 ) : (
-                                    <EmptyState icon={<History size={24} />} title="No Past Requests Dahil Wala Pa Backend Ni Bosszxc Jeyem M4p4gm4aL" message="Your history of completed or rejected requests will appear here." />
+                                    <EmptyState icon={<History size={24} />} title="No Past Requests" message="Your history of completed or rejected requests will appear here." />
                                 )
                             )}
                         </div>

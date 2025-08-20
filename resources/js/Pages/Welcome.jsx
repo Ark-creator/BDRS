@@ -33,7 +33,7 @@ const content = {
         getStarted: "Get Started",
         login: "Log In",
         register: "Register",
-        dashboard: "My Account",
+        dashboard: "Home",
         navLinks: [
             { name: "How It Works", href: "#how-it-works" },
             { name: "Services", href: "#services" },
@@ -110,6 +110,7 @@ const content = {
         ]
     }
 };
+
 
 const ServiceCard = ({ icon, title, description }) => (
     <motion.div 

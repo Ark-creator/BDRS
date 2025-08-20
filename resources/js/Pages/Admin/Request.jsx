@@ -292,7 +292,7 @@ export default function Request() {
             <style>{`.driverjs-theme { background-color: #fff; color: #333; }`}</style>
 
             <div className="py-6 md:py-12 bg-slate-50 dark:bg-slate-900">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4 md:px-7">
                     <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md sm:rounded-lg">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                             <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

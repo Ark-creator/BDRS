@@ -53,7 +53,7 @@ export default function AboutUs({ auth = { user: { name: 'Guest' } } }) {
                                 transition={{ duration: 0.8, ease: "easeOut" }}
                             >
                                 <p className="text-base font-semibold text-blue-600 dark:text-blue-400 tracking-wide uppercase">About Us</p>
-                                <h1 className="mt-3 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-6xl text-balance animate-gradient-text bg-gradient-to-r from-blue-600 via-sky-400 to-blue-700 bg-clip-text text-transparent">
+                               <h1 className="mt-3 text-4xl font-extrabold tracking-tight sm:text-6xl text-balance bg-gradient-to-r from-sky-500 via-sky-300 via-sky-350 to-sky-400 bg-clip-text text-transparent bg-[size:200%_auto] animate-gradient">
                                     Empowering Our Community Through Digital Innovation
                                 </h1>
                                 <p className="mt-6 text-lg text-slate-600 dark:text-slate-300 leading-8 text-balance">
