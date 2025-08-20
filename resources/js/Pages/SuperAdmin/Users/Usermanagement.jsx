@@ -12,7 +12,7 @@ const roleBadgeClasses = {
     admin: 'bg-indigo-50 text-indigo-600 ring-indigo-500/10',
     super_admin: 'bg-red-50 text-red-600 ring-red-500/10',
 };
-
+const EditIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>;
 // Loading Spinner Component
 const LoadingSpinner = () => (
     <div className="flex items-center space-x-2 text-blue-500">
@@ -211,7 +211,8 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                                    <button onClick={() => handleOpenEditModal(user)} className="text-blue-600 hover:text-blue-900 transition duration-150 ease-in-out">Edit</button>
+                                                    <button onClick={() => handleOpenEditModal(user)} className="flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-md hover:bg-blue-700 transition-colors">   <EditIcon /> <span className="ml-1">Edit</span></button>
+                                                        
                                                 </td>
                                             </tr>
                                         ))
@@ -220,7 +221,7 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
                                             <td colSpan="5" className="px-6 py-12 text-center text-gray-500 text-lg">
                                                 <div className="flex flex-col items-center justify-center space-y-2">
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                                    <p>Walang user na nakita.</p>
+                                                    <p>No users found.</p>
                                                 </div>
                                             </td>
                                         </tr>

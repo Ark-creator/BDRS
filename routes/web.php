@@ -42,9 +42,12 @@ Route::post('/validate-phone', [ValidationController::class, 'checkPhone'])->nam
 // ... other routes like Route::post('/register', ...)
 // --- GENERAL AUTHENTICATED ROUTES ---
 Route::middleware(['auth'])->group(function () {
+    // Route::get('resident/home', function () {
+    //     return Inertia::render('Dashboard');
+    // })->middleware(['can:be-resident'])->name('dashboard');
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->middleware(['can:be-resident'])->name('dashboard');
+        return redirect()->route('residents.home');
+    })->name('Home');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -34,7 +34,7 @@ const content = {
         getStarted: "Get Started",
         login: "Log In",
         register: "Register",
-        dashboard: "Dashboard",
+        dashboard: "Home",
         navLinks: [
             { name: "How It Works", href: "#how-it-works" },
             { name: "Services", href: "#services" },
@@ -272,7 +272,7 @@ export default function Welcome({ auth }) {
                                 </button>
                             </div>
                             {auth.user ? (
-                                <Link href={route('dashboard')} className="rounded-md px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">{t.dashboard}</Link>
+                                <Link href={route('Home')} className="rounded-md px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">{t.dashboard}</Link>
                             ) : (
                                 <>
                                     <Link href={route('login')} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">{t.login}</Link>
