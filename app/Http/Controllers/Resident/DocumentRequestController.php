@@ -140,7 +140,7 @@ class DocumentRequestController extends Controller
         }
 
         // Authorization Check 2: Ensure the request is actually awaiting payment.
-        if ($documentRequest->status !== 'For Payment') {
+        if ($documentRequest->status !== 'Waiting for Payment') {
             return back()->with('error', 'This request is not currently awaiting payment.');
         }
 
