@@ -70,40 +70,82 @@ class RequestDocumentsController extends Controller
     }
 
 
+    // public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
+    // {
+    //     $validated = $request->validate([
+    //         // --- UPDATE THIS LINE ---
+    //         // Add 'For Payment' to the list of valid statuses
+    //         'status' => 'required|string|in:Pending,Place an Amount to Pay,Processing, Waiting for Payment, Rejected,Ready to Pickup,Claimed',
+    //         'admin_remarks' => [
+    //             Rule::requiredIf($request->status === 'Rejected'),
+    //             'nullable',
+    //             'string',
+    //             'max:500'
+    //         ],
+    //     ]);
+
+    //     $documentRequest->status = $validated['status'];
+    //     $documentRequest->admin_remarks = $validated['admin_remarks'] ?? null;
+    //     $documentRequest->processed_by = auth()->id();
+
+    //     if ($validated['status'] === 'Claimed' || $validated['status'] === 'Rejected') {
+    //         ImmutableDocumentsArchiveHistory::create([
+    //             'user_id' => $documentRequest->user_id,
+    //             'document_type_id' => $documentRequest->document_type_id,
+    //             'form_data' => $documentRequest->form_data,
+    //             'status' => $validated['status'],
+    //             'admin_remarks' => $documentRequest->admin_remarks,
+    //             'processed_by' => $documentRequest->processed_by,
+    //             'original_created_at' => $documentRequest->created_at,
+    //         ]);
+
+    //         $documentRequest->delete();
+
+    //         return back()->with('success', 'Request has been archived successfully.');
+    //     }
+
+    //     $documentRequest->save();
+
+    //     return back()->with('success', 'Request status updated successfully.');
+    // }
+
+
     public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
+        // Step 1: Validate the incoming data.
         $validated = $request->validate([
-            // --- UPDATE THIS LINE ---
-            // Add 'For Payment' to the list of valid statuses
-            'status' => 'required|string|in:Pending,Place an Amount to Pay,Processing, Waiting for Payment, Rejected,Ready to Pickup,Claimed',
+            'status' => ['required', 'string', Rule::in(['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'])],
             'admin_remarks' => [
-                Rule::requiredIf($request->status === 'Rejected'),
                 'nullable',
                 'string',
-                'max:500'
+                'max:500',
+                Rule::requiredIf($request->status === 'Rejected'), // Remarks are required only for rejection.
             ],
         ]);
 
-        $documentRequest->status = $validated['status'];
-        $documentRequest->admin_remarks = $validated['admin_remarks'] ?? null;
-        $documentRequest->processed_by = auth()->id();
-
+        // Step 2: Check if the status means we need to archive the request.
         if ($validated['status'] === 'Claimed' || $validated['status'] === 'Rejected') {
+
+            // Create the permanent archive record.
             ImmutableDocumentsArchiveHistory::create([
                 'user_id' => $documentRequest->user_id,
                 'document_type_id' => $documentRequest->document_type_id,
                 'form_data' => $documentRequest->form_data,
                 'status' => $validated['status'],
-                'admin_remarks' => $documentRequest->admin_remarks,
-                'processed_by' => $documentRequest->processed_by,
+                'admin_remarks' => $validated['admin_remarks'] ?? null, // This will be null for 'Claimed'
+                'processed_by' => auth()->id(),
                 'original_created_at' => $documentRequest->created_at,
             ]);
 
+            // Delete the original "active" request.
             $documentRequest->delete();
 
             return back()->with('success', 'Request has been archived successfully.');
         }
 
+        // Step 3: If not archiving, just update the existing request.
+        $documentRequest->status = $validated['status'];
+        $documentRequest->processed_by = auth()->id();
         $documentRequest->save();
 
         return back()->with('success', 'Request status updated successfully.');
