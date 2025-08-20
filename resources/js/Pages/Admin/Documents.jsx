@@ -297,7 +297,7 @@ export default function Documents() {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {sortedDocumentTypes.map((docType) => (
-                                        <tr key={docType.id} className={`transition-colors duration-200 ${editingDocType === docType.id ? 'bg-sky-200' : 'odd:bg-white even:bg-slate-50'} hover:bg-sky-100`}>
+                                        <tr key={docType.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100">
                                             {editingDocType === docType.id ? (
                                                 <>
                                                     <td className="px-6 py-4">
