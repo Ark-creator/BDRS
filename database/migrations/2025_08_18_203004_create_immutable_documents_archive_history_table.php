@@ -14,6 +14,7 @@ return new class extends Migration
     {
         Schema::create('immutable_documents_archive_history', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('original_request_id'); // <-- ADD THIS LINE
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('document_type_id')->constrained('document_types')->onDelete('cascade');
             $table->json('form_data');

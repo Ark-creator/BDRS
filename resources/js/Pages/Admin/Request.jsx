@@ -24,6 +24,7 @@ import {
     CheckCircle2,
     Hourglass,
     ThumbsUp,
+    Info, // Import the Info icon
 } from 'lucide-react';
 
 // --- Reusable Components ---
@@ -98,7 +99,6 @@ const StatusBadge = ({ status }) => {
 export default function Request() {
     const { flash, documentRequests, filters } = usePage().props;
     
-    const [displayedRequests, setDisplayedRequests] = useState(documentRequests);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -123,37 +123,38 @@ export default function Request() {
     const filterStatusOptions = ['All', 'Pending', 'Waiting for Payment', 'Processing', 'Ready to Pickup'];
     const actionStatusOptions = ['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
-    // --- FIX: Add this useEffect to sync local state with props ---
-    // This ensures that when Inertia updates the documentRequests prop (after a filter or status change),
-    // our local state `displayedRequests` is also updated, forcing the component to re-render.
-    useEffect(() => {
-        setDisplayedRequests(documentRequests);
-    }, [documentRequests]); // This effect runs whenever the `documentRequests` prop changes.
-
-    // --- REAL-TIME LISTENER ---
+    // --- REAL-TIME LISTENERS (SIMPLIFIED AND RELIABLE) ---
     useEffect(() => {
         if (window.Echo) {
             const channel = window.Echo.private('admin-requests');
+            const reloadOptions = {
+                preserveState: true,
+                preserveScroll: true,
+                only: ['documentRequests'], // Only reload the data we need
+            };
 
+            // Listener for NEW requests
             channel.listen('.NewDocumentRequest', (event) => {
-                toast.success(`New request from ${event.request.user.full_name}!`, {
-                    position: "bottom-right",
-                });
-
-                setDisplayedRequests(currentRequests => {
-                    const newRequestData = [event.request, ...currentRequests.data];
-                    const uniqueRequests = Array.from(new Map(newRequestData.map(item => [item.id, item])).values());
-
-                    return {
-                        ...currentRequests,
-                        data: uniqueRequests,
-                        total: currentRequests.total + 1,
-                    };
-                });
+                toast.success(`New request from ${event.request.user.full_name}! Refreshing list...`);
+                router.reload(reloadOptions);
             });
 
+            // Listener for status updates
+            channel.listen('.StatusUpdated', (event) => {
+                // FIX: Use a standard toast call with a custom icon
+                toast((t) => (
+                    <div className="flex items-center gap-2">
+                        <Info className="h-5 w-5 text-blue-500" />
+                        <span>Request for {event.request.user.full_name} was updated.</span>
+                    </div>
+                ));
+                router.reload(reloadOptions);
+            });
+
+            // Cleanup function
             return () => {
                 channel.stopListening('.NewDocumentRequest');
+                channel.stopListening('.StatusUpdated');
                 window.Echo.leave('admin-requests');
             };
         }
@@ -292,7 +293,7 @@ export default function Request() {
             <style>{`.driverjs-theme { background-color: #fff; color: #333; }`}</style>
 
             <div className="py-6 md:py-12 bg-slate-50 dark:bg-slate-900">
-                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4 md:px-7">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
                     <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md sm:rounded-lg">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                             <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -339,7 +340,7 @@ export default function Request() {
                         <div id="requests-list-container">
                             {/* MOBILE VIEW */}
                             <div className="md:hidden">
-                                {(displayedRequests.data && displayedRequests.data.length > 0) ? displayedRequests.data.map((request, index) => (
+                                {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
                                     <div key={request.id} className="border-b dark:border-slate-700 p-4 space-y-4">
                                         <div className="flex justify-between items-start gap-3">
                                             <div className="flex items-center gap-3">
@@ -397,7 +398,7 @@ export default function Request() {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                                        {(displayedRequests.data && displayedRequests.data.length > 0) ? displayedRequests.data.map((request, index) => (
+                                        {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
                                             <tr key={request.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                     <div className="flex items-center gap-3">
@@ -448,13 +449,13 @@ export default function Request() {
                             </div>
                         </div>
 
-                        {displayedRequests.data.length > 0 && (
+                        {documentRequests.data.length > 0 && (
                              <div id="pagination-section">
                                 <Pagination
-                                    links={displayedRequests.links}
-                                    from={displayedRequests.from}
-                                    to={displayedRequests.to}
-                                    total={displayedRequests.total}
+                                    links={documentRequests.links}
+                                    from={documentRequests.from}
+                                    to={documentRequests.to}
+                                    total={documentRequests.total}
                                 />
                             </div>
                         )}
