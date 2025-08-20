@@ -110,7 +110,7 @@ class DocumentRequestController extends Controller
         DocumentRequest::create([
             'user_id'          => auth()->id(),
             'document_type_id' => $commonValidated['document_type_id'],
-            'status'           => 'pending',
+            'status'           => 'Pending',
             'form_data'        => $formData, // $formData is now dynamically built
         ]);
 

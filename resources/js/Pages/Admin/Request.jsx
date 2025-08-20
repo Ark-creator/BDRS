@@ -48,7 +48,7 @@ const StatusBadge = ({ status }) => {
     const colors = {
         'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
         'Pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-        'For Payment': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+        'Place an Amount to Pay': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
         'Processing': 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
         'Ready to Pickup': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
         'Claimed': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
@@ -88,8 +88,8 @@ export default function Request() {
         payment_amount: '',
     });
 
-    const filterStatusOptions = ['All', 'Assess For Payment', 'For Payment', 'Processing', 'Ready to Pickup'];
-    const actionStatusOptions = ['Assess For Payment', 'Processing', 'For Payment', 'Ready to Pickup', 'Claimed', 'Rejected'];
+    const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
+    const actionStatusOptions = ['Pending', 'Processing','Ready to Pickup', 'Claimed', 'Rejected'];
 
     const startTour = () => {
         const driverObj = driver({
@@ -192,7 +192,7 @@ export default function Request() {
     const renderActions = (request, index) => {
         const isBusinessPermit = request.document_type?.name === 'Brgy Business Permit';
         
-        if (isBusinessPermit && request.status === 'Assess For Payment') {
+        if (isBusinessPermit && request.status === 'Pending') {
             return (
                 <button
                     onClick={() => {
@@ -203,8 +203,7 @@ export default function Request() {
                     className="flex items-center gap-x-2 w-full justify-center md:w-auto px-3 py-1 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition"
                 >
                     <PesoIcon />
-                    Assess Payment
-                </button>
+Place an Amount to Pay                </button>
             );
         }
         
