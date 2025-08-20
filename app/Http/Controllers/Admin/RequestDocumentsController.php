@@ -61,7 +61,7 @@ class RequestDocumentsController extends Controller
         // 3. Update the request with the amount and new status
         $documentRequest->update([
             'payment_amount' => $validated['payment_amount'],
-            'status' => 'For Payment', // This is our new, custom status
+            'status' => 'Waiting for Payment', // This is our new, custom status
         ]);
 
         // 4. (Optional) You could trigger an email or SMS notification to the user here.
@@ -75,7 +75,7 @@ class RequestDocumentsController extends Controller
         $validated = $request->validate([
             // --- UPDATE THIS LINE ---
             // Add 'For Payment' to the list of valid statuses
-            'status' => 'required|string|in:Assess For Payment,Processing,For Payment,Rejected,Ready to Pickup,Claimed',
+            'status' => 'required|string|in:Pending,Place an Amount to Pay,Processing, Waiting for Payment, Rejected,Ready to Pickup,Claimed',
             'admin_remarks' => [
                 Rule::requiredIf($request->status === 'Rejected'),
                 'nullable',
