@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\DocumentRequestStatusUpdated; // <-- 1. IMPORT THE NEW EVENT
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\Request;
@@ -10,15 +11,13 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ImmutableDocumentsArchiveHistory;
-use Illuminate\Validation\Rule; // <-- 1. IDAGDAG ITO
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RequestDocumentsController extends Controller
 {
-    // ... ang iyong index() method ay tama na ...
     public function index(Request $request): Response
     {
-        // ... code from previous step ...
         $filters = $request->only('search', 'status');
         $documentRequests = DocumentRequest::query()
             ->whereNotIn('status', ['Claimed', 'Rejected'])
@@ -40,41 +39,37 @@ class RequestDocumentsController extends Controller
             ->latest()
             ->paginate(10)
             ->withQueryString();
+            
         return Inertia::render('Admin/Request', [
             'documentRequests' => $documentRequests,
             'filters' => $filters,
         ]);
     }
 
-  public function setPaymentAmount(Request $request, DocumentRequest $documentRequest): RedirectResponse
+    public function setPaymentAmount(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
-        // 1. We only want this to work for Business Permits
         if ($documentRequest->documentType->name !== 'Brgy Business Permit') {
             return back()->with('error', 'This action is not applicable for this document type.');
         }
 
-        // 2. Validate the incoming amount
         $validated = $request->validate([
             'payment_amount' => 'required|numeric|min:0|max:999999.99',
         ]);
 
-        // 3. Update the request with the amount and new status
         $documentRequest->update([
             'payment_amount' => $validated['payment_amount'],
-            'status' => 'Waiting for Payment', // This is our new, custom status
+            'status' => 'Waiting for Payment',
         ]);
 
-        // 4. (Optional) You could trigger an email or SMS notification to the user here.
+        // 2. DISPATCH THE EVENT AFTER UPDATING
+        DocumentRequestStatusUpdated::dispatch($documentRequest);
 
-        return back()->with('success', 'Payment amount has been set. The user will be notified to proceed with payment.');
+        return back()->with('success', 'Payment amount has been set. The user will be notified.');
     }
-
 
     public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
         $validated = $request->validate([
-            // --- UPDATE THIS LINE ---
-            // Add 'For Payment' to the list of valid statuses
             'status' => 'required|string|in:Pending,Place an Amount to Pay,Processing, Waiting for Payment, Rejected,Ready to Pickup,Claimed',
             'admin_remarks' => [
                 Rule::requiredIf($request->status === 'Rejected'),
@@ -89,6 +84,8 @@ class RequestDocumentsController extends Controller
         $documentRequest->processed_by = auth()->id();
 
         if ($validated['status'] === 'Claimed' || $validated['status'] === 'Rejected') {
+            // Logic for archiving...
+            // We don't dispatch an event here because the item is removed from the list.
             ImmutableDocumentsArchiveHistory::create([
                 'user_id' => $documentRequest->user_id,
                 'document_type_id' => $documentRequest->document_type_id,
@@ -98,31 +95,23 @@ class RequestDocumentsController extends Controller
                 'processed_by' => $documentRequest->processed_by,
                 'original_created_at' => $documentRequest->created_at,
             ]);
-
             $documentRequest->delete();
-
             return back()->with('success', 'Request has been archived successfully.');
         }
 
         $documentRequest->save();
 
+        // 3. DISPATCH THE EVENT AFTER SAVING
+        DocumentRequestStatusUpdated::dispatch($documentRequest);
+
         return back()->with('success', 'Request status updated successfully.');
     }
 
-     public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
+    public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
     {
-        // 1. Check for the file path
-        if (!$documentRequest->payment_receipt_path) {
-            abort(404, 'Receipt path not found.');
-        }
-
-        // 2. Check if the file exists on the 'local' disk
-        if (!Storage::disk('local')->exists($documentRequest->payment_receipt_path)) {
+        if (!$documentRequest->payment_receipt_path || !Storage::disk('local')->exists($documentRequest->payment_receipt_path)) {
             abort(404, 'Receipt file not found.');
         }
-
-        // 3. Securely stream the file as a response
         return Storage::disk('local')->response($documentRequest->payment_receipt_path);
     }
-
 }
