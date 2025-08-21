@@ -19,13 +19,11 @@ import {
     HelpCircle,
     XCircle,
     Clock,
-    CreditCard,
-    PackageCheck,
-    CheckCircle2,
     Hourglass,
     ThumbsUp,
     Info,
 } from 'lucide-react';
+
 
 // --- Reusable Components ---
 const Modal = ({ children, show, onClose, title, maxWidth = '4xl' }) => {
@@ -39,10 +37,10 @@ const Modal = ({ children, show, onClose, title, maxWidth = '4xl' }) => {
     const maxWidthClass = { '4xl': 'max-w-4xl', 'md': 'max-w-md' }[maxWidth];
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" onClick={onClose}>
-            <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-2xl w-full ${maxWidthClass}`} onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center p-4 border-b dark:border-slate-700">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
-                    <button onClick={onClose} className="text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full p-1 leading-none text-2xl">&times;</button>
+            <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-2xl w-full ${maxWidthClass}`} onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full p-1 leading-none text-2xl">&times;</button>
                 </div>
                 <div className="p-6">{children}</div>
             </div>
@@ -51,46 +49,19 @@ const Modal = ({ children, show, onClose, title, maxWidth = '4xl' }) => {
 };
 
 const StatusBadge = ({ status }) => {
-    const statusConfig = {
-        'Rejected': {
-            badgeClasses: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
-            icon: <XCircle className="h-4 w-4" />
-        },
-        'Claimed': {
-            badgeClasses: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
-            icon: <CheckCircle2 className="h-4 w-4" />
-        },
-        'Processing': {
-            badgeClasses: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
-            icon: <LoaderCircle className="h-4 w-4 animate-spin" />
-        },
-        'Pending': {
-            badgeClasses: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
-            icon: <Clock className="h-4 w-4" />
-        },
-        'Waiting for Payment': {
-            badgeClasses: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
-            icon: <Hourglass className="h-4 w-4" />
-        },
-        'Ready to Pickup': {
-            badgeClasses: 'bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-300',
-            icon: <ThumbsUp className="h-4 w-4" />
-        },
-        'Place an Amount to Pay': {
-            badgeClasses: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300',
-            icon: <CircleDollarSign className="h-4 w-4" />
-        },
-        'default': {
-           badgeClasses: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
-            icon: <HelpCircle className="h-4 w-4" />
-        }
+    const colors = {
+        'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+        'Pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+        'Place an Amount to Pay': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+        'Processing': 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
+        'Ready to Pickup': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+        'Claimed': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+        'Waiting for Payment': 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
     };
-    const currentConfig = statusConfig[status] || statusConfig['default'];
-
     return (
-        <span className={`px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-2 ${currentConfig.badgeClasses}`}>
-            {currentConfig.icon}
-            <span>{status || 'Unknown'}</span>
+        <span className={`px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-1.5 ${colors[status] || 'bg-gray-200'}`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${colors[status]?.replace(/text-(yellow|sky|blue|green|red|orange|pink)-[0-9]{2,3}/, 'bg-$1-500').split(' ')[1]}`}></span>
+            {status}
         </span>
     );
 };
@@ -118,28 +89,25 @@ export default function Request() {
         admin_remarks: '',
         payment_amount: '',
     });
-    
-    const filterStatusOptions = ['All', 'Pending', 'Waiting for Payment', 'Processing', 'Ready to Pickup'];
-    const actionStatusOptions = ['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
+
+    const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
+    const actionStatusOptions = ['Pending', 'Processing','Ready to Pickup', 'Claimed', 'Rejected'];
 
     // --- REAL-TIME LISTENERS (RELIABLE VERSION) ---
     useEffect(() => {
-        // Ensure Echo is available before trying to connect
         if (window.Echo) {
             const channel = window.Echo.private('admin-requests');
             const reloadOptions = {
                 preserveState: true,
                 preserveScroll: true,
-                only: ['documentRequests'], // Only reload the data we need
+                only: ['documentRequests'],
             };
 
-            // Listener for NEW requests
             channel.listen('.NewDocumentRequest', (event) => {
                 toast.success(`New request from ${event.request.user.full_name}! Refreshing list...`);
                 router.reload(reloadOptions);
             });
 
-            // Listener for status updates
             channel.listen('.StatusUpdated', (event) => {
                 toast((t) => (
                     <div className="flex items-center gap-2">
@@ -150,7 +118,6 @@ export default function Request() {
                 router.reload(reloadOptions);
             });
 
-            // Cleanup function
             return () => {
                 channel.stopListening('.NewDocumentRequest');
                 channel.stopListening('.StatusUpdated');
@@ -164,12 +131,12 @@ export default function Request() {
             showProgress: true,
             popoverClass: 'driverjs-theme',
             steps: [
-                { element: '#header-section', popover: { title: 'Manage Requests', description: 'This is the main header.' } },
-                { element: '#search-input', popover: { title: 'Search', description: 'Find a request by name or document type.' } },
-                { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Filter requests by their current status.' } },
-                { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all active requests.' } },
-                { element: '#actions-item', popover: { title: 'Actions', description: 'Change the status of a request here.' } },
-                { element: '#pagination-section', popover: { title: 'Pagination', description: 'Navigate between pages of requests.' } }
+                { element: '#header-section', popover: { title: 'Manage Requests', description: 'This is the main header. You can find the title and the search bar here.' } },
+                { element: '#search-input', popover: { title: 'Search', description: 'Quickly find a specific request by typing the resident\'s name or the document type.' } },
+                { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Click these buttons to filter the list and see only the requests with that status.' } },
+                { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all the active requests. On mobile, it appears as cards, and on desktop, as a table.' } },
+                { element: '#actions_item', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
+                { element: '#pagination-section', popover: { title: 'Pagination', description: 'Use these controls to navigate between different pages of requests.' } }
             ]
         });
         driverObj.drive();
@@ -240,7 +207,11 @@ export default function Request() {
                 toast.success('Payment amount set successfully!');
             },
             onError: (errs) => {
-                toast.error(errs.payment_amount || 'Failed to set payment amount.');
+                if (errs.payment_amount) {
+                    toast.error(errs.payment_amount);
+                } else {
+                    toast.error('Failed to set payment amount.');
+                }
             },
             preserveScroll: true,
         });
@@ -264,7 +235,7 @@ export default function Request() {
     const renderActions = (request, index) => {
         const isBusinessPermit = request.document_type?.name === 'Brgy Business Permit';
         
-        if (isBusinessPermit && (request.status === 'Pending' || request.status === 'Place an Amount to Pay')) {
+        if (isBusinessPermit && request.status === 'Pending') {
             return (
                 <button
                     onClick={() => {
@@ -272,23 +243,20 @@ export default function Request() {
                         reset('payment_amount');
                         setShowPaymentModal(true);
                     }}
-                    className="flex items-center gap-x-1.5 w-full justify-center md:w-auto px-3 py-1.5 text-xs font-semibold rounded-md bg-green-600 text-white hover:bg-green-700 transition shadow-sm"
+                    className="flex items-center gap-x-2 w-full justify-center md:w-auto px-3 py-1 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition"
                 >
-                    <CircleDollarSign className="w-4 h-4" />
-                    Place Amount
+                    <CircleDollarSign className="w-5 h-5" />
+                    Place an Amount to Pay
                 </button>
             );
         }
-        if (isBusinessPermit && request.status === 'Waiting for Payment') {
-            return <div className="text-xs text-slate-500 font-bold">Waiting for payment</div>;
-        }
-
+        
         return (
             <select
-                id={index === 0 ? "actions-item" : undefined}
+                id={index === 0 ? "actions_item" : undefined}
                 value={request.status}
                 onChange={(e) => handleStatusChange(request, e.target.value)}
-                className="w-full text-xs border-slate-300 rounded-md py-1.5 bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                className="w-full text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             >
                 <option value={request.status} disabled>{request.status}</option>
                 {actionStatusOptions.filter(status => status !== request.status).map(status => (
@@ -304,30 +272,32 @@ export default function Request() {
             <Toaster position="bottom-right" />
             <style>{`.driverjs-theme { background-color: #fff; color: #333; }`}</style>
 
-            <div className="py-6 md:py-12 bg-slate-50 dark:bg-slate-900">
+            <div className="py-6 md:py-12 bg-slate-50 dark:bg-gray-900">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
-                    <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md sm:rounded-lg">
-                        <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+                    <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-md sm:rounded-lg">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                             <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
-                                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">Manage Active Requests</h1>
-                                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">View and process all ongoing document requests.</p>
+                                    <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Manage Active Requests</h1>
+                                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">View and process all ongoing document requests.</p>
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-4">
                                     <div className="relative">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Search className="h-5 w-5 text-slate-400" />
-                                        </div>
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-5 w-5 text-gray-400" /></div>
                                         <input
                                             id="search-input"
                                             type="text"
                                             placeholder="Search name or document..."
                                             value={filter.search}
                                             onChange={e => setFilter({ ...filter, search: e.target.value })}
-                                            className="block w-full md:w-64 pl-10 pr-3 py-2 border border-slate-300 rounded-md bg-white dark:bg-slate-700 dark:border-slate-600 dark:text-white focus:ring-blue-500 focus:border-blue-500"
+                                            className="block w-full md:w-64 pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                         />
                                     </div>
-                                    <button onClick={startTour} className="flex items-center gap-1 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" aria-label="Start tour">
+                                    <button
+                                        onClick={startTour}
+                                        className="flex items-center gap-1 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        aria-label="Start tour"
+                                    >
                                         <HelpCircle className="h-5 w-5" />
                                         <span className="hidden sm:inline text-xs">Need Help?</span>
                                     </button>
@@ -335,13 +305,13 @@ export default function Request() {
                             </div>
                         </div>
 
-                        <div id="status-filter-tabs" className="p-4 border-b border-slate-200 dark:border-slate-700">
+                        <div id="status-filter-tabs" className="p-4 border-b border-gray-200 dark:border-gray-700">
                             <div className="flex flex-wrap gap-2">
                                 {filterStatusOptions.map(status => (
                                     <button
                                         key={status}
                                         onClick={() => setFilter({ ...filter, status })}
-                                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter.status === status ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600'}`}
+                                        className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${filter.status === status ? 'bg-blue-600 text-white' : 'text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                                     >
                                         {status}
                                     </button>
@@ -352,105 +322,89 @@ export default function Request() {
                         <div id="requests-list-container">
                             <div className="md:hidden">
                                 {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
-                                    <div key={request.id} className="border-b dark:border-slate-700 p-4 space-y-4">
-                                        <div className="flex justify-between items-start gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                                                    {request.user?.full_name.charAt(0) || 'U'}
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-slate-900 dark:text-white">{request.user?.full_name || "N/A"}</div>
-                                                    <div className="text-xs text-slate-500 dark:text-slate-400">{request.user?.email || "N/A"}</div>
-                                                </div>
-                                            </div>
-                                            <div className="shrink-0">
-                                                <StatusBadge status={request.status} />
-                                            </div>
+                                    <div key={request.id} className="border-b dark:border-gray-700 p-4 space-y-3">
+                                        <div className="flex justify-between items-start">
+                                            <div className="font-bold text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</div>
+                                            <StatusBadge status={request.status} />
                                         </div>
-                                        <div className="text-sm text-slate-600 dark:text-slate-400 pl-13 space-y-1">
-                                            <p><span className="font-semibold text-slate-700 dark:text-slate-300">Document:</span> {request.document_type?.name || "N/A"}</p>
-                                            <p><span className="font-semibold text-slate-700 dark:text-slate-300">Date:</span> {new Date(request.created_at).toLocaleDateString()}</p>
+                                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                                            <p><span className="font-semibold">Document:</span> {request.document_type?.name || "N/A"}</p>
+                                            <p><span className="font-semibold">Date:</span> {new Date(request.created_at).toLocaleDateString()}</p>
                                         </div>
-                                        <div className={`flex items-center gap-2 pt-3 border-t dark:border-slate-600 ${index === 0 ? 'actions-column-item' : ''}`}>
-                                            <div className="flex-grow">
+                                        <div className={`flex items-center gap-2 pt-2 border-t dark:border-gray-600 ${index === 0 ? 'actions-column-item' : ''}`}>
+                                            <div className="w-full">
                                                 {renderActions(request, index)}
                                             </div>
-                                            <div className="flex items-center shrink-0">
-                                                {request.payment_receipt_url && (
-                                                    <button onClick={() => { setSelectedRequest(request); setShowReceiptModal(true); }} title="View Payment Receipt" className="p-2 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full transition"><ReceiptText className="w-5 h-5" /></button>
-                                                )}
-                                                {request.status === 'Processing' && (
-                                                    <>
-                                                        <button onClick={() => handlePreviewClick(request)} title="Preview" className="p-2 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full transition"><Eye className="w-5 h-5" /></button>
-                                                        <a href={route('admin.requests.generate', request.id)} title="Generate" className="p-2 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full transition"><Download className="w-5 h-5" /></a>
-                                                    </>
-                                                )}
-                                            </div>
+                                            {request.payment_receipt_url && (
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedRequest(request);
+                                                        setShowReceiptModal(true);
+                                                    }}
+                                                    title="View Payment Receipt"
+                                                    className="p-2 text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-gray-700 rounded-md transition shrink-0"
+                                                >
+                                                    <ReceiptText />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 )) : (
                                     <div className="text-center py-16">
-                                        <FileX2 className="mx-auto h-12 w-12 text-slate-400" />
-                                        <h3 className="mt-2 text-sm font-medium text-slate-900 dark:text-white">No active requests found</h3>
+                                        <FileX2 className="mx-auto h-12 w-12 text-gray-400" />
+                                        <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No active requests found</h3>
                                     </div>
                                 )}
                             </div>
                             
-                            <div className="hidden md:block">
-                                <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                                    <thead className="bg-slate-50 dark:bg-slate-700/50">
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                    <thead className="bg-blue-600 text-white">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Requestor</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Document</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider actions-column">Actions</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Requestor</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Document</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase">Date</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold hover:bg-blue-800 dark:text-gray-300 uppercase actions-column">Actions</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
+                                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                         {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
-                                            <tr key={request.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                                                            {request.user?.full_name.charAt(0) || 'U'}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-medium text-slate-900 dark:text-white">{request.user?.full_name || "N/A"}</div>
-                                                            <div className="text-slate-500 dark:text-slate-400 text-xs">{request.user?.email || "N/A"}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">{request.document_type?.name || "N/A"}</td>
+                                            <tr key={request.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{request.document_type?.name || "N/A"}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={request.status} /></td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600 dark:text-slate-300">
-                                                    {new Date(request.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
-                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(request.created_at).toLocaleDateString()}</td>
                                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${index === 0 ? 'actions-column-item' : ''}`}>
-                                                    <div className="flex items-center gap-2" id={index === 0 ? "actions-item" : undefined}>
-                                                        <div className="w-40">
-                                                            {renderActions(request, index)}
-                                                        </div>
-                                                        <div className="flex items-center">
-                                                            {request.payment_receipt_url && (
-                                                                <button onClick={() => { setSelectedRequest(request); setShowReceiptModal(true); }} title="View Payment Receipt" className="p-2 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full transition"><ReceiptText className="w-5 h-5" /></button>
-                                                            )}
-                                                            {request.status === 'Processing' && (
-                                                                <>
-                                                                    <button onClick={() => handlePreviewClick(request)} title="Preview" className="p-2 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full transition"><Eye className="w-5 h-5" /></button>
-                                                                    <a href={route('admin.requests.generate', request.id)} title="Generate" className="p-2 text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700 rounded-full transition"><Download className="w-5 h-5" /></a>
-                                                                </>
-                                                            )}
-                                                        </div>
+                                                    <div className="flex items-center gap-2">
+                                                        {renderActions(request, index)}
+                                                        {request.payment_receipt_url && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedRequest(request);
+                                                                    setShowReceiptModal(true);
+                                                                }}
+                                                                title="View Payment Receipt"
+                                                                className="p-2 text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-gray-700 rounded-md transition"
+                                                            >
+                                                                <ReceiptText />
+                                                            </button>
+                                                        )}
+                                                        {request.status === 'Processing' && (
+                                                            <>
+                                                                <button onClick={() => handlePreviewClick(request)} title="Preview" className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"><Eye /></button>
+                                                                <a href={route('admin.requests.generate', request.id)} title="Generate" className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"><Download /></a>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
                                         )) : (
                                             <tr>
                                                 <td colSpan="5" className="text-center py-16">
-                                                    <FileX2 className="mx-auto h-12 w-12 text-slate-400" />
-                                                    <h3 className="mt-2 text-sm font-medium text-slate-900 dark:text-white">No active requests found</h3>
-                                                    <p className="mt-1 text-sm text-slate-500">Try adjusting your search or filter.</p>
+                                                    <FileX2 className="mx-auto h-12 w-12 text-gray-400" />
+                                                    <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No active requests found</h3>
+                                                    <p className="mt-1 text-sm text-gray-500">Try adjusting your search or filter.</p>
                                                 </td>
                                             </tr>
                                         )}
@@ -460,7 +414,7 @@ export default function Request() {
                         </div>
 
                         {documentRequests.data.length > 0 && (
-                             <div id="pagination-section">
+                            <div id="pagination-section" className="p-4">
                                 <Pagination
                                     links={documentRequests.links}
                                     from={documentRequests.from}
@@ -477,12 +431,19 @@ export default function Request() {
             <Modal show={showRejectModal} onClose={() => setShowRejectModal(false)} title="Reject Document Request" maxWidth="md">
                 <form onSubmit={handleRejectSubmit}>
                     <div className="mb-4">
-                        <label htmlFor="admin_remarks" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Reason for Rejection</label>
-                        <textarea id="admin_remarks" value={data.admin_remarks} onChange={(e) => setData('admin_remarks', e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm dark:bg-slate-900 dark:border-slate-600" rows="4" required></textarea>
+                        <label htmlFor="admin_remarks" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for Rejection</label>
+                        <textarea 
+                            id="admin_remarks" 
+                            value={data.admin_remarks} 
+                            onChange={(e) => setData('admin_remarks', e.target.value)} 
+                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm dark:bg-slate-900 dark:border-slate-600" 
+                            rows="4" 
+                            required>
+                        </textarea>
                         {errors.admin_remarks && <p className="text-red-500 text-xs mt-1">{errors.admin_remarks}</p>}
                     </div>
                     <div className="flex justify-end space-x-2">
-                        <button type="button" onClick={() => setShowRejectModal(false)} className="px-4 py-2 rounded-md text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">Cancel</button>
+                        <button type="button" onClick={() => setShowRejectModal(false)} className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Cancel</button>
                         <button type="submit" disabled={processing} className="px-4 py-2 rounded-md text-white bg-red-600 hover:bg-red-700 disabled:opacity-50">Confirm Rejection</button>
                     </div>
                 </form>
