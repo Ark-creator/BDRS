@@ -33,7 +33,7 @@ const content = {
         getStarted: "Get Started",
         login: "Log In",
         register: "Register",
-        dashboard: "Home",
+        dashboard: "My Account",
         navLinks: [
             { name: "How It Works", href: "#how-it-works" },
             { name: "Services", href: "#services" },
@@ -75,7 +75,7 @@ const content = {
         getStarted: "Magsimula",
         login: "Mag-login",
         register: "Mag-rehistro",
-        dashboard: "Dashboard",
+        dashboard: "Aking Account",
         navLinks: [
             { name: "Paano Ito Gumagana", href: "#how-it-works" },
             { name: "Mga Serbisyo", href: "#services" },

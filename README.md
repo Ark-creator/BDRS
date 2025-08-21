@@ -1,61 +1,113 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+Project Setup and Development Guide
+This document provides the necessary steps to set up and run the development environment for this project. It is important to follow the sequence of commands to avoid potential issues.
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Prerequisites
+Before you begin, ensure you have the following installed on your system:
 
-## About Laravel
+PHP (version 8.2 or newer)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+Composer
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Node.js and NPM
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+A database server (e.g., MySQL)
 
-## Learning Laravel
+Running the Development Environment
+To run the full application, you will need to open four (4) separate terminal windows or tabs. Each terminal will run a persistent process required for the application to function correctly.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. Resetting the Database (migrate:fresh --seed)
+This command is used to initialize or reset your local database.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+What it does:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+migrate:fresh: This part of the command drops all existing tables from your database and rebuilds them from scratch based on your migration files.
 
-## Laravel Sponsors
+--seed: After rebuilding the tables, this flag populates the database with initial data (such as default users, roles, etc.) defined in your seeder files.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+When to use it:
 
-### Premium Partners
+When setting up the project for the first time.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+After making changes to your migration files (e.g., adding a new column) that need to be applied.
 
-## Contributing
+When you want to completely reset all data in your database back to its initial state.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+How to use:
+In your terminal, run the following command. This is typically done only once during setup or when a database reset is needed.
 
-## Code of Conduct
+php artisan migrate:fresh --seed
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Note: This command will permanently delete all data in your database. Use it with caution.
 
-## Security Vulnerabilities
+2. Running the Backend Server (serve)
+This command starts the primary web server for your Laravel application.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+What it does:
 
-## License
+It serves your Laravel application on a local development server, typically available at http://127.0.0.1:8000.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+How to use:
+In a new terminal, run:
+
+php artisan serve
+
+Leave this terminal running while you are developing.
+
+3. Running the Frontend Server (npm run dev)
+This command starts the server for your frontend assets (React, Vue, CSS).
+
+What it does:
+
+It uses Vite to compile your JavaScript and CSS files on the fly.
+
+It enables Hot Module Replacement (HMR), which automatically refreshes your browser when you make changes to your frontend code, providing a seamless development experience.
+
+How to use:
+In a new terminal, run:
+
+npm run dev
+
+Leave this terminal running alongside php artisan serve.
+
+4. Running the Real-time Server (reverb:start)
+This is your WebSocket server, responsible for all real-time communication.
+
+What it does:
+
+It starts the Laravel Reverb server, which allows your application to send and receive messages in real-time without requiring a page refresh. This is essential for features like live notifications and chats.
+
+How to use:
+In a new terminal, run:
+
+php artisan reverb:start
+
+This must be kept running for any real-time features to work.
+
+5. Running the Queue Worker (queue:work)
+This process handles background tasks, including broadcasting real-time events.
+
+What it does:
+
+It listens for any "jobs" that are dispatched to the queue. In this application, when a new document is requested or a status is updated, a broadcasting job is created. The queue worker picks up this job and processes it, which allows Reverb to broadcast the event.
+
+When to use it:
+
+It is always required when using real-time events to ensure they are processed and broadcasted.
+
+How to use:
+In a new terminal, run:
+
+php artisan queue:work
+
+Leave this terminal running. You will see output here whenever a background job is processed.
+
+Summary
+For a complete development setup, you should have four terminals running simultaneously with the following commands:
+
+Terminal 1: php artisan serve
+
+Terminal 2: npm run dev
+
+Terminal 3: php artisan reverb:start
+
+Terminal 4: php artisan queue:work
