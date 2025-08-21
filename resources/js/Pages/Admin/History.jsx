@@ -9,7 +9,7 @@ import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
 // --- ICONS ---
-import { Search, History as HistoryIcon, User, FileText, CalendarDays, HelpCircle, FileQuestion } from 'lucide-react';
+import { Search, History as HistoryIcon, User, FileText, CalendarDays, HelpCircle, FileQuestion, MessageSquare } from 'lucide-react'; // Added MessageSquare Icon
 
 // --- Reusable Status Badge Component ---
 const StatusBadge = ({ status }) => {
@@ -91,7 +91,7 @@ export default function History() {
                                             className="block w-full md:w-64 pl-10 pr-3 py-2 border-gray-300 rounded-md bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                         />
                                     </div>
-                                     <button
+                                    <button
                                         onClick={startTour}
                                         className="flex items-center gap-1 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                         aria-label="Start tour"
@@ -133,6 +133,13 @@ export default function History() {
                                             <p className="flex items-center gap-2"><FileText size={14} /><span>{archive.document_type?.name}</span></p>
                                             <p className="flex items-center gap-2"><CalendarDays size={14} /><span>{new Date(archive.created_at).toLocaleDateString()}</span></p>
                                             <p className="flex items-center gap-2"><User size={14} /><span>{archive.processor?.full_name || 'N/A'}</span></p>
+                                            {/* --- NEW: Display Admin Remarks in Mobile View --- */}
+                                            {archive.admin_remarks && (
+                                                <p className="flex items-start gap-2 pt-1 text-gray-500">
+                                                    <MessageSquare size={14} className="mt-0.5 flex-shrink-0" />
+                                                    <span className="italic">"{archive.admin_remarks}"</span>
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
                                 )) : (
@@ -151,6 +158,8 @@ export default function History() {
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-semibold  hover:bg-blue-800 dark:text-gray-300 uppercase">Requestor</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-semibold  hover:bg-blue-800 dark:text-gray-300 uppercase">Document</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-semibold  hover:bg-blue-800 dark:text-gray-300 uppercase">Final Status</th>
+                                            {/* --- NEW: Remarks Column Header --- */}
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold  hover:bg-blue-800 dark:text-gray-300 uppercase">Remarks</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-semibold  hover:bg-blue-800 dark:text-gray-300 uppercase">Date Archived</th>
                                             <th scope="col" className="px-6 py-3 text-left text-xs font-semibold  hover:bg-blue-800 dark:text-gray-300 uppercase">Processed By</th>
                                         </tr>
@@ -161,12 +170,15 @@ export default function History() {
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{archive.user?.full_name || 'N/A'}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{archive.document_type?.name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={archive.status} /></td>
+                                                {/* --- NEW: Display Admin Remarks in Table Cell --- */}
+                                                <td className="px-6 py-4 whitespace-normal text-sm text-gray-500 dark:text-gray-300 max-w-xs italic">{archive.admin_remarks || '-'}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(archive.created_at).toLocaleDateString()}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{archive.processor?.full_name || 'N/A'}</td>
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan="5" className="text-center py-16">
+                                                {/* --- MODIFIED: Updated colSpan to 6 --- */}
+                                                <td colSpan="6" className="text-center py-16">
                                                     <FileQuestion className="mx-auto h-12 w-12 text-gray-400" />
                                                     <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">No Archived Records Found</h3>
                                                     <p className="mt-1 text-sm text-gray-500">Try adjusting your search or filter.</p>
