@@ -55,7 +55,7 @@ class DocumentRequestController extends Controller
                 $formData = $specificData;
                 break;
 
-            case 'PWD Certificate':
+            case 'pwd':
                 $specificData = $request->validate([
                     'disability_type' => 'required|string|max:255',
                     'other_disability' => 'nullable|string|max:255',
@@ -66,7 +66,7 @@ class DocumentRequestController extends Controller
 
             // Add cases for other simple documents that only have a purpose
             case 'Certificate of Indigency':
-            case 'Solo Parent Certificate':
+            case 'Solo Parent':
             case 'Barangay Clearance':
                 $specificData = $request->validate([
                     'purpose' => 'required|string|max:255',
