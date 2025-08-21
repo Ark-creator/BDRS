@@ -56,8 +56,8 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
                 { element: '#nav-item-documents', popover: { title: '📄 Documents', description: 'Pamahalaan ang mga template ng dokumento na maaaring hilingin ng mga residente.', side: "right", align: 'start' }},
                 { element: '#nav-item-requests', popover: { title: '📂 Requests', description: 'Tingnan at i-proseso ang lahat ng mga papasok na hiling para sa mga dokumento mula sa mga residente.', side: "right", align: 'start' }},
                 { element: '#nav-item-history', popover: { title: '📜 History', description: 'Talaan ng mga nakaraang aktibidad at transaksyon sa system.', side: "right", align: 'start' }},
-                { element: '#nav-item-messages', popover: { title: '💬 Messages', description: 'Dito mo mababasa ang mga mensahe mula sa mga residente. Ang pulang tuldok ay nangangahulugang may bago kang mensahe.', side: "right", align: 'start' }},
                 { element: '#nav-item-payments', popover: { title: '💳 Payments', description: 'Subaybayan ang mga transaksyon sa pagbabayad para sa mga serbisyo.', side: "right", align: 'start' }},
+                { element: '#nav-item-messages', popover: { title: '💬 Messages', description: 'Dito mo mababasa ang mga mensahe mula sa mga residente. Ang pulang tuldok ay nangangahulugang may bago kang mensahe.', side: "right", align: 'start' }},
                 { element: '#sidebar-user-profile', popover: { title: '👤 User Profile', description: 'Dito makikita kung sino ang naka-login. Pwede ka ring mag-logout dito.', side: "top", align: 'start' }},
                 { element: '#help-button-container', popover: { title: '💡 Tulong at Gabay', description: 'I-click mo lang ito ulit kung gusto mong makita muli ang gabay na ito. Sana ay makatulong!', side: "top", align: 'start' }}
             ]
@@ -378,8 +378,8 @@ export default function AuthenticatedLayout({ header, children }) {
         ]},
         { title: 'Account', links: [
             { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> },
-            { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: unreadMessages.length },
             { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> },
+            { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: unreadMessages.length },
         ]},
     ];
 
