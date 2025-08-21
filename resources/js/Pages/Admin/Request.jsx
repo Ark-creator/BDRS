@@ -24,7 +24,7 @@ import {
     CheckCircle2,
     Hourglass,
     ThumbsUp,
-    Info, // Import the Info icon
+    Info,
 } from 'lucide-react';
 
 // --- Reusable Components ---
@@ -114,8 +114,7 @@ export default function Request() {
     });
     const [debouncedFilter] = useDebounce(filter, 300);
 
-    const { data, setData, patch, processing, errors, reset } = useForm({
-        status: '',
+    const { data, setData, processing, errors, reset } = useForm({
         admin_remarks: '',
         payment_amount: '',
     });
@@ -123,8 +122,9 @@ export default function Request() {
     const filterStatusOptions = ['All', 'Pending', 'Waiting for Payment', 'Processing', 'Ready to Pickup'];
     const actionStatusOptions = ['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
 
-    // --- REAL-TIME LISTENERS (SIMPLIFIED AND RELIABLE) ---
+    // --- REAL-TIME LISTENERS (RELIABLE VERSION) ---
     useEffect(() => {
+        // Ensure Echo is available before trying to connect
         if (window.Echo) {
             const channel = window.Echo.private('admin-requests');
             const reloadOptions = {
@@ -141,7 +141,6 @@ export default function Request() {
 
             // Listener for status updates
             channel.listen('.StatusUpdated', (event) => {
-                // FIX: Use a standard toast call with a custom icon
                 toast((t) => (
                     <div className="flex items-center gap-2">
                         <Info className="h-5 w-5 text-blue-500" />
@@ -194,7 +193,7 @@ export default function Request() {
 
     const openRejectModal = (request) => {
         setSelectedRequest(request);
-        setData({ status: 'Rejected', admin_remarks: '' });
+        reset('admin_remarks');
         setShowRejectModal(true);
     };
 
@@ -212,8 +211,21 @@ export default function Request() {
 
     const handleRejectSubmit = (e) => {
         e.preventDefault();
-        patch(route('admin.requests.status.update', selectedRequest.id), {
-            onSuccess: () => { setShowRejectModal(false); },
+        router.patch(route('admin.requests.status.update', selectedRequest.id), {
+            status: 'Rejected',
+            admin_remarks: data.admin_remarks,
+        }, {
+            onSuccess: () => {
+                setShowRejectModal(false);
+                toast.success('Request has been rejected and archived.');
+            },
+            onError: (errs) => {
+                if (errs.admin_remarks) {
+                    toast.error(errs.admin_remarks);
+                } else {
+                    toast.error('Failed to reject the request. Please ensure a reason is provided.');
+                }
+            },
             preserveScroll: true,
         });
     };
@@ -294,7 +306,7 @@ export default function Request() {
 
             <div className="py-6 md:py-12 bg-slate-50 dark:bg-slate-900">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
-                    <div className="bg-white dark:bg-slate-800shadow-md sm:rounded-lg">
+                    <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-md sm:rounded-lg">
                         <div className="p-6 border-b border-slate-200 dark:border-slate-700">
                             <div id="header-section" className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                 <div>
@@ -338,7 +350,6 @@ export default function Request() {
                         </div>
 
                         <div id="requests-list-container">
-                            {/* MOBILE VIEW */}
                             <div className="md:hidden">
                                 {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
                                     <div key={request.id} className="border-b dark:border-slate-700 p-4 space-y-4">
@@ -385,16 +396,15 @@ export default function Request() {
                                 )}
                             </div>
                             
-                            {/* DESKTOP VIEW */}
                             <div className="hidden md:block">
                                 <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
-                                    <thead className="bg-blue-600 text-white">
+                                    <thead className="bg-slate-50 dark:bg-slate-700/50">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Requestor</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Document</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Status</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider">Date</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-slate-300 uppercase tracking-wider actions-column">Actions</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Requestor</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Document</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider">Date</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wider actions-column">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
@@ -468,7 +478,7 @@ export default function Request() {
                 <form onSubmit={handleRejectSubmit}>
                     <div className="mb-4">
                         <label htmlFor="admin_remarks" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Reason for Rejection</label>
-                        <textarea id="admin_remarks" value={data.admin_remarks} onChange={(e) => setData({ ...data, admin_remarks: e.target.value })} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm dark:bg-slate-900 dark:border-slate-600" rows="4" required></textarea>
+                        <textarea id="admin_remarks" value={data.admin_remarks} onChange={(e) => setData('admin_remarks', e.target.value)} className="mt-1 block w-full rounded-md border-slate-300 shadow-sm dark:bg-slate-900 dark:border-slate-600" rows="4" required></textarea>
                         {errors.admin_remarks && <p className="text-red-500 text-xs mt-1">{errors.admin_remarks}</p>}
                     </div>
                     <div className="flex justify-end space-x-2">
@@ -479,36 +489,36 @@ export default function Request() {
             </Modal>
             
             <Modal show={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Set Payment Amount" maxWidth="md">
-                <div className="mb-6 p-4 border rounded-lg bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700">
-                    <h4 className="text-md font-semibold text-slate-800 dark:text-slate-200 mb-3">Request Details</h4>
+                <div className="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700">
+                    <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">Request Details</h4>
                     <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
-                            <span className="text-slate-500 dark:text-slate-400">Requestor:</span>
-                            <span className="font-medium text-slate-900 dark:text-white">{selectedRequest?.user?.full_name || 'N/A'}</span>
+                            <span className="text-gray-500 dark:text-gray-400">Requestor:</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{selectedRequest?.user?.full_name || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-500 dark:text-slate-400">Business Name:</span>
-                            <span className="font-medium text-slate-900 dark:text-white text-right">{selectedRequest?.form_data?.business_name || 'N/A'}</span>
+                            <span className="text-gray-500 dark:text-gray-400">Business Name:</span>
+                            <span className="font-medium text-gray-900 dark:text-white text-right">{selectedRequest?.form_data?.business_name || 'N/A'}</span>
                         </div>
                         <div className="flex justify-between">
-                            <span className="text-slate-500 dark:text-slate-400">Business Type:</span>
-                            <span className="font-medium text-slate-900 dark:text-white text-right">{selectedRequest?.form_data?.business_type || 'N/A'}</span>
+                            <span className="text-gray-500 dark:text-gray-400">Business Type:</span>
+                            <span className="font-medium text-gray-900 dark:text-white text-right">{selectedRequest?.form_data?.business_type || 'N/A'}</span>
                         </div>
                         <div className="flex flex-col text-left">
-                            <span className="text-slate-500 dark:text-slate-400">Business Address:</span>
-                            <span className="font-medium text-slate-900 dark:text-white mt-1 text-right">{selectedRequest?.form_data?.business_address || 'N/A'}</span>
+                            <span className="text-gray-500 dark:text-gray-400">Business Address:</span>
+                            <span className="font-medium text-gray-900 dark:text-white mt-1 text-right">{selectedRequest?.form_data?.business_address || 'N/A'}</span>
                         </div>
                     </div>
                 </div>
 
                 <form onSubmit={handlePaymentSubmit}>
                     <div className="mb-4">
-                        <label htmlFor="payment_amount" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        <label htmlFor="payment_amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                             Enter Assessed Amount (PHP)
                         </label>
                         <div className="relative mt-1 rounded-md shadow-sm">
                             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                <span className="text-slate-500 sm:text-sm">₱</span>
+                                <span className="text-gray-500 sm:text-sm">₱</span>
                             </div>
                             <input
                                 id="payment_amount"
@@ -517,7 +527,7 @@ export default function Request() {
                                 min="0"
                                 value={data.payment_amount}
                                 onChange={(e) => setData('payment_amount', e.target.value)}
-                                className="block w-full rounded-md border-slate-300 pl-7 pr-3 py-2 shadow-sm dark:bg-slate-900 dark:border-slate-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                className="block w-full rounded-md border-gray-300 pl-7 pr-3 py-2 shadow-sm dark:bg-gray-900 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                                 placeholder="0.00"
                                 autoFocus
                                 required
@@ -526,7 +536,7 @@ export default function Request() {
                         {errors.payment_amount && <p className="text-red-500 text-xs mt-1">{errors.payment_amount}</p>}
                     </div>
                     <div className="flex justify-end space-x-2 pt-4">
-                        <button type="button" onClick={() => setShowPaymentModal(false)} className="px-4 py-2 rounded-md text-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600">Cancel</button>
+                        <button type="button" onClick={() => setShowPaymentModal(false)} className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">Cancel</button>
                         <button type="submit" disabled={processing} className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50">
                             {processing ? 'Saving...' : 'Set Amount & Notify User'}
                         </button>
@@ -534,13 +544,14 @@ export default function Request() {
                 </form>
             </Modal>
             
+            {/* --- NEW RECEIPT MODAL --- */}
             <Modal show={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="Payment Receipt" maxWidth="md">
                 {selectedRequest?.payment_receipt_url ? (
                     <div>
                         <img 
                             src={selectedRequest.payment_receipt_url} 
                             alt="Payment Receipt" 
-                            className="w-full h-auto rounded-lg border dark:border-slate-600"
+                            className="w-full h-auto rounded-lg border dark:border-gray-600"
                         />
                          <div className="text-center mt-4">
                             <a 
@@ -554,15 +565,15 @@ export default function Request() {
                         </div>
                     </div>
                 ) : (
-                    <p className="text-center text-slate-500">Receipt image could not be loaded or is not available.</p>
+                    <p className="text-center text-gray-500">Receipt image could not be loaded or is not available.</p>
                 )}
             </Modal>
             
             <Modal show={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={`Preview: ${selectedRequest?.document_type?.name || ''}`}>
-                <div className="bg-slate-100 dark:bg-slate-900 p-4 sm:p-8 rounded-lg max-h-[75vh] overflow-y-auto">
+                <div className="bg-gray-100 dark:bg-gray-900 p-4 sm:p-8 rounded-lg max-h-[75vh] overflow-y-auto">
                     {isPreviewLoading ? (
                         <div className="flex items-center justify-center min-h-[400px]">
-                            <LoaderCircle className="animate-spin h-8 w-8 text-blue-500" />
+                            <LoadingSpinner />
                         </div>
                     ) : (
                         <div className="document-preview-container" dangerouslySetInnerHTML={{ __html: previewContent }} />

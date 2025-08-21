@@ -68,31 +68,31 @@ class RequestDocumentsController extends Controller
 
     public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
-        $validated = $request->validate([
-            'status' => 'required|string|in:Pending,Place an Amount to Pay,Processing, Waiting for Payment, Rejected,Ready to Pickup,Claimed',
-            'admin_remarks' => [
-                Rule::requiredIf($request->status === 'Rejected'),
-                'nullable',
-                'string',
-                'max:500'
-            ],
+        // First, validate the status to ensure it's a valid option.
+        $request->validate([
+            'status' => ['required', 'string', Rule::in(['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'])],
         ]);
 
-        $documentRequest->status = $validated['status'];
-        $documentRequest->admin_remarks = $validated['admin_remarks'] ?? null;
-        $documentRequest->processed_by = auth()->id();
+        $status = $request->input('status');
+        $remarks = $request->input('admin_remarks');
 
-        if ($validated['status'] === 'Claimed' || $validated['status'] === 'Rejected') {
+        // Handle the archiving case (Rejected or Claimed)
+        if ($status === 'Claimed' || $status === 'Rejected') {
+            // If the status is 'Rejected', validate that remarks are provided.
+            if ($status === 'Rejected') {
+                $request->validate([
+                    'admin_remarks' => 'required|string|max:500'
+                ]);
+            }
+
             ImmutableDocumentsArchiveHistory::create([
-                // --- FIX: ADD THIS LINE ---
                 'original_request_id' => $documentRequest->id,
-                
                 'user_id' => $documentRequest->user_id,
                 'document_type_id' => $documentRequest->document_type_id,
                 'form_data' => $documentRequest->form_data,
-                'status' => $validated['status'],
-                'admin_remarks' => $documentRequest->admin_remarks,
-                'processed_by' => $documentRequest->processed_by,
+                'status' => $status,
+                'admin_remarks' => $remarks,
+                'processed_by' => auth()->id(),
                 'original_created_at' => $documentRequest->created_at,
             ]);
 
@@ -101,10 +101,14 @@ class RequestDocumentsController extends Controller
             return back()->with('success', 'Request has been archived successfully.');
         }
 
+        // Handle all other status updates
+        $documentRequest->status = $status;
+        $documentRequest->admin_remarks = $remarks; // Can be null for other statuses
+        $documentRequest->processed_by = auth()->id();
         $documentRequest->save();
-
+        
         DocumentRequestStatusUpdated::dispatch($documentRequest);
-
+        
         return back()->with('success', 'Request status updated successfully.');
     }
 
