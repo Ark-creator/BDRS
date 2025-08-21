@@ -150,6 +150,7 @@ class RequestDocumentsController extends Controller
     private function archiveRequest(DocumentRequest $documentRequest, string $status, ?string $remarks = null): void
     {
         ImmutableDocumentsArchiveHistory::create([
+            'original_request_id' => $documentRequest->id,
             'user_id' => $documentRequest->user_id,
             'document_type_id' => $documentRequest->document_type_id,
             'form_data' => $documentRequest->form_data,
