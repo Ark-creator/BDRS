@@ -7,6 +7,7 @@ import Pagination from '@/Components/Pagination';
 import { useDebounce } from 'use-debounce';
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+
 import {
     Eye,
     Download,
@@ -21,7 +22,8 @@ import {
     Hourglass,
     ThumbsUp,
     Info,
-    TicketCheck // Icon for the new feature
+    TicketCheck,
+    CheckCircle2 // Restored Icon
 } from 'lucide-react';
 
 // --- Reusable Components ---
@@ -48,20 +50,48 @@ const Modal = ({ children, show, onClose, title, maxWidth = '4xl' }) => {
     );
 };
 
+// --- IMPROVED STATUS BADGE ---
 const StatusBadge = ({ status }) => {
-    const colors = {
-        'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-        'Pending': 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-        'Place an Amount to Pay': 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
-        'Processing': 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300',
-        'Ready to Pickup': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-        'Claimed': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-        'Waiting for Payment': 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
+    const statusConfig = {
+        'Rejected': {
+            badgeClasses: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300',
+            icon: <XCircle className="h-4 w-4" />
+        },
+        'Claimed': {
+            badgeClasses: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300',
+            icon: <CheckCircle2 className="h-4 w-4" />
+        },
+        'Processing': {
+            badgeClasses: 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300',
+            icon: <LoaderCircle className="h-4 w-4 animate-spin" />
+        },
+        'Pending': {
+            badgeClasses: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300',
+            icon: <Clock className="h-4 w-4" />
+        },
+        'Waiting for Payment': {
+            badgeClasses: 'bg-pink-100 text-pink-800 dark:bg-pink-900/50 dark:text-pink-300',
+            icon: <Hourglass className="h-4 w-4" />
+        },
+        'Ready to Pickup': {
+            badgeClasses: 'bg-lime-100 text-lime-800 dark:bg-lime-900/50 dark:text-lime-300',
+            icon: <ThumbsUp className="h-4 w-4" />
+        },
+        'Place an Amount to Pay': {
+            badgeClasses: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300',
+            icon: <CircleDollarSign className="h-4 w-4" />
+        },
+        'default': {
+           badgeClasses: 'bg-gray-100 text-gray-800 dark:bg-gray-900/50 dark:text-gray-300',
+            icon: <HelpCircle className="h-4 w-4" />
+        }
     };
+    const currentConfig = statusConfig[status] || statusConfig['default'];
+
     return (
-        <span className={`px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-1.5 ${colors[status] || 'bg-gray-200'}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${colors[status]?.replace(/text-(yellow|sky|blue|green|red|orange|pink)-[0-9]{2,3}/, 'bg-$1-500').split(' ')[1]}`}></span>
-            {status}
+        <span className={`px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-2 ${currentConfig.badgeClasses}`}>
+            {currentConfig.icon}
+            <span>{status || 'Unknown'}</span>
         </span>
     );
 };

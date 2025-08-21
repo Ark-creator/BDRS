@@ -3,10 +3,10 @@
 
 | ROLES | MEMBERS |
 | :--- | :--- |
-| **LEAD DEVELOPER / PROJECT MANAGER** | JOHN MICHAEL JONATAS |
-| **UI/UX DESIGNER** | TEAM MEMBER 2 |
-| **BACKEND DEVELOPER** | TEAM MEMBER 3 |
-| **QA / TESTER** | TEAM MEMBER 4 |
+| **LEAD DEVELOPER / PROJECT MANAGER** | ACE PADILLA |
+| **UI/UX DESIGNER** | ACE PADILLA |
+| **BACKEND DEVELOPER** | ROMARK BAYAN |
+| **QA / TESTER** | JOHN MICHAEL JONATAS |
 ---
 ---
 
@@ -18,6 +18,10 @@ Follow these steps to get the development environment up and running.
     Run composer to install the required PHP packages.
     ```bash
     composer install
+    ```
+    Run NPM to install.
+    ```bash
+    npm install
     ```
 
 2.  **Setup Environment File**
