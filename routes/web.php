@@ -96,7 +96,10 @@ Route::get('/my-requests', [DocumentRequestController::class, 'index'])
 });
 
 Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
-    
+    // routes/web.php (within your admin middleware group)
+
+Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'claimByVoucher'])
+     ->name('requests.claim-by-voucher');
     // --- Static Pages ---
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     // The conflicting '/announcement' route has been removed.

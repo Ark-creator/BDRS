@@ -51,7 +51,9 @@ const Modal = ({ children, show, onClose, title }) => {
 const ClaimVoucherModal = ({ show, onClose, request }) => {
     if (!request) return null;
 
-    const claimVoucher = request.claim_voucher || `DOC-REQ-${request.id}`;
+    // Use the actual voucher code from the backend.
+    // The fallback can be simplified or removed if you're confident the code will always exist.
+    const claimVoucherCode = request.claim_voucher_code || `LOADING...`;
 
     return (
         <Modal show={show} onClose={onClose} title="Claim Your Document">
@@ -61,8 +63,10 @@ const ClaimVoucherModal = ({ show, onClose, request }) => {
                 </p>
                 <div className="mt-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-lg border dark:border-slate-700">
                     <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-widest">VOUCHER CODE</p>
-                    <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-gray-200 tracking-wider">{claimVoucher}</p>
+                    {/* Use the new variable here */}
+                    <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-gray-200 tracking-wider">{claimVoucherCode}</p>
                 </div>
+      
                 <div className="mt-6 text-left text-sm text-gray-800 dark:text-gray-200 space-y-2 border-t dark:border-slate-700 pt-4">
                     <p><strong>Requestor:</strong> {request.user?.name || 'N/A'}</p>
                     <p><strong>Document:</strong> {request.document_type?.name || 'N/A'}</p>

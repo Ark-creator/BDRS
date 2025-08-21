@@ -7,7 +7,6 @@ import Pagination from '@/Components/Pagination';
 import { useDebounce } from 'use-debounce';
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-
 import {
     Eye,
     Download,
@@ -22,10 +21,11 @@ import {
     Hourglass,
     ThumbsUp,
     Info,
+    TicketCheck // Icon for the new feature
 } from 'lucide-react';
 
-
 // --- Reusable Components ---
+
 const Modal = ({ children, show, onClose, title, maxWidth = '4xl' }) => {
     useEffect(() => {
         const handleEsc = (event) => { if (event.keyCode === 27) onClose(); };
@@ -66,14 +66,74 @@ const StatusBadge = ({ status }) => {
     );
 };
 
+const ClaimByVoucherModal = ({ show, onClose, data, setData, post, processing, errors }) => {
+    const submit = (e) => {
+        e.preventDefault();
+        post(route('admin.requests.claim-by-voucher'), {
+            onSuccess: () => {
+                onClose();
+                toast.success('Document claimed successfully!');
+            },
+            onError: (errs) => {
+                if (errs.voucher_code) {
+                    toast.error(errs.voucher_code);
+                }
+            }
+        });
+    };
+
+    return (
+        <Modal show={show} onClose={onClose} title="Claim Document with Voucher" maxWidth="md">
+            <form onSubmit={submit}>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Enter the resident's voucher code to mark the document as claimed.
+                </p>
+                <div>
+                    <label htmlFor="voucher_code" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Voucher Code
+                    </label>
+                    <div className="mt-1">
+                        <input
+                            type="text"
+                            name="voucher_code"
+                            id="voucher_code"
+                            value={data.voucher_code}
+                            onChange={(e) => setData('voucher_code', e.target.value.toUpperCase())}
+                            className="block w-full rounded-md border-gray-300 shadow-sm dark:bg-gray-900 dark:border-gray-600 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            placeholder="VOUCHER-XXXXXXXX"
+                            autoFocus
+                            required
+                        />
+                    </div>
+                    {errors.voucher_code && <p className="text-red-500 text-xs mt-2">{errors.voucher_code}</p>}
+                </div>
+                <div className="flex justify-end space-x-3 mt-6 pt-4 border-t dark:border-gray-700">
+                    <button type="button" onClick={onClose} className="px-4 py-2 rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600">
+                        Cancel
+                    </button>
+                    <button type="submit" disabled={processing} className="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50">
+                        <TicketCheck size={16} />
+                        Confirm Claim
+                    </button>
+                </div>
+            </form>
+        </Modal>
+    );
+};
+
+
 // --- Main Page Component ---
 export default function Request() {
     const { flash, documentRequests, filters } = usePage().props;
-    
+
+    // States for modals
+    const [showClaimModal, setShowClaimModal] = useState(false);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showPreviewModal, setShowPreviewModal] = useState(false);
+
+    // Other states
     const [previewContent, setPreviewContent] = useState('');
     const [isPreviewLoading, setIsPreviewLoading] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
@@ -85,15 +145,21 @@ export default function Request() {
     });
     const [debouncedFilter] = useDebounce(filter, 300);
 
+    // useForm hook for Reject and Payment modals
     const { data, setData, processing, errors, reset } = useForm({
         admin_remarks: '',
         payment_amount: '',
     });
 
-    const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
-    const actionStatusOptions = ['Pending', 'Processing','Ready to Pickup', 'Claimed', 'Rejected'];
+    // useForm hook for the new Claim By Voucher modal
+    const { data: claimData, setData: setClaimData, post: postClaim, processing: claimProcessing, errors: claimErrors, reset: resetClaim } = useForm({
+        voucher_code: '',
+    });
 
-    // --- REAL-TIME LISTENERS (RELIABLE VERSION) ---
+    const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
+    const actionStatusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
+
+    // --- REAL-TIME LISTENERS ---
     useEffect(() => {
         if (window.Echo) {
             const channel = window.Echo.private('admin-requests');
@@ -125,13 +191,15 @@ export default function Request() {
             };
         }
     }, []);
-
+    
+    // Tour Guide
     const startTour = () => {
         const driverObj = driver({
             showProgress: true,
             popoverClass: 'driverjs-theme',
             steps: [
-                { element: '#header-section', popover: { title: 'Manage Requests', description: 'This is the main header. You can find the title and the search bar here.' } },
+                { element: '#header-section', popover: { title: 'Manage Requests', description: 'This is the main header. You can find the title and action buttons here.' } },
+                { element: '#claim-voucher-btn', popover: { title: 'Claim with Voucher', description: 'Click this to quickly mark a document as claimed by entering its unique voucher code.' } },
                 { element: '#search-input', popover: { title: 'Search', description: 'Quickly find a specific request by typing the resident\'s name or the document type.' } },
                 { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Click these buttons to filter the list and see only the requests with that status.' } },
                 { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all the active requests. On mobile, it appears as cards, and on desktop, as a table.' } },
@@ -142,6 +210,7 @@ export default function Request() {
         driverObj.drive();
     };
 
+    // --- useEffect Hooks ---
     useEffect(() => {
         if (flash?.success) toast.success(flash.success);
         if (flash?.error) toast.error(flash.error);
@@ -158,6 +227,8 @@ export default function Request() {
         });
     }, [debouncedFilter]);
 
+
+    // --- Handlers ---
     const openRejectModal = (request) => {
         setSelectedRequest(request);
         reset('admin_remarks');
@@ -196,7 +267,7 @@ export default function Request() {
             preserveScroll: true,
         });
     };
-    
+
     const handlePaymentSubmit = (e) => {
         e.preventDefault();
         router.post(route('admin.requests.set-payment', selectedRequest.id), {
@@ -234,7 +305,7 @@ export default function Request() {
 
     const renderActions = (request, index) => {
         const isBusinessPermit = request.document_type?.name === 'Brgy Business Permit';
-        
+
         if (isBusinessPermit && request.status === 'Pending') {
             return (
                 <button
@@ -250,7 +321,7 @@ export default function Request() {
                 </button>
             );
         }
-        
+
         return (
             <select
                 id={index === 0 ? "actions_item" : undefined}
@@ -282,6 +353,17 @@ export default function Request() {
                                     <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">View and process all ongoing document requests.</p>
                                 </div>
                                 <div className="flex items-center gap-4">
+                                    <button
+                                        id="claim-voucher-btn"
+                                        onClick={() => {
+                                            resetClaim();
+                                            setShowClaimModal(true);
+                                        }}
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-transform hover:scale-105 shadow-sm text-sm"
+                                    >
+                                        <TicketCheck size={16} />
+                                        Claim with Voucher
+                                    </button>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><Search className="h-5 w-5 text-gray-400" /></div>
                                         <input
@@ -320,6 +402,7 @@ export default function Request() {
                         </div>
 
                         <div id="requests-list-container">
+                            {/* Mobile View */}
                             <div className="md:hidden">
                                 {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
                                     <div key={request.id} className="border-b dark:border-gray-700 p-4 space-y-3">
@@ -356,7 +439,8 @@ export default function Request() {
                                     </div>
                                 )}
                             </div>
-                            
+
+                            {/* Desktop View */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead className="bg-blue-600 text-white">
@@ -370,7 +454,7 @@ export default function Request() {
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                         {(documentRequests.data && documentRequests.data.length > 0) ? documentRequests.data.map((request, index) => (
-                                            <tr key={request.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100">
+                                            <tr key={request.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100 dark:odd:bg-gray-800 dark:even:bg-gray-900/50 dark:hover:bg-sky-900/20">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{request.user?.full_name || "N/A"}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{request.document_type?.name || "N/A"}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={request.status} /></td>
@@ -414,7 +498,7 @@ export default function Request() {
                         </div>
 
                         {documentRequests.data.length > 0 && (
-                            <div id="pagination-section" className="p-4">
+                            <div id="pagination-section" className="p-4 border-t dark:border-gray-700">
                                 <Pagination
                                     links={documentRequests.links}
                                     from={documentRequests.from}
@@ -427,17 +511,27 @@ export default function Request() {
                 </div>
             </div>
 
-            {/* Modals */}
+            {/* --- Modals Section --- */}
+            <ClaimByVoucherModal
+                show={showClaimModal}
+                onClose={() => setShowClaimModal(false)}
+                data={claimData}
+                setData={setClaimData}
+                post={postClaim}
+                processing={claimProcessing}
+                errors={claimErrors}
+            />
+
             <Modal show={showRejectModal} onClose={() => setShowRejectModal(false)} title="Reject Document Request" maxWidth="md">
                 <form onSubmit={handleRejectSubmit}>
                     <div className="mb-4">
                         <label htmlFor="admin_remarks" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reason for Rejection</label>
-                        <textarea 
-                            id="admin_remarks" 
-                            value={data.admin_remarks} 
-                            onChange={(e) => setData('admin_remarks', e.target.value)} 
-                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm dark:bg-slate-900 dark:border-slate-600" 
-                            rows="4" 
+                        <textarea
+                            id="admin_remarks"
+                            value={data.admin_remarks}
+                            onChange={(e) => setData('admin_remarks', e.target.value)}
+                            className="mt-1 block w-full rounded-md border-slate-300 shadow-sm dark:bg-slate-900 dark:border-slate-600"
+                            rows="4"
                             required>
                         </textarea>
                         {errors.admin_remarks && <p className="text-red-500 text-xs mt-1">{errors.admin_remarks}</p>}
@@ -448,7 +542,7 @@ export default function Request() {
                     </div>
                 </form>
             </Modal>
-            
+
             <Modal show={showPaymentModal} onClose={() => setShowPaymentModal(false)} title="Set Payment Amount" maxWidth="md">
                 <div className="mb-6 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/50 dark:border-gray-700">
                     <h4 className="text-md font-semibold text-gray-800 dark:text-gray-200 mb-3">Request Details</h4>
@@ -504,20 +598,19 @@ export default function Request() {
                     </div>
                 </form>
             </Modal>
-            
-            {/* --- NEW RECEIPT MODAL --- */}
+
             <Modal show={showReceiptModal} onClose={() => setShowReceiptModal(false)} title="Payment Receipt" maxWidth="md">
                 {selectedRequest?.payment_receipt_url ? (
                     <div>
-                        <img 
-                            src={selectedRequest.payment_receipt_url} 
-                            alt="Payment Receipt" 
+                        <img
+                            src={selectedRequest.payment_receipt_url}
+                            alt="Payment Receipt"
                             className="w-full h-auto rounded-lg border dark:border-gray-600"
                         />
-                         <div className="text-center mt-4">
-                            <a 
-                                href={selectedRequest.payment_receipt_url} 
-                                target="_blank" 
+                        <div className="text-center mt-4">
+                            <a
+                                href={selectedRequest.payment_receipt_url}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-sm text-blue-600 hover:underline dark:text-blue-400"
                             >
@@ -529,12 +622,13 @@ export default function Request() {
                     <p className="text-center text-gray-500">Receipt image could not be loaded or is not available.</p>
                 )}
             </Modal>
-            
+
             <Modal show={showPreviewModal} onClose={() => setShowPreviewModal(false)} title={`Preview: ${selectedRequest?.document_type?.name || ''}`}>
                 <div className="bg-gray-100 dark:bg-gray-900 p-4 sm:p-8 rounded-lg max-h-[75vh] overflow-y-auto">
                     {isPreviewLoading ? (
                         <div className="flex items-center justify-center min-h-[400px]">
-                            <LoadingSpinner />
+                            {/* You might need to define a LoadingSpinner component */}
+                            <LoaderCircle className="animate-spin h-10 w-10 text-blue-600" />
                         </div>
                     ) : (
                         <div className="document-preview-container" dangerouslySetInnerHTML={{ __html: previewContent }} />

@@ -26,6 +26,8 @@ class DocumentRequest extends Model
         'payment_status',
         'payment_receipt_path',
         'paid_at',
+                'claim_voucher_code', // Add this line
+
     ];
 
     /**

@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\DocumentRequestStatusUpdated;
 use Inertia\Inertia;
 use Inertia\Response;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\DocumentRequest;
+use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
+use App\Events\DocumentRequestStatusUpdated;
 use App\Models\ImmutableDocumentsArchiveHistory;
-use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RequestDocumentsController extends Controller
@@ -66,44 +67,44 @@ class RequestDocumentsController extends Controller
         return back()->with('success', 'Payment amount has been set. The user will be notified.');
     }
 
-    public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
+
+     public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
     {
-        // First, validate the status to ensure it's a valid option.
-        $request->validate([
+        if (!$documentRequest->payment_receipt_path || !Storage::disk('local')->exists($documentRequest->payment_receipt_path)) {
+            abort(404, 'Receipt file not found.');
+        }
+        return Storage::disk('local')->response($documentRequest->payment_receipt_path);
+    }
+  public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
+    {
+        // --- REFINED VALIDATION ---
+        // This is a cleaner way to validate. 'admin_remarks' is now explicitly required ONLY IF the status is 'Rejected'.
+        $validated = $request->validate([
             'status' => ['required', 'string', Rule::in(['Processing', 'Ready to Pickup', 'Claimed', 'Rejected'])],
+            'admin_remarks' => ['required_if:status,Rejected', 'nullable', 'string', 'max:500'],
         ]);
 
-        $status = $request->input('status');
-        $remarks = $request->input('admin_remarks');
+        $status = $validated['status'];
+        // Use array_key_exists to safely get remarks, as it might not be in the validated array if not provided
+        $remarks = array_key_exists('admin_remarks', $validated) ? $validated['admin_remarks'] : null;
 
-        // Handle the archiving case (Rejected or Claimed)
+        // If the status is 'Claimed' or 'Rejected', call our helper method.
         if ($status === 'Claimed' || $status === 'Rejected') {
-            // If the status is 'Rejected', validate that remarks are provided.
-            if ($status === 'Rejected') {
-                $request->validate([
-                    'admin_remarks' => 'required|string|max:500'
-                ]);
-            }
+            // 1. Call the helper to do the database work.
+            $this->archiveRequest($documentRequest, $status, $remarks);
 
-            ImmutableDocumentsArchiveHistory::create([
-                'original_request_id' => $documentRequest->id,
-                'user_id' => $documentRequest->user_id,
-                'document_type_id' => $documentRequest->document_type_id,
-                'form_data' => $documentRequest->form_data,
-                'status' => $status,
-                'admin_remarks' => $remarks,
-                'processed_by' => auth()->id(),
-                'original_created_at' => $documentRequest->created_at,
-            ]);
-
-            $documentRequest->delete();
-
+            // 2. Return the redirect response from THIS method.
             return back()->with('success', 'Request has been archived successfully.');
         }
 
-        // Handle all other status updates
+        // --- VOUCHER GENERATION LOGIC (unchanged) ---
+        if ($status === 'Ready to Pickup' && is_null($documentRequest->claim_voucher_code)) {
+            $documentRequest->claim_voucher_code = 'VOUCHER-' . Str::upper(Str::random(8));
+        }
+        
+        // Handle all other status updates (unchanged)
         $documentRequest->status = $status;
-        $documentRequest->admin_remarks = $remarks; // Can be null for other statuses
+        $documentRequest->admin_remarks = $remarks;
         $documentRequest->processed_by = auth()->id();
         $documentRequest->save();
         
@@ -111,12 +112,53 @@ class RequestDocumentsController extends Controller
         
         return back()->with('success', 'Request status updated successfully.');
     }
-
-    public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
+    /**
+     * --- MODIFIED ---
+     * The logic to claim by voucher now correctly archives the request.
+     */
+    public function claimByVoucher(Request $request)
     {
-        if (!$documentRequest->payment_receipt_path || !Storage::disk('local')->exists($documentRequest->payment_receipt_path)) {
-            abort(404, 'Receipt file not found.');
+        $validated = $request->validate([
+            'voucher_code' => 'required|string',
+        ]);
+
+        $documentRequest = DocumentRequest::where('claim_voucher_code', $validated['voucher_code'])->first();
+
+        if (!$documentRequest) {
+            return back()->withErrors(['voucher_code' => 'Invalid or unknown voucher code.']);
         }
-        return Storage::disk('local')->response($documentRequest->payment_receipt_path);
+
+        if ($documentRequest->status !== 'Ready to Pickup') {
+            return back()->withErrors(['voucher_code' => 'This document is not ready for pickup or has already been claimed.']);
+        }
+
+        // --- REFACTORED LOGIC ---
+        // Instead of just updating the status, we now call the reusable archive method.
+        $this->archiveRequest($documentRequest, 'Claimed');
+        // --- END REFACTORED LOGIC ---
+
+        return redirect()->route('admin.request')->with('success', "Success! Document for {$documentRequest->user->profile->full_name} has been marked as claimed and archived.");
+    }
+
+  
+    
+    /**
+     * --- NEW HELPER METHOD ---
+     * A private method to handle the archiving of a document request.
+     * This can be called from anywhere within this controller.
+     */
+    private function archiveRequest(DocumentRequest $documentRequest, string $status, ?string $remarks = null): void
+    {
+        ImmutableDocumentsArchiveHistory::create([
+            'user_id' => $documentRequest->user_id,
+            'document_type_id' => $documentRequest->document_type_id,
+            'form_data' => $documentRequest->form_data,
+            'status' => $status,
+            'admin_remarks' => $remarks, // The remarks are correctly saved here
+            'processed_by' => auth()->id(),
+            'original_created_at' => $documentRequest->created_at,
+        ]);
+
+        $documentRequest->delete();
     }
 }
