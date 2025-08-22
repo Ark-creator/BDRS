@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Auth\ValidationController;
 use App\Http\Controllers\Resident\ContactUsController;
+use App\Http\Controllers\Resident\HistoryController as ResidentHistoryController;
 use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
 use App\Http\Controllers\Admin\DocumentGenerationController;
@@ -65,13 +66,13 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     // this route is for Contact Us
     Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
     Route::post('/contact-us', [ContactUsController::class, 'store'])->name('contact.store');
-        Route::post('/request/solo-parent', [DocumentRequestController::class, 'storeSoloParent'])->name('request.solo-parent.store');
+    Route::post('/request/solo-parent', [DocumentRequestController::class, 'storeSoloParent'])->name('request.solo-parent.store');
 
- Route::get('/request/create/{documentType}', [DocumentRequestController::class, 'create'])->name('request.create');
-    
+    Route::get('/request/create/{documentType}', [DocumentRequestController::class, 'create'])->name('request.create');
+    Route::get('/history', [ResidentHistoryController::class, 'index'])->name('history.index');
     // ADD this new generic route for storing the request
     Route::post('/request', [DocumentRequestController::class, 'store'])->name('request.store');
-Route::get('/my-requests', [DocumentRequestController::class, 'index'])
+    Route::get('/my-requests', [DocumentRequestController::class, 'index'])
     ->name('requests.index');
 
     Route::post('/my-requests/{documentRequest}/pay', [DocumentRequestController::class, 'submitPayment'])
