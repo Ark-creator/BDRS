@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import { route } from 'ziggy-js';
 import { AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
 import axios from 'axios';
+import FloatingActionButton from '@/Components/FloatingActionButton'; 
 
 // --- Driver.js ---
 import { driver } from "driver.js";
@@ -26,9 +28,10 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 //================================================================
-// SIDEBAR COMPONENT
+// SIDEBAR COMPONENT (No changes here, keeping for context)
 //================================================================
 function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileOpen, isMobile, setShowAdminSidebarMobile }) {
+    // ... code for sidebar component ...
     const [openSections, setOpenSections] = useState({
         Main: true,
         Management: true,
@@ -204,15 +207,16 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
 
             {isMobile && mobileOpen && (
                 <div className="p-3 border-t border-slate-200 dark:border-slate-800">
-                     <Link href={route('residents.home')} className="flex items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => setShowAdminSidebarMobile(false)}>
-                        <ArrowLeft size={18} />
-                        <span>Back to Home</span>
-                    </Link>
+                       <Link href={route('residents.home')} className="flex items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => setShowAdminSidebarMobile(false)}>
+                            <ArrowLeft size={18} />
+                            <span>Back to Home</span>
+                        </Link>
                 </div>
             )}
         </aside>
     );
 }
+
 
 //================================================================
 // MAIN AUTHENTICATED LAYOUT
@@ -324,8 +328,9 @@ export default function AuthenticatedLayout({ header, children }) {
             fetchUnreadMessages();
         }
     }, [isAdmin]);
-    
+
     const startMainTour = () => {
+
         const runTour = () => {
             const steps = [
                 { element: isMobile ? '#nav-home-mobile' : '#nav-home', popover: { title: 'Home', description: 'This is the main page of the website.', side: 'bottom' }},
@@ -367,6 +372,7 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     const navLinkGroups = [
+       
         { title: 'Main', links: [
             { name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> },
             { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> },
@@ -384,6 +390,7 @@ export default function AuthenticatedLayout({ header, children }) {
     ];
 
     const NotificationBubble = ({ messages }) => (
+
         <div className="absolute top-12 right-0 w-80 bg-white dark:bg-gray-700 shadow-lg rounded-lg border border-gray-200 dark:border-gray-600 z-50 p-4 transition-all duration-300">
             <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">Unread Messages ({messages.length})</h3>
             {messages.length > 0 ? (
@@ -401,7 +408,7 @@ export default function AuthenticatedLayout({ header, children }) {
     );
 
     return (
-        <div className="overflow-hidden bg-gray-100 dark:bg-slate-900/95 relative font-inter">
+        <div className="min-h-screen bg-gray-100 dark:bg-slate-900/95 font-inter">
             <AnimatePresence>
                 {isAdmin && (isMobile && showAdminSidebarMobile || !isMobile) && (
                     <SidebarComponent user={user} navLinks={navLinkGroups} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} mobileOpen={isMobile && showAdminSidebarMobile} isMobile={isMobile} setShowAdminSidebarMobile={setShowAdminSidebarMobile}/>
@@ -409,19 +416,21 @@ export default function AuthenticatedLayout({ header, children }) {
             </AnimatePresence>
 
             {isMobile && showAdminSidebarMobile && (<div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setShowAdminSidebarMobile(false)} />)}
-
+            
             <div
-                className={clsx("flex h-full flex-col transition-all duration-300 ease-in-out",
+                className={clsx("flex flex-col min-h-screen transition-all duration-300 ease-in-out",
                     isMobile || !isAdmin
                         ? 'ml-0'
                         : (isSidebarCollapsed ? 'ml-[5.5rem]' : 'ml-[16rem]')
                 )}
             >
+                {/* --- NAVBAR --- */}
                 <nav className={clsx(
                     "bg-white dark:bg-gray-800 shadow-md fixed top-0 right-0 z-30 transition-all duration-300 ease-in-out",
                     isMobile || !isAdmin ? 'left-0' : (isSidebarCollapsed ? 'left-[5.5rem]' : 'left-[16rem]')
                 )}>
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                   {/* ... navbar content ... */}
+                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-16">
                             <div className="flex items-center gap-2">
                                 <button 
@@ -525,10 +534,14 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </nav>
 
+                {/* --- MAIN CONTENT --- */}
                 <main className="flex-1 overflow-y-auto pt-16">
                     {header && (<header className="bg-white dark:bg-slate-800 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-4">{header}</div></header>)}
                     <div className="">{children}</div>
                 </main>
+                
+               
+                 <FloatingActionButton />
             </div>
 
             <ToastContainer position="bottom-right" autoClose={5000} theme="colored" />
