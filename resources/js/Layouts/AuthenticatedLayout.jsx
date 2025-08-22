@@ -14,7 +14,7 @@ import {
     LayoutDashboard, Megaphone, FileText, FolderGit2, History,
     MessageSquareMore, CreditCard, PanelLeftClose, PanelLeftOpen, ChevronDown,
     BellRing, Menu, X, ArrowLeft, Users,
-    HelpCircle, LogOut, FileX2
+    HelpCircle, LogOut
 } from 'lucide-react';
 
 // --- Components ---
@@ -417,6 +417,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         : (isSidebarCollapsed ? 'ml-[5.5rem]' : 'ml-[16rem]')
                 )}
             >
+                {/* --- NAVBAR: MODIFIED TO BE FIXED --- */}
                 <nav className={clsx(
                     "bg-white dark:bg-gray-800 shadow-md fixed top-0 right-0 z-30 transition-all duration-300 ease-in-out",
                     isMobile || !isAdmin ? 'left-0' : (isSidebarCollapsed ? 'left-[5.5rem]' : 'left-[16rem]')
@@ -451,7 +452,6 @@ export default function AuthenticatedLayout({ header, children }) {
                             <div className="hidden md:flex items-center gap-6">
                                 <NavLink id="nav-home" href={route("residents.home")} active={route().current("residents.home")}>Home</NavLink>
                                 <NavLink id="nav-my-requests" href={route("residents.requests.index")} active={route().current("residents.requests.index")}>My Requests</NavLink>
-                                <NavLink id="nav-rejected-history" href={route("residents.history.index")} active={route().current("residents.history.index")}>Rejected History</NavLink>
                                 <NavLink id="nav-about" href={route("residents.about")} active={route().current("residents.about")}>About</NavLink>
                                 <NavLink id="nav-contact" href={route("residents.contact")} active={route().current("residents.contact")}>Contact</NavLink>
                                 <NavLink id="nav-faq" href={route("residents.faq")} active={route().current("residents.faq")}>FAQ</NavLink>
@@ -513,7 +513,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                         {/* --- MOBILE NAV: "My Requests" ADDED --- */}
                                         <NavLink id="nav-home-mobile" href={route("residents.home")} active={route().current("residents.home")} onClick={() => setIsMobileNavOpen(false)}>Home</NavLink>
                                         <NavLink id="nav-my-requests-mobile" href={route("residents.requests.index")} active={route().current("residents.requests.index")} onClick={() => setIsMobileNavOpen(false)}>My Requests</NavLink>
-                                        <NavLink id="nav-rejected-history-mobile" href={route("residents.history.index")} active={route().current("residents.history.index")} onClick={() => setIsMobileNavOpen(false)}>Rejected History</NavLink>
                                         <NavLink id="nav-about-mobile" href={route("residents.about")} active={route().current("residents.about")} onClick={() => setIsMobileNavOpen(false)}>About</NavLink>
                                         <NavLink id="nav-contact-mobile" href={route("residents.contact")} active={route().current("residents.contact")} onClick={() => setIsMobileNavOpen(false)}>Contact</NavLink>
                                         <NavLink id="nav-faq-mobile" href={route("residents.faq")} active={route().current("residents.faq")} onClick={() => setIsMobileNavOpen(false)}>FAQ</NavLink>
@@ -529,6 +528,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </nav>
 
+                {/* --- MAIN CONTENT: PADDING TOP ADDED --- */}
                 <main className="flex-1 overflow-y-auto pt-16">
                     {header && (<header className="bg-white dark:bg-slate-800 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-4">{header}</div></header>)}
                     <div className="">{children}</div>

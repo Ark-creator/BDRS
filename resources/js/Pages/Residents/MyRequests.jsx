@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link } from '@inertiajs/react';
 import Pagination from '@/Components/Pagination';
@@ -50,9 +50,6 @@ const Modal = ({ children, show, onClose, title }) => {
 
 const ClaimVoucherModal = ({ show, onClose, request }) => {
     if (!request) return null;
-
-    // Use the actual voucher code from the backend.
-    // The fallback can be simplified or removed if you're confident the code will always exist.
     const claimVoucherCode = request.claim_voucher_code || `LOADING...`;
 
     return (
@@ -63,10 +60,9 @@ const ClaimVoucherModal = ({ show, onClose, request }) => {
                 </p>
                 <div className="mt-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-lg border dark:border-slate-700">
                     <p className="text-sm font-semibold text-gray-500 dark:text-gray-400 tracking-widest">VOUCHER CODE</p>
-                    {/* Use the new variable here */}
                     <p className="mt-1 text-3xl font-bold text-gray-800 dark:text-gray-200 tracking-wider">{claimVoucherCode}</p>
                 </div>
-      
+    
                 <div className="mt-6 text-left text-sm text-gray-800 dark:text-gray-200 space-y-2 border-t dark:border-slate-700 pt-4">
                     <p><strong>Requestor:</strong> {request.user?.name || 'N/A'}</p>
                     <p><strong>Document:</strong> {request.document_type?.name || 'N/A'}</p>
@@ -76,18 +72,8 @@ const ClaimVoucherModal = ({ show, onClose, request }) => {
     );
 };
 
-const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
-    
-    // ===== DEBUGGING CODE: Tingnan ang laman ng bawat request object sa console =====
-    console.log('Rendering Request Card Data:', {
-        id: request.id,
-        status: request.status,
-        doc_type_name: request.document_type?.name, // Gumamit ng optional chaining (?.),
-        payment_amount: request.payment_amount
-    });
-    // ==============================================================================
-
-    const needsPayment = request.document_type?.name === 'Brgy Business Permit' &&
+const RequestCard = ({ request, openPaymentModal, openVoucherModal, isPastRequest = false }) => {
+    const needsPayment = !isPastRequest && request.document_type?.name === 'Brgy Business Permit' &&
                          (request.status === 'Waiting for Payment' || request.status === 'For Payment');
 
     return (
@@ -101,14 +87,14 @@ const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
                         <h3 className="font-bold text-lg text-gray-900 dark:text-gray-100">{request.document_type?.name || 'Unknown Document'}</h3>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 ml-11">
-                        Requested on: {new Date(request.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                        Requested on: {new Date(isPastRequest ? request.original_created_at : request.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                 </div>
                 
                 <div className="flex flex-col items-start md:items-end gap-4 w-full md:w-auto md:min-w-[280px] shrink-0">
                     <StatusBadge status={request.status} />
 
-                    {request.status === 'Ready to Pickup' && (
+                    {!isPastRequest && request.status === 'Ready to Pickup' && (
                          <button 
                             onClick={() => openVoucherModal(request)}
                             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-lime-600 text-white font-semibold rounded-lg hover:bg-lime-700 transition-transform hover:scale-105 shadow-sm"
@@ -118,7 +104,6 @@ const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
                         </button>
                     )}
                     
-                    {/* ===== Ginamit ang "needsPayment" variable para mas malinis ===== */}
                     {needsPayment && (
                         <div className="mt-2 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-center w-full border border-blue-200 dark:border-blue-800">
                             <p className="text-sm text-gray-600 dark:text-gray-300">Amount to Pay:</p>
@@ -134,11 +119,21 @@ const RequestCard = ({ request, openPaymentModal, openVoucherModal }) => {
                             </button>
                         </div>
                     )}
+
+                     {isPastRequest && request.status === 'Rejected' && (
+                         <div className="mt-2 p-4 rounded-lg bg-red-50 dark:bg-red-900/30 text-left w-full border border-red-200 dark:border-red-800">
+                             <p className="text-sm font-semibold text-red-800 dark:text-red-200">Reason for Rejection:</p>
+                             <p className="text-sm text-red-700 dark:text-red-300 mt-1 italic">
+                                 {request.admin_remarks || "No reason provided."}
+                             </p>
+                         </div>
+                    )}
                 </div>
             </div>
         </div>
     );
 };
+
 
 const EmptyState = ({ icon, title, message, children }) => (
     <div className="text-center py-16 px-6 bg-gray-50 dark:bg-gray-800/30 rounded-lg border-2 border-dashed dark:border-gray-700">
@@ -151,7 +146,7 @@ const EmptyState = ({ icon, title, message, children }) => (
     </div>
 );
 
-export default function MyRequests({ auth, requests }) {
+export default function MyRequests({ auth, activeRequests, pastRequests }) {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showVoucherModal, setShowVoucherModal] = useState(false);
     const [selectedRequest, setSelectedRequest] = useState(null);
@@ -160,16 +155,6 @@ export default function MyRequests({ auth, requests }) {
     const { data, setData, post, processing, errors, reset, progress } = useForm({
         receipt: null,
     });
-
-    const { activeRequests, pastRequests } = useMemo(() => {
-        const activeStatuses = ['Pending', 'Processing', 'Ready to Pickup', 'For Payment', 'Waiting for Payment'];
-        const pastStatuses = ['Claimed', 'Rejected'];
-        
-        return {
-            activeRequests: requests.data.filter(r => activeStatuses.includes(r.status)),
-            pastRequests: requests.data.filter(r => pastStatuses.includes(r.status))
-        };
-    }, [requests.data]);
 
     const openPaymentModal = (request) => {
         setSelectedRequest(request);
@@ -190,7 +175,9 @@ export default function MyRequests({ auth, requests }) {
         });
     };
 
-    const currentList = view === 'active' ? activeRequests : pastRequests;
+    const currentList = view === 'active' ? activeRequests.data : pastRequests.data;
+    const paginationLinks = view === 'active' ? activeRequests.links : pastRequests.links;
+    const totalRequests = view === 'active' ? activeRequests.total : pastRequests.total;
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -231,7 +218,8 @@ export default function MyRequests({ auth, requests }) {
                                             key={request.id} 
                                             request={request} 
                                             openPaymentModal={openPaymentModal}
-                                            openVoucherModal={openVoucherModal} 
+                                            openVoucherModal={openVoucherModal}
+                                            isPastRequest={view === 'past'}
                                         />
                                     ))}
                                 </div>
@@ -248,9 +236,9 @@ export default function MyRequests({ auth, requests }) {
                             )}
                         </div>
 
-                        {requests.data.length > 0 && (
+                        {totalRequests > 0 && (
                             <div className="p-6 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 rounded-b-xl">
-                                <Pagination links={requests.links} />
+                                <Pagination links={paginationLinks} />
                             </div>
                         )}
                     </div>

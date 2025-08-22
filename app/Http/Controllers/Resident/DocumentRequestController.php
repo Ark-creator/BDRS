@@ -10,10 +10,41 @@ use App\Models\DocumentRequest;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use App\Events\DocumentRequestCreated; // This is already correctly imported
+use App\Events\DocumentRequestCreated;
+use App\Models\ImmutableDocumentsArchiveHistory;
 
 class DocumentRequestController extends Controller
 {
+    /**
+     * Display a listing of the user's active and past document requests.
+     */
+    public function index(Request $request)
+    {
+        $userId = Auth::id();
+
+        // Fetch active requests (not yet Claimed or Rejected)
+        $activeRequests = DocumentRequest::query()
+            ->where('user_id', $userId)
+            ->with(['documentType', 'user'])
+            ->latest()
+            ->paginate(5, ['*'], 'active_page') // Paginate active requests
+            ->withQueryString();
+
+        // Fetch past requests (Claimed or Rejected) from the archive table
+        $pastRequests = ImmutableDocumentsArchiveHistory::query()
+            ->where('user_id', $userId)
+            ->whereIn('status', ['Claimed', 'Rejected'])
+            ->with(['documentType', 'processor.profile'])
+            ->latest('original_created_at')
+            ->paginate(5, ['*'], 'past_page') // Paginate past requests separately
+            ->withQueryString();
+
+        return Inertia::render('Residents/MyRequests', [
+            'activeRequests' => $activeRequests,
+            'pastRequests' => $pastRequests,
+        ]);
+    }
+
     /**
      * Show the form to create a new document request.
      */
@@ -60,11 +91,9 @@ class DocumentRequestController extends Controller
                     'disability_type' => 'required|string|max:255',
                     'other_disability' => 'nullable|string|max:255',
                 ]);
-                // Handle "Others" for disability type if needed
                 $formData = $specificData;
                 break;
 
-            // Add cases for other simple documents that only have a purpose
             case 'Certificate of Indigency':
             case 'Solo Parent':
             case 'Barangay Clearance':
@@ -72,7 +101,6 @@ class DocumentRequestController extends Controller
                     'purpose' => 'required|string|max:255',
                     'other_purpose' => 'nullable|string|max:255',
                 ]);
-                // Handle "Others" for purpose
                 if ($specificData['purpose'] === 'Others') {
                     $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
                 } else {
@@ -81,12 +109,11 @@ class DocumentRequestController extends Controller
                 break;
 
             default:
-                // Default case for any other documents with no specific fields
-                // You can add validation for a 'purpose' field here if it's common
+                // Default case for any other documents
                 break;
         }
 
-        // 3. Handle Signature (This logic is now common for all requests)
+        // 3. Handle Signature
         if (!empty($commonValidated['signature_data'])) {
             $image = str_replace('data:image/png;base64,', '', $commonValidated['signature_data']);
             $image = str_replace(' ', '+', $image);
@@ -96,11 +123,8 @@ class DocumentRequestController extends Controller
             $signaturePath = 'signatures/' . $fileName;
 
             Storage::disk('local')->put($signaturePath, $imageData);
-
-            // Add the signature path to the form data
             $formData['signature_path'] = $signaturePath;
 
-            // Update the master signature on the user's profile
             if ($userProfile = auth()->user()->profile) {
                 $userProfile->signature_data = $signaturePath;
                 $userProfile->save();
@@ -112,54 +136,38 @@ class DocumentRequestController extends Controller
             'user_id'          => auth()->id(),
             'document_type_id' => $commonValidated['document_type_id'],
             'status'           => 'Pending',
-            'form_data'        => $formData, // $formData is now dynamically built
+            'form_data'        => $formData,
         ]);
 
-        // 5. Dispatch the event to broadcast the new request
+        // 5. Dispatch the event
         DocumentRequestCreated::dispatch($newRequest);
 
         return redirect()
-            ->route('residents.home') // Consider redirecting to a "my requests" page
+            ->route('residents.requests.index') // Redirect to the "My Requests" page
             ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
-    }
-
-    public function index()
-    {
-        $requests = DocumentRequest::where('user_id', Auth::id())
-            ->with('documentType') // Eager load the document name
-            ->latest() // Show the newest requests first
-            ->paginate(10);
-
-        return Inertia::render('Residents/MyRequests', [
-            'requests' => $requests,
-        ]);
     }
 
     public function submitPayment(Request $request, DocumentRequest $documentRequest)
     {
-        // Authorization Check 1: Ensure the user owns this request.
         if ($documentRequest->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
 
-        // Authorization Check 2: Ensure the request is actually awaiting payment.
         if ($documentRequest->status !== 'Waiting for Payment') {
             return back()->with('error', 'This request is not currently awaiting payment.');
         }
 
         $validated = $request->validate([
-            'receipt' => 'required|image|mimes:jpg,jpeg,png|max:2048', // 2MB Max size
+            'receipt' => 'required|image|mimes:jpg,jpeg,png|max:2048',
         ]);
 
-        // Store the uploaded receipt file in 'storage/app/receipts' (which is private)
         $path = $validated['receipt']->store('receipts', 'local');
 
-        // Update the document request record in the database
         $documentRequest->update([
             'payment_receipt_path' => $path,
-            'payment_status' => 'paid', // Mark as paid
+            'payment_status' => 'paid',
             'paid_at' => now(),
-            'status' => 'Processing', // Move the request to the next stage for the admin
+            'status' => 'Processing',
         ]);
 
         return redirect()->route('residents.requests.index')
