@@ -182,21 +182,21 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
                     <div className="flex items-center gap-3">
                         <i className="fa-solid fa-circle-user text-3xl text-blue-800 dark:text-blue-400 shrink-0"></i>
                         {!(isCollapsed && !mobileOpen) && (
-                            <div className="flex-1 overflow-hidden">
-                                <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{user.name}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                            </div>
-                        )}
-                         {!(isCollapsed && !mobileOpen) && (
-                            <Dropdown>
-                                <Dropdown.Trigger>
-                                        <button className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 shrink-0"><LogOut size={16} /></button>
-                                </Dropdown.Trigger>
-                                <Dropdown.Content align="top">
-                                    <Dropdown.Link href={route("profile.edit")}>Profile</Dropdown.Link>
-                                    <Dropdown.Link href={route("logout")} method="post" as="button">Log Out</Dropdown.Link>
-                                </Dropdown.Content>
-                            </Dropdown>
+                            <>
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="font-semibold text-sm text-slate-800 dark:text-slate-100 truncate">{user.name}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
+                                </div>
+                                <Link
+                                    href={route("logout")}
+                                    method="post"
+                                    as="button"
+                                    className="p-1.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 shrink-0"
+                                    title="Log Out"
+                                >
+                                    <LogOut size={16} />
+                                </Link>
+                            </>
                           )}
                     </div>
                 </div>
@@ -417,7 +417,6 @@ export default function AuthenticatedLayout({ header, children }) {
                         : (isSidebarCollapsed ? 'ml-[5.5rem]' : 'ml-[16rem]')
                 )}
             >
-                {/* --- NAVBAR: MODIFIED TO BE FIXED --- */}
                 <nav className={clsx(
                     "bg-white dark:bg-gray-800 shadow-md fixed top-0 right-0 z-30 transition-all duration-300 ease-in-out",
                     isMobile || !isAdmin ? 'left-0' : (isSidebarCollapsed ? 'left-[5.5rem]' : 'left-[16rem]')
@@ -448,7 +447,6 @@ export default function AuthenticatedLayout({ header, children }) {
                                 </Link>
                             </div>
 
-                            {/* --- DESKTOP NAV: "My Requests" ADDED --- */}
                             <div className="hidden md:flex items-center gap-6">
                                 <NavLink id="nav-home" href={route("residents.home")} active={route().current("residents.home")}>Home</NavLink>
                                 <NavLink id="nav-my-requests" href={route("residents.requests.index")} active={route().current("residents.requests.index")}>My Requests</NavLink>
@@ -510,7 +508,6 @@ export default function AuthenticatedLayout({ header, children }) {
                             {isMobileNavOpen && isMobile && (
                                 <div className="md:hidden bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                                     <div className="flex flex-col space-y-1 p-2">
-                                        {/* --- MOBILE NAV: "My Requests" ADDED --- */}
                                         <NavLink id="nav-home-mobile" href={route("residents.home")} active={route().current("residents.home")} onClick={() => setIsMobileNavOpen(false)}>Home</NavLink>
                                         <NavLink id="nav-my-requests-mobile" href={route("residents.requests.index")} active={route().current("residents.requests.index")} onClick={() => setIsMobileNavOpen(false)}>My Requests</NavLink>
                                         <NavLink id="nav-about-mobile" href={route("residents.about")} active={route().current("residents.about")} onClick={() => setIsMobileNavOpen(false)}>About</NavLink>
@@ -528,7 +525,6 @@ export default function AuthenticatedLayout({ header, children }) {
                     </div>
                 </nav>
 
-                {/* --- MAIN CONTENT: PADDING TOP ADDED --- */}
                 <main className="flex-1 overflow-y-auto pt-16">
                     {header && (<header className="bg-white dark:bg-slate-800 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-4">{header}</div></header>)}
                     <div className="">{children}</div>
