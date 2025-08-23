@@ -18,7 +18,7 @@ const Backdrop = ({ onClick }) => (
 export default function FloatingActionButton() {
     const [isOpen, setIsOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const fabRef = useRef(null);
+    const constraintsRef = useRef(null);
 
     useEffect(() => {
         window.chatbaseConfig = {
@@ -94,7 +94,7 @@ export default function FloatingActionButton() {
             console.error("Chatbase is not available.");
         }
     };
-    
+
     const handleMainButtonClick = () => {
         if (isChatOpen) {
             toggleChatbot();
@@ -131,7 +131,7 @@ export default function FloatingActionButton() {
             }
         }
     };
-    
+
     const listItemVariants = {
         opened: {
             opacity: 1,
@@ -148,15 +148,23 @@ export default function FloatingActionButton() {
     const actionButtons = [
         { icon: <Bot size={22} className="text-blue-600 dark:text-blue-400" />, action: toggleChatbot, title: 'Chat with AI Assistant' },
         { icon: <HelpCircle size={22} className="text-blue-600 dark:text-blue-400" />, action: handleTourClick, title: 'How to Request' },
-        { icon: <MessageSquare size={22} className="text-blue-600 dark:text-blue-400" />, action: () => {}, title: 'Messages (coming soon)' },
+        { icon: <MessageSquare size={22} className="text-blue-600 dark:text-blue-400" />, action: () => { }, title: 'Messages (coming soon)' },
     ];
 
     return (
         <>
+            <motion.div ref={constraintsRef} className="fixed inset-6 pointer-events-none z-[2147483646]" />
             <AnimatePresence>
                 {isOpen && !isChatOpen && <Backdrop onClick={() => setIsOpen(false)} />}
             </AnimatePresence>
-            <div className="fixed bottom-6 right-6 z-[2147483647]" ref={fabRef}>
+            <motion.div
+                className="fixed bottom-6 right-6 z-[2147483647] cursor-grab"
+                drag
+                dragConstraints={constraintsRef}
+                dragMomentum={false}
+                onDragStart={() => isOpen && setIsOpen(false)}
+                whileDrag={{ scale: 1.05, cursor: 'grabbing' }}
+            >
                 <AnimatePresence>
                     {isOpen && !isChatOpen && (
                         <motion.div
@@ -170,30 +178,27 @@ export default function FloatingActionButton() {
                                 <h3 className="font-semibold text-base text-blue-800 dark:text-blue-200">How can we help?</h3>
                             </div>
                             <ul className="flex flex-col p-2">
-                                {actionButtons.map((btn) => {
-                                    const itemContent = (
-                                        <div className="flex items-center gap-4 w-full px-3 py-3 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors duration-200 cursor-pointer rounded-lg group">
-                                            {btn.icon}
-                                            <span className="font-semibold text-sm">{btn.title}</span>
+                                {actionButtons.map((btn) => (
+                                    <motion.li key={btn.title} variants={listItemVariants}>
+                                        <div onClick={() => { btn.action(); setIsOpen(false); }}>
+                                            <div className="flex items-center gap-4 w-full px-3 py-3 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors duration-200 cursor-pointer rounded-lg group">
+                                                {btn.icon}
+                                                <span className="font-semibold text-sm">{btn.title}</span>
+                                            </div>
                                         </div>
-                                    );
-
-                                    return (
-                                        <motion.li key={btn.title} variants={listItemVariants}>
-                                            <div onClick={() => { btn.action(); setIsOpen(false); }}>{itemContent}</div>
-                                        </motion.li>
-                                    );
-                                })}
+                                    </motion.li>
+                                ))}
                             </ul>
                         </motion.div>
                     )}
                 </AnimatePresence>
 
                 <motion.button
-                    onClick={handleMainButtonClick}
+                    onTap={handleMainButtonClick}
                     className="relative flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-br from-blue-600 to-blue-700 text-white font-medium rounded-full shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 transition-all duration-300 z-50 w-44"
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.98 }}
+                    style={{ userSelect: 'none' }}
                 >
                     <AnimatePresence mode="wait">
                         <motion.span
@@ -229,7 +234,7 @@ export default function FloatingActionButton() {
                         </motion.span>
                     </AnimatePresence>
                 </motion.button>
-            </div>
+            </motion.div>
         </>
     );
 }
