@@ -1,5 +1,7 @@
+// src/components/MessagesModal.js
+
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, Send, ArrowLeft } from 'lucide-react';
 
 const initialMessages = [
@@ -11,7 +13,7 @@ const initialMessages = [
 const Backdrop = ({ onClick }) => (
     <motion.div
         onClick={onClick}
-        className="fixed inset-0 bg-black/50 z-50 hidden sm:block" // Itago sa mobile, ipakita sa desktop
+        className="fixed inset-0 bg-black/50 z-50 hidden sm:block"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -38,8 +40,7 @@ export default function MessagesModal({ onClose }) {
             setMessages(prevMessages => [...prevMessages, adminReply]);
         }, 1500);
     };
-    
-    // Animation variants for mobile (fade) vs desktop (slide up)
+
     const modalVariants = {
         hidden: { opacity: 0, y: "100%" },
         visible: { opacity: 1, y: 0 },
@@ -51,32 +52,24 @@ export default function MessagesModal({ onClose }) {
         visible: { opacity: 1, y: 0 },
         exit: { opacity: 0, y: 50 },
     };
-    
-    // Simple check for screen size to apply the correct animation
-    const isMobile = window.innerWidth < 640; // 640px is sm breakpoint in Tailwind
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
     return (
         <>
             <Backdrop onClick={onClose} />
             <motion.div
-                // --- ITO ANG MGA BINAGO ---
-                // Default styles (Mobile): Full-screen, walang border-radius.
-                // sm: styles (Desktop): Nagiging card sa bottom-right.
                 className="fixed inset-0 z-[2147483647] bg-white dark:bg-slate-900 flex flex-col
-                           sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[550px] 
+                           sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[550px]
                            sm:rounded-2xl sm:shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700 sm:dark:bg-slate-800"
-                
-                // Gagamit ng iba't ibang animation depende sa screen size
                 variants={isMobile ? modalVariants : desktopModalVariants}
                 initial="hidden"
                 animate="visible"
                 exit="exit"
                 transition={{ type: 'spring', stiffness: 400, damping: 40 }}
             >
-                {/* Header */}
                 <div className="flex items-center justify-between p-4 bg-blue-600 text-white flex-shrink-0 sm:rounded-t-2xl">
                     <div className="flex items-center gap-3">
-                        {/* Palitan ang icon sa mobile para mas malinaw */}
                          <button onClick={onClose} className="p-1 rounded-full hover:bg-blue-700 transition-colors sm:hidden">
                             <ArrowLeft size={22} />
                         </button>
@@ -87,7 +80,6 @@ export default function MessagesModal({ onClose }) {
                     </button>
                 </div>
 
-                {/* Messages Area */}
                 <div className="flex-grow p-4 overflow-y-auto bg-slate-50 dark:bg-slate-900">
                     <div className="flex flex-col gap-3">
                         {messages.map((msg) => (
@@ -113,7 +105,6 @@ export default function MessagesModal({ onClose }) {
                     </div>
                 </div>
 
-                {/* Input Form */}
                 <div className="p-3 border-t border-slate-200 dark:border-slate-700 flex-shrink-0 bg-white dark:bg-slate-800 sm:rounded-b-2xl">
                     <form onSubmit={handleSendMessage} className="flex items-center gap-2">
                         <input

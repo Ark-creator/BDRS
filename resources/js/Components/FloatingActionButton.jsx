@@ -1,10 +1,12 @@
-// FloatingActionButton.js (Updated)
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, router } from '@inertiajs/react';
+// src/components/FloatingActionButton.js
+
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import { router } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, MessageSquare, Bot, X, HelpCircle } from 'lucide-react';
+import { MessageSquare, Bot, X, HelpCircle } from 'lucide-react';
 import { route } from 'ziggy-js';
-import MessagesModal from './MessagesModal.jsx';
+
+const MessagesModal = lazy(() => import('./MessagesModal'));
 
 const Backdrop = ({ onClick }) => (
     <motion.div
@@ -20,155 +22,52 @@ const Backdrop = ({ onClick }) => (
 export default function FloatingActionButton() {
     const [isOpen, setIsOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
-    const [isMessagesOpen, setIsMessagesOpen] = useState(false); // <--- BAGONG STATE
+    const [isMessagesOpen, setIsMessagesOpen] = useState(false);
     const fabRef = useRef(null);
 
-    // ... (walang binago sa useEffect hooks mo, i-keep mo lang sila)
-    useEffect(() => {
-        window.chatbaseConfig = {
-            chatId: "JpK2sH4Fo9CfxCa8CTn70",
-            openOnLoad: false,
-        };
+    useEffect(() => {
+        window.chatbaseConfig = { chatId: "JpK2sH4Fo9CfxCa8CTn70", openOnLoad: false };
+        if (!window.chatbase || window.chatbase("getState") !== "initialized") {
+            window.chatbase = (...args) => { (window.chatbase.q = window.chatbase.q || []).push(args); };
+            window.chatbase = new Proxy(window.chatbase, { get(target, prop) { if (prop === "q") return target.q; return (...args) => target(prop, ...args); } });
+        }
+        window.chatbase('on', 'open', () => { setIsChatOpen(true); setIsOpen(false); });
+        window.chatbase('on', 'close', () => { setIsChatOpen(false); });
+        const loadScript = () => {
+            if (document.getElementById("JpK2sH4Fo9CfxCa8CTn70")) return;
+            const script = document.createElement("script");
+            script.src = "https://www.chatbase.co/embed.min.js";
+            script.id = "JpK2sH4Fo9CfxCa8CTn70";
+            script.setAttribute('domain', 'www.chatbase.co');
+            script.defer = true;
+            document.body.appendChild(script);
+        };
+        if (document.readyState === "complete") { loadScript(); }
+        else { window.addEventListener("load", loadScript); return () => window.removeEventListener("load", loadScript); }
+    }, []);
 
-        if (!window.chatbase || window.chatbase("getState") !== "initialized") {
-            window.chatbase = (...args) => {
-                (window.chatbase.q = window.chatbase.q || []).push(args);
-            };
-            window.chatbase = new Proxy(window.chatbase, {
-                get(target, prop) {
-                    if (prop === "q") return target.q;
-                    return (...args) => target(prop, ...args);
-                }
-            });
-        }
-
-        window.chatbase('on', 'open', () => {
-            setIsChatOpen(true);
-            setIsOpen(false);
-        });
-
-        window.chatbase('on', 'close', () => {
-            setIsChatOpen(false);
-        });
-
-        const loadScript = () => {
-            if (document.getElementById("JpK2sH4Fo9CfxCa8CTn70")) return;
-            const script = document.createElement("script");
-            script.src = "https://www.chatbase.co/embed.min.js";
-            script.id = "JpK2sH4Fo9CfxCa8CTn70";
-            script.setAttribute('domain', 'www.chatbase.co');
-            script.defer = true;
-            document.body.appendChild(script);
-        };
-
-        if (document.readyState === "complete") {
-            loadScript();
-        } else {
-            window.addEventListener("load", loadScript);
-            return () => window.removeEventListener("load", loadScript);
-        }
-    }, []);
-
-    useEffect(() => {
-        const launcherId = 'chatbase-bubble-button';
-        const observer = new MutationObserver(() => {
-            const launcher = document.getElementById(launcherId);
-            if (launcher) {
-                launcher.style.display = 'none';
-                observer.disconnect();
-            }
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        return () => observer.disconnect();
-    }, []);
-
+    useEffect(() => {
+        const launcherId = 'chatbase-bubble-button';
+        const observer = new MutationObserver(() => {
+            const launcher = document.getElementById(launcherId);
+            if (launcher) { launcher.style.display = 'none'; observer.disconnect(); }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        return () => observer.disconnect();
+    }, []);
 
     const toggleMenu = () => setIsOpen(!isOpen);
-
-    // BAGONG FUNCTION para buksan/isara ang messages modal
-    const toggleMessages = () => {
-        setIsMessagesOpen(!isMessagesOpen);
-        setIsOpen(false); // Isara ang main menu kapag binuksan ang messages
-    }
-
-    const toggleChatbot = () => {
-        if (window.chatbase) {
-            if (isChatOpen) {
-                window.chatbase('close');
-                setIsChatOpen(false);
-            } else {
-                window.chatbase('open');
-                setIsChatOpen(true);
-                setIsOpen(false);
-            }
-        } else {
-            console.error("Chatbase is not available.");
-        }
-    };
-    
-    const handleMainButtonClick = () => {
-        // Isara muna ang messages kung bukas ito, bago buksan ang main menu
-        if (isMessagesOpen) {
-            setIsMessagesOpen(false);
-            return;
-        }
-        if (isChatOpen) {
-            toggleChatbot();
-        } else {
-            toggleMenu();
-        }
-    };
-
-    const handleTourClick = () => {
-        router.get(route('residents.home', { action: 'tour' }));
-        setIsOpen(false);
-    };
-
-    // ... (walang binago sa animation variants, i-keep mo lang)
-    const listContainerVariants = {
-        opened: {
-            opacity: 1,
-            scale: 1,
-            y: 0,
-            transition: {
-                type: "spring",
-                stiffness: 300,
-                damping: 25,
-                when: "beforeChildren",
-                staggerChildren: 0.07,
-            }
-        },
-        closed: {
-            opacity: 0,
-            scale: 0.9,
-            y: 20,
-            transition: {
-                when: "afterChildren",
-                duration: 0.25
-            }
-        }
-    };
-    
-    const listItemVariants = {
-        opened: {
-            opacity: 1,
-            x: 0,
-            transition: { type: "spring", stiffness: 300, damping: 24 }
-        },
-        closed: {
-            opacity: 0,
-            x: -20,
-            transition: { duration: 0.2 }
-        }
-    };
-
-    // IN-UPDATE ANG ACTION BUTTONS ARRAY
+    const toggleMessages = () => { setIsMessagesOpen(!isMessagesOpen); setIsOpen(false); }
+    const toggleChatbot = () => { if (window.chatbase) { if (isChatOpen) { window.chatbase('close'); setIsChatOpen(false); } else { window.chatbase('open'); setIsChatOpen(true); setIsOpen(false); } } else { console.error("Chatbase is not available."); } };
+    const handleMainButtonClick = () => { if (isMessagesOpen) { setIsMessagesOpen(false); return; } if (isChatOpen) { toggleChatbot(); } else { toggleMenu(); } };
+    const handleTourClick = () => { router.get(route('residents.home', { action: 'tour' })); setIsOpen(false); };
+    const listContainerVariants = { opened: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 25, when: "beforeChildren", staggerChildren: 0.07, } }, closed: { opacity: 0, scale: 0.9, y: 20, transition: { when: "afterChildren", duration: 0.25 } } };
+    const listItemVariants = { opened: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }, closed: { opacity: 0, x: -20, transition: { duration: 0.2 } } };
     const actionButtons = [
         { icon: <Bot size={22} className="text-blue-600 dark:text-blue-400" />, action: toggleChatbot, title: 'Chat with AI Assistant' },
         { icon: <HelpCircle size={22} className="text-blue-600 dark:text-blue-400" />, action: handleTourClick, title: 'How to Request' },
-        { icon: <MessageSquare size={22} className="text-blue-600 dark:text-blue-400" />, action: toggleMessages, title: 'Messages' }, // <--- BINAGO
+        { icon: <MessageSquare size={22} className="text-blue-600 dark:text-blue-400" />, action: toggleMessages, title: 'Messages' },
     ];
-
     const isAnyOverlayOpen = isChatOpen || isMessagesOpen;
 
     return (
@@ -176,84 +75,32 @@ export default function FloatingActionButton() {
             <AnimatePresence>
                 {isOpen && !isAnyOverlayOpen && <Backdrop onClick={() => setIsOpen(false)} />}
             </AnimatePresence>
-            
-            {/* BAGONG RENDER PARA SA MESSAGES MODAL */}
+
             <AnimatePresence>
-                {isMessagesOpen && <MessagesModal onClose={() => setIsMessagesOpen(false)} />}
+                {isMessagesOpen && (
+                    <Suspense fallback={
+                        <div className="fixed inset-0 flex items-center justify-center bg-black/20 z-[2147483647]">
+                            <div className="text-white font-bold">Loading Chat...</div>
+                        </div>
+                    }>
+                        <MessagesModal onClose={() => setIsMessagesOpen(false)} />
+                    </Suspense>
+                )}
             </AnimatePresence>
 
             <div className="fixed bottom-6 right-6 z-[2147483646]" ref={fabRef}>
                 <AnimatePresence>
                     {isOpen && !isAnyOverlayOpen && (
-                        <motion.div
-                            className="absolute bottom-full right-0 mb-3 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden origin-bottom-right border border-slate-200/50 dark:border-slate-700/50"
-                            initial="closed"
-                            animate="opened"
-                            exit="closed"
-                            variants={listContainerVariants}
-                        >
-                            <div className="p-4 bg-blue-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
-                                <h3 className="font-semibold text-base text-blue-800 dark:text-blue-200">How can we help?</h3>
-                            </div>
-                            <ul className="flex flex-col p-2">
-                                {actionButtons.map((btn) => {
-                                    const itemContent = (
-                                        <div className="flex items-center gap-4 w-full px-3 py-3 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors duration-200 cursor-pointer rounded-lg group">
-                                            {btn.icon}
-                                            <span className="font-semibold text-sm">{btn.title}</span>
-                                        </div>
-                                    );
-
-                                    return (
-                                        <motion.li key={btn.title} variants={listItemVariants}>
-                                            <div onClick={() => { btn.action(); setIsOpen(false); }}>{itemContent}</div>
-                                        </motion.li>
-                                    );
-                                })}
-                            </ul>
+                        <motion.div className="absolute bottom-full right-0 mb-3 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden origin-bottom-right border border-slate-200/50 dark:border-slate-700/50" initial="closed" animate="opened" exit="closed" variants={listContainerVariants}>
+                            <div className="p-4 bg-blue-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700"><h3 className="font-semibold text-base text-blue-800 dark:text-blue-200">How can we help?</h3></div>
+                            <ul className="flex flex-col p-2">{actionButtons.map((btn) => (<motion.li key={btn.title} variants={listItemVariants}><div onClick={() => { btn.action(); setIsOpen(false); }}><div className="flex items-center gap-4 w-full px-3 py-3 text-slate-700 dark:text-slate-200 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors duration-200 cursor-pointer rounded-lg group">{btn.icon}<span className="font-semibold text-sm">{btn.title}</span></div></div></motion.li>))}</ul>
                         </motion.div>
                     )}
                 </AnimatePresence>
-
-                <motion.button
-                    onClick={handleMainButtonClick}
-                    // In-adjust ang z-index para mas mataas ito sa menu pero mas mababa sa modal
-                    className={`${isMessagesOpen ? 'hidden' : 'relative flex'} items-center justify-center gap-3 px-4 py-3 bg-gradient-to-br from-blue-600 to-blue-700 text-white font-medium rounded-full shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 transition-all duration-300 z-50 w-44`}
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.98 }}
-                >
+                <motion.button onClick={handleMainButtonClick} className={`${isMessagesOpen ? 'hidden' : 'relative flex'} items-center justify-center gap-3 px-4 py-3 bg-gradient-to-br from-blue-600 to-blue-700 text-white font-medium rounded-full shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-800 transition-all duration-300 z-50 w-44`} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.98 }}>
                     <AnimatePresence mode="wait">
-                        <motion.span
-                            // In-update ang key para magbago ang text kung bukas ang chat o messages
-                            key={isAnyOverlayOpen ? 'close' : (isOpen ? 'closeMenu' : 'help')}
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 10 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex items-center justify-center gap-2 w-full text-sm"
-                        >
-                            {isAnyOverlayOpen || isOpen ? (
-                                <>
-                                    <span>Close</span>
-                                    <X size={18} strokeWidth={3} />
-                                </>
-                            ) : (
-                                <>
-                                    <span>Help & Support</span>
-                                    <motion.div
-                                        animate={{ rotate: [0, -20, 20, -20, 0] }}
-                                        transition={{
-                                            duration: 1.5,
-                                            repeat: Infinity,
-                                            repeatType: "loop",
-                                            ease: "easeInOut",
-                                            delay: 1
-                                        }}
-                                    >
-                                        <Bot size={18} strokeWidth={2.5} />
-                                    </motion.div>
-                                </>
-                            )}
+                        <motion.span key={isAnyOverlayOpen ? 'close' : (isOpen ? 'closeMenu' : 'help')} initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ duration: 0.2 }} className="flex items-center justify-center gap-2 w-full text-sm">
+                            {isAnyOverlayOpen || isOpen ? (<><span>Close</span><X size={18} strokeWidth={3} /></>) : (<><span>Help & Support</span><motion.div animate={{ rotate: [0, -20, 20, -20, 0] }} transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "easeInOut", delay: 1 }}><Bot size={18} strokeWidth={2.5} /></motion.div></>)}
                         </motion.span>
                     </AnimatePresence>
                 </motion.button>
