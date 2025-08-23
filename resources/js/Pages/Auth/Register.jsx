@@ -10,7 +10,7 @@ const TermsAndConditionsContent = () => ( <div className="prose prose-sm max-w-n
 const AuthLayout = ({ title, description }) => ( <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url('/images/brgy.png')" }}> <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-blue-800/90"></div> <div className="relative z-10"> <div className="flex items-center mb-8"> <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 p-2 shadow-lg"> <img src="/images/logo1.jpg" alt="Barangay Logo" className="w-full h-full rounded-full" /> </div> <h1 className="text-3xl font-bold tracking-tight text-shadow">{title}</h1> </div> <p className="text-blue-100 text-lg leading-relaxed text-shadow-sm">{description}</p> <p className="text-xs text-blue-200 mt-12 opacity-75">Gapan City, Nueva Ecija</p> </div> </div> );
 const CustomTextInput = ({ icon, className = '', error, ...props }) => ( <div className="relative"> <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"> {icon} </div> <input {...props} className={`w-full pl-12 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' } ${className}`} /> </div> );
 const CustomSelect = ({ icon, children, error, className = '', ...props }) => ( <div className="relative"> <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"> {icon} </div> <select {...props} className={`w-full pl-12 pr-10 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white appearance-none ${ error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50'} ${className}`}> {children} </select> <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"> <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg> </div> </div> );
-const PrimaryButton = ({ className = '', disabled, children, ...props }) => ( <button {...props} className={ `w-full group flex justify-center items-center px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent rounded-lg font-semibold text-base text-white tracking-widest hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all ease-in-out duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${ disabled && 'opacity-50 cursor-not-allowed' } ` + className } disabled={disabled} > {disabled && props.type === 'submit' ? ( <> <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> Processing... </> ) : ( children )} </button> );
+const PrimaryButton = ({ className = '', disabled, children, ...props }) => ( <button {...props} className={ `w-full group flex justify-center items-center px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent rounded-lg font-semibold text-base text-white tracking-widest hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all ease-in-out duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${ disabled && 'opacity-50 cursor-not-allowed' } ` + className } disabled={disabled} > {children} </button> );
 const SecondaryButton = ({ className = '', disabled, children, ...props }) => ( <button {...props} type="button" className={ `w-full flex justify-center py-3 px-4 border border-slate-300 rounded-lg font-semibold text-slate-700 hover:bg-slate-100 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 ${ disabled && 'opacity-50 cursor-not-allowed' } ` + className } disabled={disabled} > {children} </button> );
 const UserIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>;
 const HomeIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>;
@@ -155,18 +155,18 @@ const Step1_BasicInfo = ({ data, setData, errors }) => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label htmlFor="first_name" className="font-medium text-slate-700 text-sm mb-2 block">First Name</label>
-                <CustomTextInput id="first_name" icon={<UserIcon />} value={data.first_name} onChange={(e) => setData('first_name', e.target.value)} required autoFocus error={errors.first_name} />
+                <CustomTextInput id="first_name" name="first_name" icon={<UserIcon />} value={data.first_name} onChange={(e) => setData('first_name', e.target.value)} required autoFocus error={errors.first_name} />
                 <InputError message={errors.first_name} className="mt-2" />
             </div>
             <div>
                 <label htmlFor="last_name" className="font-medium text-slate-700 text-sm mb-2 block">Last Name</label>
-                <CustomTextInput id="last_name" icon={<UserIcon />} value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} required error={errors.last_name} />
+                <CustomTextInput id="last_name" name="last_name" icon={<UserIcon />} value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} required error={errors.last_name} />
                 <InputError message={errors.last_name} className="mt-2" />
             </div>
         </div>
         <div>
             <label htmlFor="middle_name" className="font-medium text-slate-700 text-sm mb-2 block">Middle Name <span className="text-slate-400">(Optional)</span></label>
-            <CustomTextInput id="middle_name" icon={<UserIcon />} value={data.middle_name} onChange={(e) => setData('middle_name', e.target.value)} error={errors.middle_name} />
+            <CustomTextInput id="middle_name" name="middle_name" icon={<UserIcon />} value={data.middle_name} onChange={(e) => setData('middle_name', e.target.value)} error={errors.middle_name} />
             <InputError message={errors.middle_name} className="mt-2" />
         </div>
     </div>
@@ -177,7 +177,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, ageVali
         <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
         <div>
             <label htmlFor="address" className="font-medium text-slate-700 text-sm mb-2 block">Full Address</label>
-            <CustomTextInput id="address" icon={<HomeIcon />} value={data.address} onChange={(e) => setData('address', e.target.value)} required error={errors.address} />
+            <CustomTextInput id="address" name="address" icon={<HomeIcon />} value={data.address} onChange={(e) => setData('address', e.target.value)} required error={errors.address} />
             <InputError message={errors.address} className="mt-2" />
         </div>
          <div>
@@ -185,6 +185,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, ageVali
             <div className="relative">
                 <CustomTextInput
                     id="phone_number"
+                    name="phone_number"
                     type="tel"
                     icon={<PhoneIcon />}
                     value={data.phone_number}
@@ -202,7 +203,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, ageVali
             <div>
                 <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
                 <div className="relative">
-                    <CustomTextInput id="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="pr-12 text-sm h-12" error={errors.birthday || (data.birthday && !ageValidation.isValid)} />
+                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="pr-12 text-sm h-12" error={errors.birthday || (data.birthday && !ageValidation.isValid)} />
                     {data.birthday && <ValidationIndicator status={ageValidation.isValid ? 'valid' : 'invalid'} />}
                 </div>
                 {!ageValidation.isValid && data.birthday && <InputError message={ageValidation.message} className="mt-2" />}
@@ -210,7 +211,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, ageVali
             </div>
             <div>
                 <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
-                <CustomSelect id="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
+                <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
                     <option value="">Select...</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -220,7 +221,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, ageVali
         </div>
         <div>
             <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
-            <CustomSelect id="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
+            <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
                 <option value="">Select...</option>
                 <option value="Single">Single</option>
                 <option value="Married">Married</option>
@@ -240,6 +241,7 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
             <div className="relative">
                 <CustomTextInput
                     id="email"
+                    name="email"
                     type="email"
                     icon={<MailIcon />}
                     value={data.email}
@@ -256,7 +258,7 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
         <div>
             <label htmlFor="password" className="font-medium text-slate-700 text-sm mb-2 block">Password</label>
             <div className="relative">
-                <CustomTextInput id="password" type={passwordVisible ? 'text' : 'password'} icon={<LockIcon />} value={data.password} onChange={(e) => setData('password', e.target.value)} required error={errors.password} />
+                <CustomTextInput id="password" name="password" type={passwordVisible ? 'text' : 'password'} icon={<LockIcon />} value={data.password} onChange={(e) => setData('password', e.target.value)} required error={errors.password} />
                 <button type="button" onClick={() => setPasswordVisible(!passwordVisible)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-sm z-10"> {passwordVisible ? <EyeClosedIcon /> : <EyeOpenIcon />} </button>
             </div>
             <InputError message={errors.password} className="mt-2" />
@@ -265,7 +267,7 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
         <div>
             <label htmlFor="password_confirmation" className="font-medium text-slate-700 text-sm mb-2 block">Confirm Password</label>
               <div className="relative">
-                <CustomTextInput id="password_confirmation" type={confirmPasswordVisible ? 'text' : 'password'} icon={<LockIcon />} value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.target.value)} required error={errors.password_confirmation || passwordsDoNotMatch} />
+                <CustomTextInput id="password_confirmation" name="password_confirmation" type={confirmPasswordVisible ? 'text' : 'password'} icon={<LockIcon />} value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.target.value)} required error={errors.password_confirmation || passwordsDoNotMatch} />
                  <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-sm z-10"> {confirmPasswordVisible ? <EyeClosedIcon /> : <EyeOpenIcon />} </button>
             </div>
             {passwordsDoNotMatch && <InputError message="Passwords do not match." className="mt-2" />}
@@ -321,11 +323,11 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
             <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Identity Verification</h3>
 
-                <InputError message={errors.images || errors.valid_id_front_image || errors.valid_id_back_image || errors.face_image} className="mt-2" />
+                <InputError message={errors.images} className="mt-2" />
 
                 <div>
                     <label htmlFor="valid_id_type" className="font-medium text-slate-700 text-sm mb-2 block">Type of Valid ID</label>
-                    <CustomSelect id="valid_id_type" icon={<IdCardIcon />} value={data.valid_id_type} onChange={(e) => setData('valid_id_type', e.target.value)} required error={errors.valid_id_type}>
+                    <CustomSelect id="valid_id_type" name="valid_id_type" icon={<IdCardIcon />} value={data.valid_id_type} onChange={(e) => setData('valid_id_type', e.target.value)} required error={errors.valid_id_type}>
                         <option value="">Select ID Type...</option>
                         {validIdOptions.map(id => <option key={id} value={id}>{id}</option>)}
                     </CustomSelect>
@@ -375,9 +377,11 @@ export default function Register() {
     const [step, setStep] = useState(1);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-    const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+    const [isTermsModalOpen, setIsTermsModalOpen] = useState(true);
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [termsViewed, setTermsViewed] = useState(false);
+    const formContainerRef = useRef(null);
+    const formRef = useRef(null); // MODIFIED: Ref for the entire form
 
     const { data, setData, post, processing, errors, reset, clearErrors, setError } = useForm({
         first_name: '', last_name: '', middle_name: '', address: '',
@@ -404,29 +408,30 @@ export default function Register() {
         return { isValid: true, message: '' };
     }, [data.birthday]);
 
-    // --- Step Completion Logic ---
-    const isStep1Complete = useMemo(() => data.first_name.trim() !== '' && data.last_name.trim() !== '', [data.first_name, data.last_name]);
-    
-    const isStep2Complete = useMemo(() => (
-        data.address.trim() !== '' && data.phone_number.trim() !== '' &&
-        data.birthday.trim() !== '' && ageValidation.isValid &&
-        data.gender.trim() !== '' && data.civil_status.trim() !== '' &&
-        phoneValidation.status === 'valid'
-    ), [data, ageValidation, phoneValidation]);
-
-    const isStep3Complete = useMemo(() => (
-        data.email.trim() !== '' && emailValidation.status === 'valid' &&
-        passwordValidation.isValid && !passwordsDoNotMatch && data.password_confirmation
-    ), [data.email, data.password, data.password_confirmation, emailValidation, passwordValidation, passwordsDoNotMatch]);
+    // --- Step Field Definitions ---
+    // MODIFIED: Define required fields for each step
+    const stepFields = {
+        1: ['first_name', 'last_name'],
+        2: ['address', 'phone_number', 'birthday', 'gender', 'civil_status'],
+        3: ['email', 'password', 'password_confirmation'],
+        4: ['valid_id_type', 'valid_id_front_image', 'valid_id_back_image', 'face_image', 'terms']
+    };
 
     // --- Actions ---
     const submit = (e) => {
         e.preventDefault();
+        clearErrors();
 
-        // Front-end check: Ensure all images are uploaded before submitting.
-        if (!data.valid_id_front_image || !data.valid_id_back_image || !data.face_image) {
-            setError('images', 'Please upload all three required images: ID Front, ID Back, and a Selfie.');
-            return; // Stop the submission
+        const missingFields = [];
+        if (!data.valid_id_type) missingFields.push("ID Type");
+        if (!data.valid_id_front_image) missingFields.push("Front of ID");
+        if (!data.valid_id_back_image) missingFields.push("Back of ID");
+        if (!data.face_image) missingFields.push("Your Photo (Selfie)");
+        if (!agreeToTerms) missingFields.push("Agreement to Terms and Conditions");
+
+        if (missingFields.length > 0) {
+            setError('images', `Please complete the following: ${missingFields.join(', ')}.`);
+            return;
         }
 
         post(route('register'), {
@@ -440,15 +445,34 @@ export default function Register() {
         });
     };
 
-    const nextStep = () => {
+    // MODIFIED: Smarter step navigation with validation
+    const validateAndNavigate = (direction) => {
         clearErrors();
-        setStep((prev) => Math.min(prev + 1, 4));
+        let canProceed = true;
+        
+        if (direction === 'next') {
+            const currentStepFields = stepFields[step];
+            for (const field of currentStepFields) {
+                if (!data[field]) {
+                    setError(field, 'This field is required.');
+                    canProceed = false;
+                }
+            }
+        }
+
+        if (canProceed) {
+            setStep(prev => direction === 'next' ? Math.min(prev + 1, 4) : Math.max(prev - 1, 1));
+        } else {
+             const firstErrorField = formRef.current.querySelector('[class*="border-red-500"]');
+             if (firstErrorField) {
+                firstErrorField.focus();
+                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     };
 
-    const prevStep = () => {
-        clearErrors();
-        setStep((prev) => Math.max(prev - 1, 1));
-    };
+    const nextStep = () => validateAndNavigate('next');
+    const prevStep = () => validateAndNavigate('back');
 
     // --- UI Values ---
     const progressWidth = { 1: '25%', 2: '50%', 3: '75%', 4: '100%' };
@@ -484,6 +508,11 @@ export default function Register() {
         return () => clearTimeout(handler);
     }, [data.email]);
 
+    useEffect(() => {
+        if (formContainerRef.current) {
+            formContainerRef.current.scrollTop = 0;
+        }
+    }, [step]);
 
     const renderStep = () => {
         switch (step) {
@@ -494,10 +523,17 @@ export default function Register() {
             default: return null;
         }
     };
+    
+    // MODIFIED: Handle modal close and checkbox state
+    const handleTermsClose = () => {
+        setIsTermsModalOpen(false);
+        setTermsViewed(true);
+        setAgreeToTerms(true);
+    };
 
     return (
         <>
-            <TermsModal isOpen={isTermsModalOpen} onClose={() => { setIsTermsModalOpen(false); setTermsViewed(true); }}>
+            <TermsModal isOpen={isTermsModalOpen} onClose={handleTermsClose}>
                 <TermsAndConditionsContent />
             </TermsModal>
 
@@ -524,18 +560,18 @@ export default function Register() {
                                 </div>
                             </div>
                             
-                            <div className="flex-grow overflow-y-auto" style={{ maxHeight: 'calc(100vh - 350px)' }}>
-                                <form onSubmit={submit} noValidate>
+                            <div ref={formContainerRef} className="flex-grow overflow-y-auto" style={{ maxHeight: 'calc(100vh - 350px)' }}>
+                                <form ref={formRef} onSubmit={submit} noValidate>
                                     <div key={step} className="animate-fade-in"> {renderStep()} </div>
                                     <div className="pt-6 space-y-4">
-                                        {step === 1 && <PrimaryButton type="button" onClick={nextStep} disabled={!isStep1Complete}>Next Step</PrimaryButton>}
-                                        {step === 2 && ( <div className="flex gap-4"> <SecondaryButton onClick={prevStep}>Back</SecondaryButton> <PrimaryButton type="button" onClick={nextStep} disabled={!isStep2Complete}>Next Step</PrimaryButton> </div> )}
-                                        {step === 3 && ( <div className="flex gap-4"> <SecondaryButton onClick={prevStep}>Back</SecondaryButton> <PrimaryButton type="button" onClick={nextStep} disabled={!isStep3Complete}>Next Step</PrimaryButton> </div> )}
+                                        {step === 1 && <PrimaryButton type="button" onClick={nextStep}>Next Step</PrimaryButton>}
+                                        {step === 2 && ( <div className="flex gap-4"> <SecondaryButton onClick={prevStep}>Back</SecondaryButton> <PrimaryButton type="button" onClick={nextStep}>Next Step</PrimaryButton> </div> )}
+                                        {step === 3 && ( <div className="flex gap-4"> <SecondaryButton onClick={prevStep}>Back</SecondaryButton> <PrimaryButton type="button" onClick={nextStep}>Next Step</PrimaryButton> </div> )}
                                         {step === 4 && (
-                                             <div className="flex gap-4">
+                                            <div className="flex gap-4">
                                                  <SecondaryButton onClick={prevStep} disabled={processing}>Back</SecondaryButton>
-                                                 <PrimaryButton type="submit" disabled={processing || !data.valid_id_type || !agreeToTerms}>Register</PrimaryButton>
-                                             </div>
+                                                 <PrimaryButton type="submit" disabled={processing}>Register</PrimaryButton>
+                                            </div>
                                         )}
                                     </div>
                                 </form>
