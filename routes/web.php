@@ -41,7 +41,7 @@ Route::post('/validate-phone', [ValidationController::class, 'checkPhone'])->nam
 
 // ... other routes like Route::post('/register', ...)
 // --- GENERAL AUTHENTICATED ROUTES ---
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     // Route::get('resident/home', function () {
     //     return Inertia::render('Dashboard');
     // })->middleware(['can:be-resident'])->name('dashboard');
@@ -55,7 +55,7 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // --- RESIDENT ROUTES ---
-Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('residents.')->group(function () {
+Route::middleware(['auth','verified', 'can:be-resident'])->prefix('residents')->name('residents.')->group(function () {
     Route::get('/', fn() => Inertia::render('Residents/Index'))->name('index');
     Route::get('/home', HomeController::class)->name('home');
     Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
@@ -94,7 +94,7 @@ Route::middleware(['auth', 'can:be-resident'])->prefix('residents')->name('resid
     });
 });
 
-Route::middleware(['auth', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
     // routes/web.php (within your admin middleware group)
 
 Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'claimByVoucher'])
@@ -140,7 +140,7 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
 
 // --- SUPER ADMIN ROUTES ---
 // Only superadmins (because gate check is strict)
-Route::middleware(['auth', 'can:be-super-admin'])
+Route::middleware(['auth', 'verified', 'can:be-super-admin'])
     ->prefix('superadmin')
     ->name('superadmin.')
     ->group(function () {
