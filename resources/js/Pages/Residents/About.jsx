@@ -148,19 +148,19 @@ export default function AboutUs({ auth = { user: { name: 'Guest' } } }) {
                         <h2 className="text-3xl font-bold text-center text-slate-900 dark:text-white sm:text-4xl mb-16">Meet Our Officials</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
                             <motion.div className="text-center group" variants={cardVariants}>
-                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/mayorjoy.jpg" alt="City Mayor" />
+                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/mayorjoy.png" alt="City Mayor" />
                                 <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Joy Pascual</h3>
-                                <p className="text-blue-600 dark:text-blue-400 font-semibold">City Mayor</p>
+                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Gapan City Mayor</p>
                             </motion.div>
                             <motion.div className="text-center group" variants={cardVariants}>
-                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/amparado.png" alt="Barangay Captain" />
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Paul Michael Amparado</h3>
-                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Barangay Captain</p>
+                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/congemeng.png" alt="Barangay Captain" />
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Emeng Pascual</h3>
+                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Nueva Ecija 4th <br />District Congressman</p>
                             </motion.div>
                             <motion.div className="text-center group" variants={cardVariants}>
-                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/sec.jpg" alt="Barangay Secretary" />
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">William Tirrado</h3>
-                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Barangay Secretary</p>
+                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/max.png" alt="Barangay Secretary" />
+                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Max Pascual</h3>
+                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Gapan City Vice Mayor</p>
                             </motion.div>
                         </div>
                     </div>
