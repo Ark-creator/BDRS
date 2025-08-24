@@ -1,18 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 
 const AuthLayout = ({ title, description, children }) => (
     <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png"}}>
-
         <div className="absolute inset-0 bg-blue-800 opacity-75"></div>
         <div className="relative z-10">
             <div className="flex items-center mb-8">
-         
                 <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30">
-                   
-                   <img className="rounded-full p-2" src="/images/logo1.jpg" alt="logo" />
+                    <img className="rounded-full p-2" src="/images/logo1.jpg" alt="logo" />
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
             </div>
@@ -22,18 +19,28 @@ const AuthLayout = ({ title, description, children }) => (
     </div>
 );
 
+const CustomTextInput = ({ icon, isFocused = false, ...props }) => {
+    const input = useRef();
 
-const CustomTextInput = ({ icon, ...props }) => (
-    <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            {icon}
+    useEffect(() => {
+        if (isFocused) {
+            input.current.focus();
+        }
+    }, []);
+
+    return (
+        <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                {icon}
+            </div>
+            <input
+                {...props}
+                ref={input}
+                className="w-full pl-10 pr-4 py-3 border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm transition-colors"
+            />
         </div>
-        <input 
-            {...props}
-            className="w-full pl-10 pr-4 py-3 border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm transition-colors"
-        />
-    </div>
-);
+    );
+};
 
 // Icons as SVG components
 const MailIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>;
@@ -55,7 +62,6 @@ const PrimaryButton = ({ className = '', disabled, children, ...props }) => (
         {children}
     </button>
 );
-
 
 export default function Login({ status, canResetPassword }) {
     const [passwordVisible, setPasswordVisible] = useState(false);
@@ -83,7 +89,7 @@ export default function Login({ status, canResetPassword }) {
             <div className="flex items-center justify-center min-h-screen p-4">
                 <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
                     
-                    <AuthLayout 
+                    <AuthLayout
                         title="Brgy. San Lorenzo"
                         description="Welcome back! Please log in to your account to access community services and announcements."
                     />
