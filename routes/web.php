@@ -130,7 +130,7 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
     Route::get('/messages', [MessagesController::class, 'index'])->name('messages');
     Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
-    Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
+    // Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
     Route::get('/messages/unread', [MessagesController::class, 'getUnreadMessages'])->name('messages.unread');
     Route::post('/messages/{contactMessage}/mark-as-read', [MessagesController::class, 'markAsRead'])->name('messages.mark-as-read');
 
