@@ -97,6 +97,7 @@ Route::middleware(['auth','verified', 'can:be-resident'])->prefix('residents')->
 
 Route::middleware(['auth', 'verified', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
     // routes/web.php (within your admin middleware group)
+    Route::post('/history/{archive}/restore', [HistoryController::class, 'restore'])->name('history.restore');
 
 Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'claimByVoucher'])
      ->name('requests.claim-by-voucher');
