@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 
-// --- ICONS (New and updated icons) ---
-
 const KeypadIcon = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 10h.01M7 13h.01M10 7h.01M10 10h.01M10 13h.01M13 7h.01M13 10h.01M13 13h.01M16 7h.01M16 10h.01M16 13h.01" />
@@ -22,16 +20,13 @@ const ExclamationTriangleIcon = ({ className }) => (
     </svg>
 );
 
-
-// --- SHARED & UI COMPONENTS ---
-
 const AuthLayout = ({ title, description }) => (
-    <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png)"}}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 to-blue-800/95"></div>
+    <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png"}}>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-blue-800/90"></div>
         <div className="relative z-10">
             <div className="flex items-center mb-8">
                 <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 p-2 shadow-lg">
-                    <img src="/images/logo1.jpg" alt="Barangay Logo" className="w-full h-full rounded-full" />
+                    <img src="/images/gapanlogo.png" alt="logo" className="w-full h-full rounded-full" />
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight text-shadow">{title}</h1>
             </div>
@@ -63,27 +58,32 @@ const OtpInput = ({ length = 6, value, onChange, status, onValueChange }) => {
     const inputRefs = useRef([]);
 
     const statusStyles = {
-        idle: 'border-gray-300 focus:border-blue-500 focus:ring-blue-500',
+        idle: 'border-slate-300 focus:border-blue-500 focus:ring-blue-500',
         error: 'border-red-500 focus:border-red-500 focus:ring-red-500 animate-shake',
         success: 'border-green-500 focus:border-green-500 focus:ring-green-500',
     };
+    
+    useEffect(() => {
+        if (status === 'error') {
+            inputRefs.current[0]?.focus();
+        }
+    }, [status]);
+
 
     const handleChange = (element, index) => {
-        onValueChange(); // Reset status on new input
+        onValueChange();
         const digit = element.value.replace(/[^0-9]/g, '');
-        if (digit) {
-            const newOtp = value.split('');
-            newOtp[index] = digit;
-            onChange(newOtp.join('').substring(0, length));
+        const newOtp = [...value];
+        newOtp[index] = digit;
+        onChange(newOtp.join(''));
 
-            if (index < length - 1) {
-                inputRefs.current[index + 1].focus();
-            }
+        if (digit && index < length - 1) {
+            inputRefs.current[index + 1].focus();
         }
     };
     
-    const handleKeyDown = (element, index) => {
-        if (element.key === 'Backspace' && !element.target.value && index > 0) {
+    const handleKeyDown = (e, index) => {
+        if (e.key === 'Backspace' && !value[index] && index > 0) {
             onValueChange();
             inputRefs.current[index - 1].focus();
         }
@@ -112,7 +112,7 @@ const OtpInput = ({ length = 6, value, onChange, status, onValueChange }) => {
                     value={value[index] || ''}
                     onChange={(e) => handleChange(e.target, index)}
                     onKeyDown={(e) => handleKeyDown(e, index)}
-                    className={`w-12 h-12 md:w-14 md:h-14 text-center text-xl md:text-3xl font-bold text-blue-900 bg-blue-50/60 border-2 rounded-lg shadow-sm transition-all ${statusStyles[status]}`}
+                    className={`w-12 h-12 md:w-14 md:h-14 text-center text-xl md:text-3xl font-bold text-slate-800 bg-slate-50 border-2 rounded-lg shadow-sm transition-all ${statusStyles[status]}`}
                     disabled={status === 'success'}
                 />
             ))}
@@ -120,21 +120,39 @@ const OtpInput = ({ length = 6, value, onChange, status, onValueChange }) => {
     );
 };
 
-// --- MAIN TWO-FACTOR COMPONENT ---
-
 export default function TwoFactor() {
-    const [submissionStatus, setSubmissionStatus] = useState('idle'); // 'idle', 'success', 'error'
+    const [submissionStatus, setSubmissionStatus] = useState('idle');
+    const [cooldown, setCooldown] = useState(0);
+    const [resending, setResending] = useState(false);
+    const [resentMessageVisible, setResentMessageVisible] = useState(false);
     
-    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, processing, reset, clearErrors } = useForm({
         two_factor_code: '',
     });
 
-    const handleOtpChange = (otp) => {
-        if (submissionStatus !== 'idle') {
-            setSubmissionStatus('idle');
-            clearErrors('two_factor_code');
+    useEffect(() => {
+        let timer;
+        if (cooldown > 0) {
+            timer = setInterval(() => {
+                setCooldown(prev => prev - 1);
+            }, 1000);
         }
-        setData('two_factor_code', otp);
+        return () => clearInterval(timer);
+    }, [cooldown]);
+
+    const handleResend = () => {
+        setResending(true);
+        router.post(route('two_factor.resend'), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setCooldown(180);
+                setResentMessageVisible(true);
+                setTimeout(() => setResentMessageVisible(false), 5000);
+            },
+            onFinish: () => {
+                setResending(false);
+            },
+        });
     };
 
     const submit = (e) => {
@@ -149,9 +167,8 @@ export default function TwoFactor() {
             onSuccess: () => {
                 setSubmissionStatus('success');
                 setTimeout(() => {
-                    // Replace with your intended redirect route, e.g., router.get('/dashboard')
                     router.get(route('dashboard')); 
-                }, 1500); // Wait 1.5s to show success state
+                }, 1500);
             },
         });
     };
@@ -163,7 +180,7 @@ export default function TwoFactor() {
                     <>
                         <CheckCircleIcon className="h-16 w-16 text-green-500" />
                         <h2 className="text-2xl font-bold text-green-600 mt-4 text-center">Code Accepted!</h2>
-                        <p className="text-gray-600 mb-8 text-center text-sm">Welcome back. Redirecting you now...</p>
+                        <p className="text-slate-600 mb-8 text-center text-sm">Welcome back. Redirecting you now...</p>
                     </>
                 );
             case 'error':
@@ -171,22 +188,22 @@ export default function TwoFactor() {
                     <>
                         <ExclamationTriangleIcon className="h-16 w-16 text-red-500" />
                         <h2 className="text-2xl font-bold text-red-600 mt-4 text-center">Invalid Code</h2>
-                        <p className="text-gray-600 mb-8 text-center text-sm">The code is incorrect. Please try again.</p>
+                        <p className="text-slate-600 mb-8 text-center text-sm">The code is incorrect. Please try again.</p>
                     </>
                 );
             default:
                 return (
                     <>
                         <KeypadIcon className="h-16 w-16 text-blue-600" />
-                        <h2 className="text-2xl font-bold text-blue-900 mt-4 text-center">Enter Security Code</h2>
-                        <p className="text-gray-600 mb-8 text-center text-sm">Please check your email and enter the 6-digit code.</p>
+                        <h2 className="text-2xl font-bold text-slate-800 mt-4 text-center">Enter Security Code</h2>
+                        <p className="text-slate-500 mb-8 text-center text-sm">Please check your email and enter the 6-digit code.</p>
                     </>
                 );
         }
     };
     
     return (
-        <div className="bg-blue-50">
+        <div className="bg-slate-50">
             <Head title="Two-Factor Verification" />
             <style>{`
                 .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.2); } 
@@ -211,7 +228,7 @@ export default function TwoFactor() {
                             <DynamicHeader />
                         </div>
                         
-                        <form onSubmit={submit} className="space-y-8">
+                        <form onSubmit={submit} className="space-y-6">
                             <div>
                                 <OtpInput
                                     length={6}
@@ -236,12 +253,28 @@ export default function TwoFactor() {
                                 </PrimaryButton>
                             </div>
                         </form>
+                        
+                        <div className="mt-6 text-center text-sm">
+                            {resentMessageVisible && (
+                                <p className="text-green-600 mb-2 transition-opacity duration-300">
+                                    A new security code has been sent.
+                                </p>
+                            )}
+                            <button
+                                type="button"
+                                onClick={handleResend}
+                                disabled={cooldown > 0 || resending}
+                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed transition-colors"
+                            >
+                                {cooldown > 0 ? `Resend in ${cooldown}s` : (resending ? 'Sending...' : 'Resend Security Code')}
+                            </button>
+                        </div>
 
-                        <div className="mt-8 pt-6 border-t border-blue-100 text-center">
+                        <div className="mt-4 pt-6 border-t border-slate-100 text-center">
                             <Link
                                 href={route('logout')}
                                 method="post" as="button"
-                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-sm transition-colors"
+                                className="font-medium text-slate-600 hover:text-slate-800 hover:underline text-sm transition-colors"
                             >
                                 Cancel and Log Out
                             </Link>

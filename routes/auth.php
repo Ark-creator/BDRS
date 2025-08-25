@@ -43,7 +43,7 @@ Route::middleware('auth')->group(function () {
     Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
         ->middleware(['signed', 'throttle:6,1'])
         ->name('verification.verify');
-
+    
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('verification.send');
@@ -58,12 +58,10 @@ Route::middleware('auth')->group(function () {
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
 
-        // routes/auth.php
-
-// ... other existing routes
-
-// ... rest of your auth.php file
 });
 
 Route::get('two-factor', [TwoFactorController::class, 'show'])->name('two_factor.prompt');
 Route::post('two-factor', [TwoFactorController::class, 'verify'])->name('two_factor.verify');
+Route::post('/two-factor-challenge/resend', [TwoFactorController::class, 'resend']) 
+    ->middleware('guest')
+    ->name('two_factor.resend');
