@@ -1,22 +1,19 @@
 <?php
-
-// app/Http/Controllers/Auth/TwoFactorController.php
-
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Notifications\TwoFactorCode; 
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Facades\Auth;
 
 class TwoFactorController extends Controller
 {
-    /**
-     * Show the 2FA verification form.
-     */
+   
     public function show(Request $request): Response|RedirectResponse
     {
         if (!$request->session()->has('two_factor_user_id')) {
@@ -55,5 +52,25 @@ class TwoFactorController extends Controller
         $user->save();
         
         return redirect()->intended(route('residents.home', absolute: false));
+    }
+    
+    // SOLID MAY AMBAG NA SA BACKEND SI ACE PADILLA MAS MATAAS NA TF KO SAINYO 
+    public function resend(Request $request): RedirectResponse
+    {
+        $userId = $request->session()->get('two_factor_user_id');
+
+        if (!$userId) {
+            return redirect()->route('login');
+        }
+
+        $user = User::findOrFail($userId);
+
+        $user->two_factor_code = str_pad(random_int(1, 999999), 6, '0', STR_PAD_LEFT);
+        $user->two_factor_expires_at = now()->addMinutes(10);
+        $user->save();
+
+        $user->notify(new TwoFactorCode());
+
+        return back()->with('status', 'A new verification code has been sent.');
     }
 }

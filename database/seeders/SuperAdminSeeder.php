@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\UserProfile;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon; // Make sure to add this line
 
 class SuperAdminSeeder extends Seeder
 {
@@ -38,6 +39,7 @@ class SuperAdminSeeder extends Seeder
                     'password' => Hash::make($admin['password']),
                     'role' => 'super_admin',
                     'status' => 'active',
+                    'email_verified_at' => Carbon::now(), // Add this line
                 ]
             );
 

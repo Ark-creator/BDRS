@@ -26,9 +26,8 @@ class ResidentSeeder extends Seeder
             return;
         }
 
-        // Gagawa tayo ng 25 na sample resident users.
-        // Pwede mong baguhin ang bilang (25) kung gusto mo.
-        User::factory(25)->create()->each(function ($user) use ($documentTypeIds) {
+        // Gagawa tayo ng 2500 na sample resident users para umabot sa 2000+ records.
+        User::factory(2500)->create()->each(function ($user) use ($documentTypeIds) {
             
             // Para sa bawat user na ginawa, gagawan natin sila ng profile.
             UserProfile::factory()->create([

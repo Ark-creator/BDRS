@@ -127,10 +127,10 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
 
     // --- Resourceful Routes ---
-    Route::resource('announcements', AnnouncementController::class)
-    ->names('admin.announcements')
-    // Kailangan nating i-override ang update route para gumamit ng POST
-    ->except(['update']);
+    Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
+    Route::post('/announcements/{announcement}/update', [AnnouncementController::class, 'update'])->name('announcements.update');
+    Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
     Route::resource('/announcements', AnnouncementController::class);
     Route::get('/history', [HistoryController::class, 'index'])->name('history');
 

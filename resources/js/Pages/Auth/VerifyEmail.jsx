@@ -1,20 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-// --- HELPER & UI COMPONENTS ---
-
-const AuthLayout = ({ title, description }) => (
-    // TINAMA ANG TYPO DITO: from md:w-12 to md:w-1/2
-    <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png)"}}>
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 to-blue-800/95"></div>
+const AuthLayout = ({ title, description, children }) => (
+    <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png"}}>
+        <div className="absolute inset-0 bg-blue-800 opacity-75"></div>
         <div className="relative z-10">
             <div className="flex items-center mb-8">
-                <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 p-2 shadow-lg">
-                    <img src="/images/logo1.jpg" alt="Barangay Logo" className="w-full h-full rounded-full" />
+                <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30">
+                    <img className="rounded-full p-2" src="/images/gapanlogo.png" alt="logo" />
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight text-shadow">{title}</h1>
+                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
             </div>
-            <p className="text-blue-100 text-lg leading-relaxed text-shadow-sm">{description}</p>
+            <p className="text-blue-100 text-lg leading-relaxed">{description}</p>
             <p className="text-xs text-blue-200 mt-12 opacity-75">Gapan City, Nueva Ecija</p>
         </div>
     </div>
@@ -34,9 +31,6 @@ const CheckCircleIcon = () => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
 );
-
-// --- MAIN VERIFY EMAIL COMPONENT ---
-
 export default function VerifyEmail({ status }) {
     const { post, processing } = useForm({});
     const [cooldown, setCooldown] = useState(0);
