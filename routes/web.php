@@ -131,7 +131,8 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
     Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
-    Route::post('/messages/{contactMessage}/mark-as-read', [\App\Http\Controllers\Admin\MessageReaderController::class, 'markAsRead'])->name('messages.mark-as-read');
+    Route::get('/messages/unread', [MessagesController::class, 'getUnreadMessages'])->name('messages.unread');
+    Route::post('/messages/{contactMessage}/mark-as-read', [MessagesController::class, 'markAsRead'])->name('messages.mark-as-read');
 
     // --- Resourceful Routes ---
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');

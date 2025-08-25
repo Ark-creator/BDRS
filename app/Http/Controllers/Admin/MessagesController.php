@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Admin;
 
-use App\Events\AdminMessageSent; // 👈 PALITAN ITO
+use App\Events\AdminMessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
+use App\Models\Reply;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,36 +15,20 @@ use Inertia\Response;
 
 class MessagesController extends Controller
 {
-    public function index(Request $request): Response
+    /**
+     * Display the main messages inbox page.
+     */
+    public function index(): Response
     {
-        $subjects = ['General Inquiry', 'Feedback', 'Support', 'Complaint'];
-        
-        // Eager load replies and user profile
-        $query = ContactMessage::with(['user.profile', 'replies'])->latest();
-
-        if ($request->has('subject') && in_array($request->subject, $subjects)) {
-            $query->where('subject', $request->subject);
-        }
-
-        $messages = $query->get();
-
         return Inertia::render('Admin/Messages', [
-            'messages' => $messages,
-            'subjects' => $subjects,
-            'currentSubject' => $request->subject,
+            'messages' => ContactMessage::with(['user', 'replies.user'])->latest()->get(),
         ]);
     }
 
-    public function updateStatus(ContactMessage $message): RedirectResponse
-    {
-        $message->update(['status' => 'read']);
-        return redirect()->route('admin.messages')->with('success', 'Message status updated to read.');
-    }
-
     /**
-     * Store a reply to a specific contact message.
+     * Store a new reply from the admin.
      */
-    public function storeReply(Request $request, ContactMessage $message): RedirectResponse
+    public function storeReply(Request $request, ContactMessage $message): JsonResponse
     {
         $validated = $request->validate([
             'reply_message' => 'required|string',
@@ -56,8 +42,69 @@ class MessagesController extends Controller
         $message->update(['status' => 'replied']);
 
         $newReply->load('user');
-        // 👇 GAMITIN ANG BAGONG EVENT
         broadcast(new AdminMessageSent($newReply))->toOthers();
+
+        return response()->json(['status' => 'success']);
+    }
+
+    /**
+     * Get the unread messages count and list for the notification bubble.
+     * (Moved from MessagesCounterController)
+     */
+    public function getUnreadMessages(): JsonResponse
+    {
+        $user = auth()->user();
+        if (!$user || !in_array($user->role, ['admin', 'super_admin'])) {
+            return response()->json(['messages' => [], 'count' => 0]);
+        }
+
+        $unreadConversations = ContactMessage::where(function ($query) {
+            $query->where('status', 'unread')
+                  ->orWhereHas('replies', function ($subQuery) {
+                      $subQuery->where('status', 'unread')
+                               ->whereHas('user', function ($userQuery) {
+                                   $userQuery->where('role', 'resident');
+                               });
+                  });
+        })->with('user')->get();
+
+        $totalUnreadCount = $unreadConversations->count();
+        
+        $formattedMessages = $unreadConversations->map(function ($message) {
+            return [
+                'id' => 'contact-' . $message->id,
+                'subject' => $message->subject,
+                'message' => $message->message,
+                'created_at' => $message->created_at,
+            ];
+        })->sortByDesc('created_at')->take(5)->values();
+
+        return response()->json([
+            'messages' => $formattedMessages,
+            'count' => $totalUnreadCount,
+        ]);
+    }
+
+    /**
+     * Mark a conversation thread as read by the admin.
+     * (Moved from MessageReaderController)
+     */
+    public function markAsRead(ContactMessage $contactMessage): RedirectResponse
+    {
+        $user = Auth::user();
+
+        if (!$user || !in_array($user->role, ['admin', 'super_admin'])) {
+            return back();
+        }
+
+        if ($contactMessage->status === 'unread') {
+            $contactMessage->update(['status' => 'read']);
+        }
+
+        Reply::where('contact_message_id', $contactMessage->id)
+             ->where('user_id', '!=', $user->id) 
+             ->where('status', 'unread')
+             ->update(['status' => 'read']);
 
         return redirect()->route('admin.messages');
     }
