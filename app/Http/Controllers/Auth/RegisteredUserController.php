@@ -58,6 +58,7 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => 'resident',
+            'two_factor_enabled' => true
         ]);
 
         // --- HANDLE FILE UPLOADS ---
@@ -89,8 +90,8 @@ class RegisteredUserController extends Controller
     });
 
     event(new Registered($user));
-    Auth::login($user);
+    // Auth::login($user);
 
-    return redirect(route('residents.home', absolute: false));
+        return redirect(route('verification.notice'));
 }
 }
