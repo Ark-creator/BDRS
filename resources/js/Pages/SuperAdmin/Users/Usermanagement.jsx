@@ -2,7 +2,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, usePage, router, Link } from '@inertiajs/react';
 import { toast } from 'react-toastify';
 import React, { useEffect, useState } from 'react';
-import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import EditUserModal from '@/components/EditUserModal';
 import VerificationModal from '@/components/VerificationModal';
