@@ -1,119 +1,249 @@
-import React from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
-import InputError from '@/Components/InputError';
+import React, { useState, useRef, useEffect } from 'react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 
-// 1. Copying the shared layout component from Login.jsx
-const AuthLayout = ({ title, description, children }) => (
-    <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png"}}>
-        <div className="absolute inset-0 bg-blue-800 opacity-75"></div>
+// --- ICONS (New and updated icons) ---
+
+const KeypadIcon = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 10h.01M7 13h.01M10 7h.01M10 10h.01M10 13h.01M13 7h.01M13 10h.01M13 13h.01M16 7h.01M16 10h.01M16 13h.01" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h18v18H3z" />
+    </svg>
+);
+
+const CheckCircleIcon = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
+const ExclamationTriangleIcon = ({ className }) => (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+    </svg>
+);
+
+
+// --- SHARED & UI COMPONENTS ---
+
+const AuthLayout = ({ title, description }) => (
+    <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png)"}}>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/90 to-blue-800/95"></div>
         <div className="relative z-10">
             <div className="flex items-center mb-8">
-                <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30">
-                    <img className="rounded-full p-2" src="/images/logo1.jpg" alt="logo" />
+                <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 p-2 shadow-lg">
+                    <img src="/images/logo1.jpg" alt="Barangay Logo" className="w-full h-full rounded-full" />
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-shadow">{title}</h1>
             </div>
-            <p className="text-blue-100 text-lg leading-relaxed">{description}</p>
+            <p className="text-blue-100 text-lg leading-relaxed text-shadow-sm">{description}</p>
             <p className="text-xs text-blue-200 mt-12 opacity-75">Gapan City, Nueva Ecija</p>
         </div>
     </div>
 );
 
-// 2. Copying the custom text input component
-const CustomTextInput = ({ icon, ...props }) => (
-    <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            {icon}
-        </div>
-        <input
-            {...props}
-            className="w-full pl-10 pr-4 py-3 border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm transition-colors"
-        />
-    </div>
-);
-
-// 3. Copying the required icon
-const LockIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>;
-
-// 4. Copying the primary button
-const PrimaryButton = ({ className = '', disabled, children, ...props }) => (
-    <button
-        {...props}
-        className={
-            `w-full flex justify-center items-center px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent rounded-lg font-semibold text-base text-white tracking-widest hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all ease-in-out duration-150 ${
-                disabled && 'opacity-50 cursor-not-allowed'
-            } ` + className
-        }
-        disabled={disabled}
-    >
-        {children}
-    </button>
-);
-
-
-// 5. The main TwoFactor component
-export default function TwoFactor() {
-    const { data, setData, post, processing, errors } = useForm({
-        two_factor_code: '',
-    });
-
-    const submit = (e) => {
-        e.preventDefault();
-        post(route('two_factor.verify'));
+const PrimaryButton = ({ className = '', disabled, children, status = 'idle', ...props }) => {
+    const statusClasses = {
+        idle: 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800',
+        success: 'bg-gradient-to-r from-green-500 to-green-600 cursor-default',
+        error: 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800',
     };
 
     return (
-        <div className="bg-sky-50">
+        <button
+            {...props}
+            className={`w-full flex justify-center items-center px-4 py-3 border border-transparent rounded-lg font-semibold text-base text-white tracking-widest focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all ease-in-out duration-150 ${statusClasses[status]} ${disabled && 'opacity-50 cursor-not-allowed'} ` + className}
+            disabled={disabled}
+        >
+            {children}
+        </button>
+    );
+};
+
+const OtpInput = ({ length = 6, value, onChange, status, onValueChange }) => {
+    const inputRefs = useRef([]);
+
+    const statusStyles = {
+        idle: 'border-gray-300 focus:border-blue-500 focus:ring-blue-500',
+        error: 'border-red-500 focus:border-red-500 focus:ring-red-500 animate-shake',
+        success: 'border-green-500 focus:border-green-500 focus:ring-green-500',
+    };
+
+    const handleChange = (element, index) => {
+        onValueChange(); // Reset status on new input
+        const digit = element.value.replace(/[^0-9]/g, '');
+        if (digit) {
+            const newOtp = value.split('');
+            newOtp[index] = digit;
+            onChange(newOtp.join('').substring(0, length));
+
+            if (index < length - 1) {
+                inputRefs.current[index + 1].focus();
+            }
+        }
+    };
+    
+    const handleKeyDown = (element, index) => {
+        if (element.key === 'Backspace' && !element.target.value && index > 0) {
+            onValueChange();
+            inputRefs.current[index - 1].focus();
+        }
+    };
+    
+    const handlePaste = (e) => {
+        e.preventDefault();
+        onValueChange();
+        const pastedData = e.clipboardData.getData('text').replace(/[^0-9]/g, '').substring(0, length);
+        if (pastedData) {
+            onChange(pastedData);
+            const nextFocusIndex = pastedData.length < length ? pastedData.length : length - 1;
+            inputRefs.current[nextFocusIndex].focus();
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-center gap-2 md:gap-3" onPaste={handlePaste}>
+            {Array.from({ length }, (_, index) => (
+                <input
+                    key={index}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength="1"
+                    value={value[index] || ''}
+                    onChange={(e) => handleChange(e.target, index)}
+                    onKeyDown={(e) => handleKeyDown(e, index)}
+                    className={`w-12 h-12 md:w-14 md:h-14 text-center text-xl md:text-3xl font-bold text-blue-900 bg-blue-50/60 border-2 rounded-lg shadow-sm transition-all ${statusStyles[status]}`}
+                    disabled={status === 'success'}
+                />
+            ))}
+        </div>
+    );
+};
+
+// --- MAIN TWO-FACTOR COMPONENT ---
+
+export default function TwoFactor() {
+    const [submissionStatus, setSubmissionStatus] = useState('idle'); // 'idle', 'success', 'error'
+    
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+        two_factor_code: '',
+    });
+
+    const handleOtpChange = (otp) => {
+        if (submissionStatus !== 'idle') {
+            setSubmissionStatus('idle');
+            clearErrors('two_factor_code');
+        }
+        setData('two_factor_code', otp);
+    };
+
+    const submit = (e) => {
+        e.preventDefault();
+        if (submissionStatus === 'success') return;
+
+        post(route('two_factor.verify'), {
+            onError: () => {
+                setSubmissionStatus('error');
+                reset('two_factor_code');
+            },
+            onSuccess: () => {
+                setSubmissionStatus('success');
+                setTimeout(() => {
+                    // Replace with your intended redirect route, e.g., router.get('/dashboard')
+                    router.get(route('dashboard')); 
+                }, 1500); // Wait 1.5s to show success state
+            },
+        });
+    };
+
+    const DynamicHeader = () => {
+        switch (submissionStatus) {
+            case 'success':
+                return (
+                    <>
+                        <CheckCircleIcon className="h-16 w-16 text-green-500" />
+                        <h2 className="text-2xl font-bold text-green-600 mt-4 text-center">Code Accepted!</h2>
+                        <p className="text-gray-600 mb-8 text-center text-sm">Welcome back. Redirecting you now...</p>
+                    </>
+                );
+            case 'error':
+                return (
+                    <>
+                        <ExclamationTriangleIcon className="h-16 w-16 text-red-500" />
+                        <h2 className="text-2xl font-bold text-red-600 mt-4 text-center">Invalid Code</h2>
+                        <p className="text-gray-600 mb-8 text-center text-sm">The code is incorrect. Please try again.</p>
+                    </>
+                );
+            default:
+                return (
+                    <>
+                        <KeypadIcon className="h-16 w-16 text-blue-600" />
+                        <h2 className="text-2xl font-bold text-blue-900 mt-4 text-center">Enter Security Code</h2>
+                        <p className="text-gray-600 mb-8 text-center text-sm">Please check your email and enter the 6-digit code.</p>
+                    </>
+                );
+        }
+    };
+    
+    return (
+        <div className="bg-blue-50">
             <Head title="Two-Factor Verification" />
+            <style>{`
+                .text-shadow { text-shadow: 0 2px 4px rgba(0,0,0,0.2); } 
+                .text-shadow-sm { text-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+                @keyframes shake {
+                    0%, 100% { transform: translateX(0); }
+                    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                    20%, 40%, 60%, 80% { transform: translateX(5px); }
+                }
+                .animate-shake { animation: shake 0.5s ease-in-out; }
+            `}</style>
+
             <div className="flex items-center justify-center min-h-screen p-4">
                 <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
-
                     <AuthLayout
                         title="Two-Factor Authentication"
-                        description="A one-time code has been sent to your email address. Please enter it below to complete your login."
+                        description="For your security, a one-time code has been sent to your email. Please enter it below to complete your login."
                     />
 
-                    {/* Right Side: 2FA Form */}
-                    <div className="w-full md:w-1/2 p-8 md:p-12">
-                        <h2 className="text-2xl font-bold text-slate-800 mb-1">Enter Your Code</h2>
-                        <p className="text-slate-500 mb-8">
-                            Please check your email and enter the 6-digit code.
-                        </p>
-
-                        <form onSubmit={submit} className="space-y-6">
+                    <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
+                        <div className="flex flex-col items-center mb-4">
+                            <DynamicHeader />
+                        </div>
+                        
+                        <form onSubmit={submit} className="space-y-8">
                             <div>
-                                <label htmlFor="two_factor_code" className="font-medium text-slate-700 text-sm mb-2 block">
-                                    Verification Code
-                                </label>
-                                <CustomTextInput
-                                    id="two_factor_code"
-                                    type="text"
-                                    name="two_factor_code"
+                                <OtpInput
+                                    length={6}
                                     value={data.two_factor_code}
-                                    onChange={(e) => setData('two_factor_code', e.target.value)}
-                                    icon={<LockIcon />}
-                                    placeholder="••••••"
-                                    required
-                                    maxLength="6"
+                                    onChange={(otp) => setData('two_factor_code', otp)}
+                                    status={submissionStatus}
+                                    onValueChange={() => {
+                                        if (submissionStatus !== 'idle') {
+                                            setSubmissionStatus('idle');
+                                            clearErrors('two_factor_code');
+                                        }
+                                    }}
                                 />
-                                <InputError message={errors.two_factor_code} className="mt-2" />
                             </div>
 
                             <div className="pt-2">
-                                <PrimaryButton disabled={processing}>
-                                    {processing ? 'Verifying...' : 'Verify Code'}
+                                <PrimaryButton 
+                                    status={submissionStatus}
+                                    disabled={processing || data.two_factor_code.length !== 6 || submissionStatus === 'success'}
+                                >
+                                    {processing ? 'Verifying...' : (submissionStatus === 'success' ? 'Success!' : 'Verify & Sign In')}
                                 </PrimaryButton>
                             </div>
                         </form>
 
-                        <div className="mt-8 text-center">
+                        <div className="mt-8 pt-6 border-t border-blue-100 text-center">
                             <Link
                                 href={route('logout')}
-                                method="post"
-                                as="button"
-                                className="font-medium text-red-600 hover:text-red-500 hover:underline text-sm"
+                                method="post" as="button"
+                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline text-sm transition-colors"
                             >
-                                Log Out
+                                Cancel and Log Out
                             </Link>
                         </div>
                     </div>
