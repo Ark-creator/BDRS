@@ -15,6 +15,7 @@ class Reply extends Model
         'contact_message_id',
         'user_id',
         'message',
+        'status',   // 👈 And this line
     ];
 
     public function contactMessage(): BelongsTo

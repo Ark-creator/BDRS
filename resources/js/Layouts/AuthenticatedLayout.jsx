@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { Link, usePage } from "@inertiajs/react";
 import { route } from 'ziggy-js';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
 import axios from 'axios';
-import FloatingActionButton from '@/Components/FloatingActionButton'; 
+import FloatingActionButton from '@/Components/FloatingActionButton';
 
 // --- Driver.js ---
 import { driver } from "driver.js";
@@ -28,10 +27,9 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 //================================================================
-// SIDEBAR COMPONENT (No changes here, keeping for context)
+// SIDEBAR COMPONENT (Included for context, no changes needed here)
 //================================================================
 function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileOpen, isMobile, setShowAdminSidebarMobile }) {
-    // ... code for sidebar component ...
     const [openSections, setOpenSections] = useState({
         Main: true,
         Management: true,
@@ -114,7 +112,7 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
     const NavGroup = ({ group, id }) => (
         <div id={id}>
             {!(isCollapsed && !mobileOpen) && (
-                    <div
+                <div
                     onClick={() => toggleSection(group.title)}
                     className={'flex items-center justify-between px-3 py-2 rounded-md cursor-pointer transition-colors duration-200 hover:bg-slate-100 dark:hover:bg-slate-800'}
                 >
@@ -148,7 +146,7 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
         >
             <div id="sidebar-header" className="flex items-center justify-between p-4 border-b border-slate-200/80 dark:border-slate-800 h-16 shrink-0">
                 {!(isCollapsed && !mobileOpen) && (
-                   <Link href="/" className="flex items-center gap-3">
+                    <Link href="/" className="flex items-center gap-3">
                         <img className="w-8 h-8 rounded-md" src="/images/gapanlogo.png" alt="Doconnect Logo" />
                         <span className="text-lg font-bold text-slate-800 dark:text-white whitespace-nowrap">Admin</span>
                     </Link>
@@ -158,8 +156,8 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
                         {isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
                     </button>
                 )}
-                 {isMobile && (
-                        <button onClick={() => setShowAdminSidebarMobile(false)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Close sidebar">
+                {isMobile && (
+                    <button onClick={() => setShowAdminSidebarMobile(false)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Close sidebar">
                         <X size={20} />
                     </button>
                 )}
@@ -200,23 +198,22 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
                                     <LogOut size={16} />
                                 </Link>
                             </>
-                          )}
+                        )}
                     </div>
                 </div>
             </div>
 
             {isMobile && mobileOpen && (
                 <div className="p-3 border-t border-slate-200 dark:border-slate-800">
-                       <Link href={route('residents.home')} className="flex items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => setShowAdminSidebarMobile(false)}>
-                            <ArrowLeft size={18} />
-                            <span>Back to Home</span>
-                        </Link>
+                    <Link href={route('residents.home')} className="flex items-center gap-3.5 rounded-md px-3 py-2.5 text-sm font-medium group text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => setShowAdminSidebarMobile(false)}>
+                        <ArrowLeft size={18} />
+                        <span>Back to Home</span>
+                    </Link>
                 </div>
             )}
         </aside>
     );
 }
-
 
 //================================================================
 // MAIN AUTHENTICATED LAYOUT
@@ -226,10 +223,11 @@ export default function AuthenticatedLayout({ header, children }) {
     const { auth: { user } } = props;
     const isAdmin = user.role === "admin" || user.role === "super_admin";
     const isSuperAdmin = user.role === "super_admin";
-
     const onAdminPage = component.startsWith('Admin/') || component.startsWith('SuperAdmin/');
 
-    const [unreadMessages, setUnreadMessages] = useState([]);
+    const [unreadMessages, setUnreadMessages] = useState([]); // For Admin
+    const [residentUnreadMessages, setResidentUnreadMessages] = useState([]); // For Resident
+
     const [isBubbleVisible, setIsBubbleVisible] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -308,7 +306,7 @@ export default function AuthenticatedLayout({ header, children }) {
         window.addEventListener("resize", checkScreenSize);
         return () => window.removeEventListener("resize", checkScreenSize);
     }, []);
-    
+
     useEffect(() => {
         if (isMobile && isAdmin) {
             setIsSidebarCollapsed(true);
@@ -318,41 +316,48 @@ export default function AuthenticatedLayout({ header, children }) {
     }, [isMobile, isAdmin]);
 
     useEffect(() => {
-        if (isAdmin) {
-            const fetchUnreadMessages = async () => {
-                try {
+        const fetchUnreadData = async () => {
+            try {
+                if (isAdmin) {
                     const response = await axios.get(route('admin.messages.unread'));
                     setUnreadMessages(response.data.messages || []);
-                } catch (error) { console.error("Error fetching unread messages:", error); }
-            };
-            fetchUnreadMessages();
-        }
+                } else {
+                    const response = await axios.get(route('residents.messages.unread-list'));
+                    setResidentUnreadMessages(response.data.messages || []);
+                }
+            } catch (error) {
+                console.error("Error fetching unread data:", error);
+            }
+        };
+
+        fetchUnreadData();
+        const interval = setInterval(fetchUnreadData, 30000); // Poll every 30 seconds
+        return () => clearInterval(interval);
     }, [isAdmin]);
 
     const startMainTour = () => {
-
         const runTour = () => {
             const steps = [
-                { element: isMobile ? '#nav-home-mobile' : '#nav-home', popover: { title: 'Home', description: 'This is the main page of the website.', side: 'bottom' }},
-                { element: isMobile ? '#nav-my-requests-mobile' : '#nav-my-requests', popover: { title: 'My Requests', description: 'View the status of your document requests here.', side: 'bottom' }},
-                { element: isMobile ? '#nav-about-mobile' : '#nav-about', popover: { title: 'About', description: 'Learn more about our services and mission.', side: 'bottom' }},
-                { element: isMobile ? '#nav-contact-mobile' : '#nav-contact', popover: { title: 'Contact', description: 'Get in touch with us for any inquiries.', side: 'bottom' }},
-                { element: isMobile ? '#nav-faq-mobile' : '#nav-faq', popover: { title: 'FAQ', description: 'Find answers to frequently asked questions.', side: 'bottom' }},
+                { element: isMobile ? '#nav-home-mobile' : '#nav-home', popover: { title: 'Home', description: 'This is the main page of the website.', side: 'bottom' } },
+                { element: isMobile ? '#nav-my-requests-mobile' : '#nav-my-requests', popover: { title: 'My Requests', description: 'View the status of your document requests here.', side: 'bottom' } },
+                { element: isMobile ? '#nav-about-mobile' : '#nav-about', popover: { title: 'About', description: 'Learn more about our services and mission.', side: 'bottom' } },
+                { element: isMobile ? '#nav-contact-mobile' : '#nav-contact', popover: { title: 'Contact', description: 'Get in touch with us for any inquiries.', side: 'bottom' } },
+                { element: isMobile ? '#nav-faq-mobile' : '#nav-faq', popover: { title: 'FAQ', description: 'Find answers to frequently asked questions.', side: 'bottom' } },
             ];
 
             if (isAdmin) {
-                steps.push({ 
-                    element: '#admin-panel-icon', 
+                steps.push({
+                    element: '#admin-panel-icon',
                     popover: { title: 'Admin Panel', description: 'Access the administrative dashboard to manage the site.', side: 'bottom', align: 'end' }
                 });
             }
 
             steps.push(
-                { element: '#notif-icon', popover: { title: 'Notifications', description: 'Check for new messages and important updates here.', side: 'bottom', align: 'end' }},
-                { element: '#tour-trigger-icon', popover: { title: 'Help & Tour', description: 'Click this button anytime to see this guide again.', side: 'bottom', align: 'end' }},
-                { element: '#user-icon', popover: { title: 'Your Account', description: 'Access your profile, settings, or log out from here.', side: 'bottom', align: 'end' }}
+                { element: '#notif-icon', popover: { title: 'Notifications', description: 'Check for new messages and important updates here.', side: 'bottom', align: 'end' } },
+                { element: '#tour-trigger-icon', popover: { title: 'Help & Tour', description: 'Click this button anytime to see this guide again.', side: 'bottom', align: 'end' } },
+                { element: '#user-icon', popover: { title: 'Your Account', description: 'Access your profile, settings, or log out from here.', side: 'bottom', align: 'end' } }
             );
-            
+
             const driverObj = driver({
                 showProgress: true,
                 animate: true,
@@ -372,26 +377,36 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     const navLinkGroups = [
-       
-        { title: 'Main', links: [
-            { name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> },
-            { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> },
-        ]},
-        { title: 'Management', links: [
-            { name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> },
-            { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> },
-            ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : [])
-        ]},
-        { title: 'Account', links: [
-            { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> },
-            { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> },
-            { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: unreadMessages.length },
-        ]},
+        {
+            title: 'Main', links: [
+                { name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> },
+                { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> },
+            ]
+        },
+        {
+            title: 'Management', links: [
+                { name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> },
+                { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> },
+                ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : [])
+            ]
+        },
+        {
+            title: 'Account', links: [
+                { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> },
+                { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> },
+                { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: unreadMessages.length },
+            ]
+        },
     ];
 
-    const NotificationBubble = ({ messages }) => (
-
-        <div className="absolute top-12 right-0 w-80 bg-white dark:bg-gray-700 shadow-lg rounded-lg border border-gray-200 dark:border-gray-600 z-50 p-4 transition-all duration-300">
+    const NotificationBubble = ({ messages, isForAdmin }) => (
+        <motion.div
+            className="absolute top-12 right-0 w-80 bg-white dark:bg-gray-700 shadow-lg rounded-lg border border-gray-200 dark:border-gray-600 z-50 p-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ duration: 0.2 }}
+        >
             <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-2">Unread Messages ({messages.length})</h3>
             {messages.length > 0 ? (
                 <ul className="space-y-3">
@@ -403,20 +418,29 @@ export default function AuthenticatedLayout({ header, children }) {
                     ))}
                 </ul>
             ) : (<p className="text-gray-500 dark:text-gray-400 text-sm">No new messages.</p>)}
-            <div className="mt-4"><Link href={route('admin.messages')} className="text-blue-500 hover:text-blue-700 text-sm font-medium">View All Messages →</Link></div>
-        </div>
+
+            {isForAdmin ? (
+                <div className="mt-4">
+                    <Link href={route('admin.messages')} className="text-blue-500 hover:text-blue-700 text-sm font-medium">View All Messages →</Link>
+                </div>
+            ) : (
+                <div className="mt-4 text-sm text-slate-500">
+                    Open the chat button to reply.
+                </div>
+            )}
+        </motion.div>
     );
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-slate-900/95 font-inter">
             <AnimatePresence>
                 {isAdmin && (isMobile && showAdminSidebarMobile || !isMobile) && (
-                    <SidebarComponent user={user} navLinks={navLinkGroups} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} mobileOpen={isMobile && showAdminSidebarMobile} isMobile={isMobile} setShowAdminSidebarMobile={setShowAdminSidebarMobile}/>
+                    <SidebarComponent user={user} navLinks={navLinkGroups} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} mobileOpen={isMobile && showAdminSidebarMobile} isMobile={isMobile} setShowAdminSidebarMobile={setShowAdminSidebarMobile} />
                 )}
             </AnimatePresence>
 
             {isMobile && showAdminSidebarMobile && (<div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setShowAdminSidebarMobile(false)} />)}
-            
+
             <div
                 className={clsx("flex flex-col min-h-screen transition-all duration-300 ease-in-out",
                     isMobile || !isAdmin
@@ -429,11 +453,10 @@ export default function AuthenticatedLayout({ header, children }) {
                     "bg-white dark:bg-gray-800 shadow-md fixed top-0 right-0 z-30 transition-all duration-300 ease-in-out",
                     isMobile || !isAdmin ? 'left-0' : (isSidebarCollapsed ? 'left-[5.5rem]' : 'left-[16rem]')
                 )}>
-                   {/* ... navbar content ... */}
-                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="flex justify-between items-center h-16">
                             <div className="flex items-center gap-2">
-                                <button 
+                                <button
                                     onClick={() => {
                                         if (isMobile) {
                                             if (isAdmin && onAdminPage) {
@@ -444,8 +467,8 @@ export default function AuthenticatedLayout({ header, children }) {
                                                 setShowAdminSidebarMobile(false);
                                             }
                                         }
-                                    }} 
-                                    className="md:hidden p-2 rounded-lg" 
+                                    }}
+                                    className="md:hidden p-2 rounded-lg"
                                     aria-label="Toggle mobile menu"
                                 >
                                     {(showAdminSidebarMobile || isMobileNavOpen) ? <X size={24} /> : <Menu size={24} />}
@@ -470,28 +493,42 @@ export default function AuthenticatedLayout({ header, children }) {
                                         <Users size={24} className="text-gray-500 dark:text-gray-400" />
                                     </Link>
                                 )}
-                                
-                                <div 
-                                    id="notif-icon" 
-                                    className="relative" 
-                                    onMouseEnter={isAdmin ? () => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(true), 300); } : undefined} 
-                                    onMouseLeave={isAdmin ? () => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(false), 200); } : undefined}
+
+                                <div
+                                    id="notif-icon"
+                                    className="relative"
+                                    onMouseEnter={() => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(true), 300); }}
+                                    onMouseLeave={() => { clearTimeout(hoverTimeout); hoverTimeout = setTimeout(() => setIsBubbleVisible(false), 200); }}
                                 >
-                                    <Link href={isAdmin ? route('admin.messages') : '#!'} className="p-2 rounded-lg transition relative">
+                                    <Link
+                                        href={isAdmin ? route('admin.messages') : '#!'}
+                                        className="p-2 rounded-lg transition relative"
+                                    >
                                         <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
+
                                         {isAdmin && unreadMessages.length > 0 && (
-                                            <span className="absolute top-5 -right-6 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
+                                            <span className="absolute top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
                                                 {unreadMessages.length}
                                             </span>
                                         )}
+
+                                        {!isAdmin && residentUnreadMessages.length > 0 && (
+                                            <span className="absolute top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
+                                                {residentUnreadMessages.length}
+                                            </span>
+                                        )}
                                     </Link>
-                                    <AnimatePresence>{isAdmin && isBubbleVisible && <NotificationBubble messages={unreadMessages} />}</AnimatePresence>
+
+                                    <AnimatePresence>
+                                        {isBubbleVisible && isAdmin && <NotificationBubble messages={unreadMessages} isForAdmin={true} />}
+                                        {isBubbleVisible && !isAdmin && <NotificationBubble messages={residentUnreadMessages} isForAdmin={false} />}
+                                    </AnimatePresence>
                                 </div>
 
                                 <button id="tour-trigger-icon" onClick={startMainTour} className="p-2 rounded-lg transition" title="Start Tour">
                                     <HelpCircle size={24} className="text-gray-500 dark:text-gray-400" />
                                 </button>
-                                
+
                                 <div id="user-icon">
                                     <Dropdown>
                                         <Dropdown.Trigger>
@@ -539,9 +576,8 @@ export default function AuthenticatedLayout({ header, children }) {
                     {header && (<header className="bg-white dark:bg-slate-800 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-4">{header}</div></header>)}
                     <div className="">{children}</div>
                 </main>
-                
-               
-                 <FloatingActionButton />
+
+                <FloatingActionButton />
             </div>
 
             <ToastContainer position="bottom-right" autoClose={5000} theme="colored" />

@@ -12,84 +12,91 @@ use Illuminate\Http\JsonResponse;
 class ConversationController extends Controller
 {
     /**
-     * Fetch all conversation messages for the authenticated user.
+     * Kunin ang lahat ng mensahe para sa user at markahan ang mga bagong mensahe bilang nabasa na.
      */
     public function index(): JsonResponse
     {
         $user = Auth::user();
 
-        // Eager load conversations and their replies, along with the user who sent each reply
+        // 1. Hanapin ang lahat ng conversation threads na sinimulan ng user.
+        $contactMessageIds = ContactMessage::where('user_id', $user->id)->pluck('id');
+        
+        // 2. Markahan ang mga reply mula sa admin bilang 'read'.
+        // Ginagawa ito para hindi na lumabas sa notification counter ng user pagkatapos nilang buksan ang chat.
+        if ($contactMessageIds->isNotEmpty()) {
+            Reply::whereIn('contact_message_id', $contactMessageIds)
+                 ->where('user_id', '!=', $user->id) // Mga reply na HINDI galing sa user (i.e., admin)
+                 ->where('status', 'unread')
+                 ->update(['status' => 'read']);
+        }
+
+        // 3. Kunin ang lahat ng conversation threads kasama ang lahat ng replies at user details.
         $contactMessages = ContactMessage::where('user_id', $user->id)
-            ->with(['replies.user'])
-            ->latest()
+            ->with(['replies.user']) // Eager-load para mas mabilis
+            ->latest() // Pinakabago muna
             ->get();
 
+        // 4. I-format ang lahat ng mensahe (initial at replies) sa iisang flat array.
         $formattedMessages = collect();
-
         foreach ($contactMessages as $contactMessage) {
-            // Add the original message
+            // Idagdag ang unang mensahe ng thread
             $formattedMessages->push([
                 'id' => 'contact-'.$contactMessage->id,
                 'text' => "Subject: {$contactMessage->subject}\n\n{$contactMessage->message}",
-                'sender' => 'user', // The original message is always from the user
+                'sender' => 'user',
                 'created_at' => $contactMessage->created_at->toIso8601String(),
             ]);
 
-            // Add all replies for this message
+            // Idagdag ang lahat ng replies sa thread na ito
             foreach ($contactMessage->replies as $reply) {
                 $formattedMessages->push([
                     'id' => 'reply-'.$reply->id,
                     'text' => $reply->message,
-                    // Determine if the sender is an admin or the resident
                     'sender' => $reply->user->role === 'resident' ? 'user' : 'admin',
                     'created_at' => $reply->created_at->toIso8601String(),
                 ]);
             }
         }
 
-        // Sort all messages chronologically and return as a flat array
+        // 5. Pagsunod-sunurin ang lahat ng mensahe ayon sa petsa.
         $sortedMessages = $formattedMessages->sortBy('created_at')->values();
 
         return response()->json($sortedMessages);
     }
 
     /**
-     * Store a new message (reply) from the authenticated user.
+     * I-save ang bagong reply mula sa user.
      */
     public function store(Request $request): JsonResponse
     {
+        // 1. I-validate ang input.
         $validated = $request->validate([
             'message' => ['required', 'string', 'max:2000'],
         ]);
 
         $user = Auth::user();
 
-        // Find the most recent conversation thread started by this user
+        // 2. Hanapin ang pinakabagong conversation thread na sinimulan ng user.
         $latestContactMessage = ContactMessage::where('user_id', $user->id)->latest()->first();
 
-        // If user has no prior conversation, create a new one.
-        // This is a fallback, but typically they should have one from the Contact Us page.
+        // Kung walang nahanap na thread (hindi pa nakakapag-contact us), huwag magpatuloy.
+        // Ito ay isang safety check.
         if (!$latestContactMessage) {
-            $latestContactMessage = ContactMessage::create([
-                'user_id' => $user->id,
-                'subject' => 'General Inquiry (from chat)',
-                'message' => $validated['message'],
-                'status' => 'unread',
-            ]);
-            // Since this is the first message, we don't need to create a separate reply
-            return response()->json(['status' => 'success', 'message' => 'New conversation started.'], 201);
+            return response()->json(['error' => 'No conversation thread found. Please send a message from the Contact Us page first.'], 404);
         }
 
-        // Create a new reply and attach it to the latest conversation thread
+        // 3. Gumawa ng bagong reply record.
+        // Ang 'status' ay awtomatikong magiging 'unread' dahil sa default value sa database.
         Reply::create([
             'contact_message_id' => $latestContactMessage->id,
             'user_id' => $user->id,
             'message' => $validated['message'],
         ]);
         
-        // Also, update the status of the parent message to 'unread' so admin gets notified
+        // 4. I-update ang status ng PARENT message thread para ma-notify ang admin.
+        // Mahalaga ito para lumabas sa notification counter ng admin.
         $latestContactMessage->update(['status' => 'unread']);
 
-        return response()->json(['status' => 'success', 'message' => 'Reply sent.'], 201);
+        return response()->json(['status' => 'success', 'message' => 'Reply sent successfully.'], 201);
     }
 }

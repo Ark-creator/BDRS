@@ -70,6 +70,9 @@ Route::middleware(['auth','verified', 'can:be-resident'])->prefix('residents')->
     // Messages routes
     Route::get('/conversations', [\App\Http\Controllers\Resident\ConversationController::class, 'index'])->name('conversations.index');
     Route::post('/conversations', [\App\Http\Controllers\Resident\ConversationController::class, 'store'])->name('conversations.store');
+
+    Route::get('/messages/unread-count', [\App\Http\Controllers\Resident\MessageCounterController::class, 'getUnreadCount'])->name('messages.unread-count');
+    Route::get('/messages/unread-list', [\App\Http\Controllers\Resident\MessageCounterController::class, 'getUnreadMessagesList'])->name('messages.unread-list');
     
     Route::get('/request/create/{documentType}', [DocumentRequestController::class, 'create'])->name('request.create');
     // ADD this new generic route for storing the request
