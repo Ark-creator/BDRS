@@ -67,6 +67,10 @@ Route::middleware(['auth','verified', 'can:be-resident'])->prefix('residents')->
     Route::post('/contact-us', [ContactUsController::class, 'store'])->name('contact.store');
     Route::post('/request/solo-parent', [DocumentRequestController::class, 'storeSoloParent'])->name('request.solo-parent.store');
 
+    // Messages routes
+    Route::get('/conversations', [\App\Http\Controllers\Resident\ConversationController::class, 'index'])->name('conversations.index');
+    Route::post('/conversations', [\App\Http\Controllers\Resident\ConversationController::class, 'store'])->name('conversations.store');
+    
     Route::get('/request/create/{documentType}', [DocumentRequestController::class, 'create'])->name('request.create');
     // ADD this new generic route for storing the request
     Route::post('/request', [DocumentRequestController::class, 'store'])->name('request.store');

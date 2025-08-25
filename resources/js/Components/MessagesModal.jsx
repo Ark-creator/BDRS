@@ -3,12 +3,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X, Send, ArrowLeft } from 'lucide-react';
+import axios from 'axios'; // 👈 Import axios
+import { route } from 'ziggy-js'; // 👈 Import ziggy
 
-const initialMessages = [
-    { id: 1, text: "Hello! Paano po kami makakatulong sa inyo ngayon?", sender: 'admin' },
-    { id: 2, text: "Hi, gusto ko lang po magtanong tungkol sa status ng aking request.", sender: 'user' },
-    { id: 3, text: "Sige po. Paki-provide lang po ang inyong request tracking number.", sender: 'admin' },
-];
+// Remove initialMessages array, we will get data from props
 
 const Backdrop = ({ onClick }) => (
     <motion.div
@@ -20,26 +18,52 @@ const Backdrop = ({ onClick }) => (
     />
 );
 
-export default function MessagesModal({ onClose }) {
-    const [messages, setMessages] = useState(initialMessages);
+// 👇 --- ACCEPT NEW PROPS --- 👇
+export default function MessagesModal({ onClose, initialConversation, onNewMessage }) {
+    const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef(null);
+
+    // 👇 --- UPDATE STATE WHEN PROPS CHANGE --- 👇
+    useEffect(() => {
+        setMessages(initialConversation || []);
+    }, [initialConversation]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const handleSendMessage = (e) => {
+    // 👇 --- REWRITE SEND MESSAGE LOGIC --- 👇
+    const handleSendMessage = async (e) => {
         e.preventDefault();
-        if (newMessage.trim() === '') return;
-        const userMessage = { id: messages.length + 1, text: newMessage, sender: 'user' };
-        setMessages([...messages, userMessage]);
+        const trimmedMessage = newMessage.trim();
+        if (trimmedMessage === '') return;
+
+        const optimisticMessage = {
+            id: `temp-${Date.now()}`,
+            text: trimmedMessage,
+            sender: 'user',
+        };
+
+        // Optimistically update the UI for a snappy feel
+        setMessages(prevMessages => [...prevMessages, optimisticMessage]);
         setNewMessage('');
-        setTimeout(() => {
-            const adminReply = { id: messages.length + 2, text: "Salamat sa iyong mensahe. Babalikan ka namin sa lalong madaling panahon.", sender: 'admin' };
-            setMessages(prevMessages => [...prevMessages, adminReply]);
-        }, 1500);
+
+        try {
+            // Post the new message to the backend
+            await axios.post(route('residents.conversations.store'), {
+                message: trimmedMessage,
+            });
+            // On success, trigger a refetch of all messages from the parent
+            onNewMessage();
+        } catch (error) {
+            console.error("Failed to send message:", error);
+            // Optional: Handle error, maybe show a "failed to send" indicator
+            // and revert the optimistic update
+            setMessages(messages); // Revert to original messages before the optimistic update
+        }
     };
+
 
     const modalVariants = {
         hidden: { opacity: 0, y: "100%" },
@@ -70,7 +94,7 @@ export default function MessagesModal({ onClose }) {
             >
                 <div className="flex items-center justify-between p-4 bg-blue-600 text-white flex-shrink-0 sm:rounded-t-2xl">
                     <div className="flex items-center gap-3">
-                         <button onClick={onClose} className="p-1 rounded-full hover:bg-blue-700 transition-colors sm:hidden">
+                        <button onClick={onClose} className="p-1 rounded-full hover:bg-blue-700 transition-colors sm:hidden">
                             <ArrowLeft size={22} />
                         </button>
                         <h3 className="font-bold text-lg">Support Messages</h3>
@@ -91,7 +115,7 @@ export default function MessagesModal({ onClose }) {
                                 transition={{ duration: 0.3 }}
                             >
                                 <div
-                                    className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow-sm ${
+                                    className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm shadow-sm whitespace-pre-wrap ${
                                         msg.sender === 'user'
                                             ? 'bg-blue-500 text-white rounded-br-none'
                                             : 'bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-none'

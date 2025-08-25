@@ -5,6 +5,7 @@ import { router } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Bot, X, HelpCircle } from 'lucide-react';
 import { route } from 'ziggy-js';
+import axios from 'axios'; // 👈 Import axios
 
 const MessagesModal = lazy(() => import('./MessagesModal'));
 
@@ -23,15 +24,41 @@ export default function FloatingActionButton() {
     const [isOpen, setIsOpen] = useState(false);
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+    
+    // 👇 --- NEW STATE --- 👇
+    const [conversations, setConversations] = useState([]);
+    const [isLoadingMessages, setIsLoadingMessages] = useState(false);
+    
     const constraintsRef = useRef(null);
-
-    // <-- BAGONG STATE para sa pwesto ng menu
     const [menuPosition, setMenuPosition] = useState({
         positionClasses: 'bottom-full mb-3 right-0',
         originClass: 'origin-bottom-right',
     });
 
-    // ... (Walang binago sa useEffect hooks, i-keep lang sila)
+    // 👇 --- NEW FUNCTION TO FETCH DATA --- 👇
+    const fetchConversations = async () => {
+        if (!isMessagesOpen) return; // Only fetch if modal is going to be open
+        setIsLoadingMessages(true);
+        try {
+            const response = await axios.get(route('residents.conversations.index'));
+            setConversations(response.data);
+        } catch (error) {
+            console.error("Failed to fetch conversations:", error);
+            // Optionally, show an error message to the user
+        } finally {
+            setIsLoadingMessages(false);
+        }
+    };
+
+    // 👇 --- useEffect TO TRIGGER FETCH --- 👇
+    useEffect(() => {
+        if (isMessagesOpen) {
+            fetchConversations();
+        }
+    }, [isMessagesOpen]);
+
+
+    // --- No changes to other hooks or functions ---
     useEffect(() => {
         window.chatbaseConfig = { chatId: "JpK2sH4Fo9CfxCa8CTn70", openOnLoad: false };
         if (!window.chatbase || window.chatbase("getState") !== "initialized") {
@@ -61,46 +88,24 @@ export default function FloatingActionButton() {
         observer.observe(document.body, { childList: true, subtree: true });
         return () => observer.disconnect();
     }, []);
-
-    // ... (Walang binago sa mga toggle functions, i-keep lang sila)
     const toggleMenu = () => setIsOpen(!isOpen);
     const toggleMessages = () => setIsMessagesOpen(!isMessagesOpen);
     const toggleChatbot = () => { if (window.chatbase) { if (isChatOpen) { window.chatbase('close'); setIsChatOpen(false); } else { window.chatbase('open'); setIsChatOpen(true); setIsOpen(false); } } else { console.error("Chatbase is not available."); } };
     const handleMainButtonClick = () => { if (isMessagesOpen) { setIsMessagesOpen(false); return; } if (isChatOpen) { toggleChatbot(); } else { toggleMenu(); } };
     const handleTourClick = () => { router.get(route('residents.home', { action: 'tour' })); setIsOpen(false); };
-
-    // <-- BAGONG FUNCTION para i-calculate ang pwesto ng menu
     const handleDragEnd = (event, info) => {
         const fabElement = event.target.closest('.draggable-fab');
         if (!fabElement) return;
-
         const fabRect = fabElement.getBoundingClientRect();
         const y = fabRect.top + fabRect.height / 2;
         const x = fabRect.left + fabRect.width / 2;
         const viewportHeight = window.innerHeight;
         const viewportWidth = window.innerWidth;
-
         let newPosition = {};
-
-        // Vertical check (opens down if on top half, up if on bottom half)
-        if (y < viewportHeight / 2) {
-            newPosition.positionClasses = 'top-full mt-3';
-        } else {
-            newPosition.positionClasses = 'bottom-full mb-3';
-        }
-
-        // Horizontal check (aligns left/right)
-        if (x < viewportWidth / 2) {
-            newPosition.positionClasses += ' left-0';
-            newPosition.originClass = (y < viewportHeight / 2) ? 'origin-top-left' : 'origin-bottom-left';
-        } else {
-            newPosition.positionClasses += ' right-0';
-            newPosition.originClass = (y < viewportHeight / 2) ? 'origin-top-right' : 'origin-bottom-right';
-        }
-
+        if (y < viewportHeight / 2) { newPosition.positionClasses = 'top-full mt-3'; } else { newPosition.positionClasses = 'bottom-full mb-3';}
+        if (x < viewportWidth / 2) { newPosition.positionClasses += ' left-0'; newPosition.originClass = (y < viewportHeight / 2) ? 'origin-top-left' : 'origin-bottom-left'; } else { newPosition.positionClasses += ' right-0'; newPosition.originClass = (y < viewportHeight / 2) ? 'origin-top-right' : 'origin-bottom-right'; }
         setMenuPosition(newPosition);
     };
-
     const listContainerVariants = { opened: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 25, when: "beforeChildren", staggerChildren: 0.07 } }, closed: { opacity: 0, scale: 0.9, y: 20, transition: { when: "afterChildren", duration: 0.25 } } };
     const listItemVariants = { opened: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }, closed: { opacity: 0, x: -20, transition: { duration: 0.2 } } };
     const actionButtons = [
@@ -119,24 +124,28 @@ export default function FloatingActionButton() {
             <AnimatePresence>
                 {isMessagesOpen && (
                     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-black/20 z-[2147483647]"><div className="text-white font-bold">Loading Chat...</div></div>}>
-                        <MessagesModal onClose={() => setIsMessagesOpen(false)} />
+                        {/* 👇 --- PASS PROPS TO THE MODAL --- 👇 */}
+                        <MessagesModal
+                            onClose={() => setIsMessagesOpen(false)}
+                            initialConversation={conversations}
+                            onNewMessage={fetchConversations} // Pass the function to allow child to trigger a refetch
+                        />
                     </Suspense>
                 )}
             </AnimatePresence>
 
             <motion.div
-                className="fixed bottom-6 right-6 z-[2147483647] cursor-grab draggable-fab" // <-- Nagdagdag ng class name
+                className="fixed bottom-6 right-6 z-[2147483647] cursor-grab draggable-fab"
                 drag
                 dragConstraints={constraintsRef}
                 dragMomentum={false}
                 onDragStart={() => isOpen && setIsOpen(false)}
-                onDragEnd={handleDragEnd} // <-- Gagamitin ang bagong function
+                onDragEnd={handleDragEnd}
                 whileDrag={{ scale: 1.05, cursor: 'grabbing' }}
             >
                 <AnimatePresence>
                     {isOpen && !isAnyOverlayOpen && (
                         <motion.div
-                            // <-- DITO GINAMIT ANG DYNAMIC CLASSES
                             className={`absolute w-64 bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden border border-slate-200/50 dark:border-slate-700/50 ${menuPosition.positionClasses} ${menuPosition.originClass}`}
                             initial="closed"
                             animate="opened"
