@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\AdminMessageSent; // 👈 PALITAN ITO
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
-use App\Models\Reply;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Auth;
 
 class MessagesController extends Controller
 {
@@ -48,15 +48,17 @@ class MessagesController extends Controller
             'reply_message' => 'required|string',
         ]);
 
-        // Create the reply
-        $message->replies()->create([
-            'user_id' => Auth::id(), // The logged-in admin
+        $newReply = $message->replies()->create([
+            'user_id' => Auth::id(),
             'message' => $validated['reply_message'],
         ]);
 
-        // Optional: Update the original message status to 'replied'
         $message->update(['status' => 'replied']);
 
-        return redirect()->route('admin.messages')->with('success', 'Reply sent successfully!');
+        $newReply->load('user');
+        // 👇 GAMITIN ANG BAGONG EVENT
+        broadcast(new AdminMessageSent($newReply))->toOthers();
+
+        return redirect()->route('admin.messages');
     }
 }

@@ -84,6 +84,7 @@ export default function Messages() {
         }
     }, [chatHistory]);
     
+    // Real-time listener for new messages from residents
     useEffect(() => {
         if (!activeConversationId) return;
 
@@ -93,12 +94,17 @@ export default function Messages() {
         const threadId = activeConv.thread[0].id;
         const channel = window.Echo.private(`conversation.${threadId}`);
 
-        channel.listen('MessageSent', () => {
-            router.reload({ preserveState: true, preserveScroll: true });
+        // Listen for the specific event from residents
+        channel.listen('ResidentMessageSent', (event) => {
+            router.reload({
+                preserveState: true,
+                preserveScroll: true,
+            });
         });
 
+        // Cleanup function to leave the channel
         return () => {
-            channel.stopListening('MessageSent');
+            channel.stopListening('ResidentMessageSent');
             window.Echo.leaveChannel(`conversation.${threadId}`);
         };
     }, [activeConversationId, conversations]);
@@ -107,7 +113,6 @@ export default function Messages() {
         setActiveConversationId(conversation.user.id);
         const unreadMessage = conversation.thread.find(message => message.status === 'unread' || message.replies.some(r => r.status === 'unread' && r.user_id !== auth.user.id));
         if (unreadMessage) {
-            // Use the correct route from your web.php for marking as read
             router.post(route('admin.messages.mark-as-read', unreadMessage.id), {}, { preserveScroll: true, preserveState: true });
         }
     };

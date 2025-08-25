@@ -1,7 +1,8 @@
 <?php
 
-use App\Models\ContactMessage; // 👈 THE FIX: Add this line to import the model
+use App\Models\ContactMessage;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Support\Facades\Gate; // 👈 THE FIX: Add this line
 
 /*
 |--------------------------------------------------------------------------
@@ -18,14 +19,12 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
-// Add this authorization logic for the admin channel
 Broadcast::channel('admin-requests', function ($user) {
     return $user && ($user->can('be-admin') || $user->can('be-super-admin'));
 });
 
 /**
- * Authorize that the user can listen to a specific conversation channel.
- * Only the original sender (resident) or an admin can listen.
+ * Authorize that a user can listen to a specific conversation channel.
  */
 Broadcast::channel('conversation.{contactMessageId}', function ($user, $contactMessageId) {
     // Check if the user is an admin or super_admin. They can access any conversation.

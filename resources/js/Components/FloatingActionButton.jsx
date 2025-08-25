@@ -1,11 +1,9 @@
-// src/components/FloatingActionButton.js
-
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { router } from '@inertiajs/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Bot, X, HelpCircle } from 'lucide-react';
 import { route } from 'ziggy-js';
-import axios from 'axios'; // 👈 Import axios
+import axios from 'axios';
 
 const MessagesModal = lazy(() => import('./MessagesModal'));
 
@@ -25,8 +23,8 @@ export default function FloatingActionButton() {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [isMessagesOpen, setIsMessagesOpen] = useState(false);
     
-    // 👇 --- NEW STATE --- 👇
     const [conversations, setConversations] = useState([]);
+    const [threadId, setThreadId] = useState(null);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     
     const constraintsRef = useRef(null);
@@ -35,30 +33,26 @@ export default function FloatingActionButton() {
         originClass: 'origin-bottom-right',
     });
 
-    // 👇 --- NEW FUNCTION TO FETCH DATA --- 👇
     const fetchConversations = async () => {
-        if (!isMessagesOpen) return; // Only fetch if modal is going to be open
+        if (!isMessagesOpen) return;
         setIsLoadingMessages(true);
         try {
             const response = await axios.get(route('residents.conversations.index'));
-            setConversations(response.data);
+            setConversations(response.data.messages);
+            setThreadId(response.data.thread_id);
         } catch (error) {
             console.error("Failed to fetch conversations:", error);
-            // Optionally, show an error message to the user
         } finally {
             setIsLoadingMessages(false);
         }
     };
 
-    // 👇 --- useEffect TO TRIGGER FETCH --- 👇
     useEffect(() => {
         if (isMessagesOpen) {
             fetchConversations();
         }
     }, [isMessagesOpen]);
 
-
-    // --- No changes to other hooks or functions ---
     useEffect(() => {
         window.chatbaseConfig = { chatId: "JpK2sH4Fo9CfxCa8CTn70", openOnLoad: false };
         if (!window.chatbase || window.chatbase("getState") !== "initialized") {
@@ -79,6 +73,7 @@ export default function FloatingActionButton() {
         if (document.readyState === "complete") { loadScript(); }
         else { window.addEventListener("load", loadScript); return () => window.removeEventListener("load", loadScript); }
     }, []);
+
     useEffect(() => {
         const launcherId = 'chatbase-bubble-button';
         const observer = new MutationObserver(() => {
@@ -88,12 +83,13 @@ export default function FloatingActionButton() {
         observer.observe(document.body, { childList: true, subtree: true });
         return () => observer.disconnect();
     }, []);
+
     const toggleMenu = () => setIsOpen(!isOpen);
     const toggleMessages = () => setIsMessagesOpen(!isMessagesOpen);
-    const toggleChatbot = () => { if (window.chatbase) { if (isChatOpen) { window.chatbase('close'); setIsChatOpen(false); } else { window.chatbase('open'); setIsChatOpen(true); setIsOpen(false); } } else { console.error("Chatbase is not available."); } };
+    const toggleChatbot = () => { if (window.chatbase) { if (isChatOpen) { window.chatbase('close'); } else { window.chatbase('open'); setIsChatOpen(true); setIsOpen(false); } } else { console.error("Chatbase is not available."); } };
     const handleMainButtonClick = () => { if (isMessagesOpen) { setIsMessagesOpen(false); return; } if (isChatOpen) { toggleChatbot(); } else { toggleMenu(); } };
     const handleTourClick = () => { router.get(route('residents.home', { action: 'tour' })); setIsOpen(false); };
-    const handleDragEnd = (event, info) => {
+    const handleDragEnd = (event) => {
         const fabElement = event.target.closest('.draggable-fab');
         if (!fabElement) return;
         const fabRect = fabElement.getBoundingClientRect();
@@ -106,6 +102,7 @@ export default function FloatingActionButton() {
         if (x < viewportWidth / 2) { newPosition.positionClasses += ' left-0'; newPosition.originClass = (y < viewportHeight / 2) ? 'origin-top-left' : 'origin-bottom-left'; } else { newPosition.positionClasses += ' right-0'; newPosition.originClass = (y < viewportHeight / 2) ? 'origin-top-right' : 'origin-bottom-right'; }
         setMenuPosition(newPosition);
     };
+
     const listContainerVariants = { opened: { opacity: 1, scale: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 25, when: "beforeChildren", staggerChildren: 0.07 } }, closed: { opacity: 0, scale: 0.9, y: 20, transition: { when: "afterChildren", duration: 0.25 } } };
     const listItemVariants = { opened: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }, closed: { opacity: 0, x: -20, transition: { duration: 0.2 } } };
     const actionButtons = [
@@ -124,11 +121,11 @@ export default function FloatingActionButton() {
             <AnimatePresence>
                 {isMessagesOpen && (
                     <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-black/20 z-[2147483647]"><div className="text-white font-bold">Loading Chat...</div></div>}>
-                        {/* 👇 --- PASS PROPS TO THE MODAL --- 👇 */}
                         <MessagesModal
                             onClose={() => setIsMessagesOpen(false)}
                             initialConversation={conversations}
-                            onNewMessage={fetchConversations} // Pass the function to allow child to trigger a refetch
+                            threadId={threadId}
+                            onNewMessage={fetchConversations}
                         />
                     </Suspense>
                 )}

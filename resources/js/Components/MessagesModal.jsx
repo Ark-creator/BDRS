@@ -15,11 +15,10 @@ const Backdrop = ({ onClick }) => (
     />
 );
 
-export default function MessagesModal({ onClose, initialConversation, onNewMessage }) {
+export default function MessagesModal({ onClose, initialConversation, threadId, onNewMessage }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef(null);
-    const { auth } = usePage().props;
 
     useEffect(() => {
         setMessages(initialConversation || []);
@@ -31,31 +30,23 @@ export default function MessagesModal({ onClose, initialConversation, onNewMessa
     
     // Real-time listener for admin replies
     useEffect(() => {
-        if (!initialConversation || initialConversation.length === 0 || !auth.user) {
+        if (!threadId) {
             return;
         }
 
-        // We need to find the parent thread ID to listen to the correct channel.
-        // We find the first message of type 'contact' to get its ID.
-        const originalMessage = initialConversation.find(msg => msg.id.startsWith('contact-'));
-        if (!originalMessage) return;
-
-        const threadId = originalMessage.id.split('-')[1];
-        if (!threadId) return;
-
         const channel = window.Echo.private(`conversation.${threadId}`);
 
-        channel.listen('MessageSent', (event) => {
-            // When a new message arrives from the admin, call the parent's refetch function
+        // Listen for the specific event from admins
+        channel.listen('AdminMessageSent', (event) => {
             onNewMessage();
         });
 
         // Cleanup function to leave the channel
         return () => {
-            channel.stopListening('MessageSent');
+            channel.stopListening('AdminMessageSent');
             window.Echo.leaveChannel(`conversation.${threadId}`);
         };
-    }, [initialConversation, auth.user, onNewMessage]);
+    }, [threadId, onNewMessage]);
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
@@ -78,11 +69,10 @@ export default function MessagesModal({ onClose, initialConversation, onNewMessa
             onNewMessage();
         } catch (error) {
             console.error("Failed to send message:", error);
-            // Revert the optimistic update on failure
             setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
         }
     };
-
+    
     const modalVariants = {
         hidden: { opacity: 0, y: "100%" },
         visible: { opacity: 1, y: 0 },
