@@ -4,20 +4,21 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\HistoryController;
 use App\Http\Controllers\Resident\HomeController;
 use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Auth\ValidationController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Resident\ContactUsController;
 use App\Http\Controllers\Admin\DocumentsListController;
+use App\Http\Controllers\Admin\MessagesCounterController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
 use App\Http\Controllers\Admin\DocumentGenerationController;
-use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Resident\DocumentRequestController;
-use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
-use App\Http\Controllers\Admin\HistoryController;
 
-use App\Http\Controllers\Admin\MessagesCounterController;
+use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+use App\Http\Controllers\SuperAdmin\UserVerificationController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 
 
@@ -103,6 +104,7 @@ Route::middleware(['auth','verified', 'can:be-resident'])->prefix('residents')->
 
 Route::middleware(['auth', 'verified', 'can:be-admin'])->prefix('admin')->name('admin.')->group(function () {
     // routes/web.php (within your admin middleware group)
+    Route::post('/history/{archive}/restore', [HistoryController::class, 'restore'])->name('history.restore');
 
 Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'claimByVoucher'])
      ->name('requests.claim-by-voucher');
@@ -162,6 +164,9 @@ Route::middleware(['auth', 'verified', 'can:be-super-admin'])
     
     // ADD THIS NEW LINE: This route handles updating the user's details (name, email, etc.) from the edit modal.
     Route::patch('/users/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
+
+    Route::patch('/users/{user}/verify', [SuperAdminUserController::class, 'updateVerificationStatus'])->name('users.verify');
+
 
 });
 

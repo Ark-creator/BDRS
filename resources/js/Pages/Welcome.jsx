@@ -37,6 +37,7 @@ const content = {
         navLinks: [
             { name: "How It Works", href: "#how-it-works" },
             { name: "Services", href: "#services" },
+            { name: "Officials", href: "#officials" },
             { name: "FAQ", href: "#faq" },
         ],
         howItWorksTitle: "How It Works",
@@ -79,6 +80,7 @@ const content = {
         navLinks: [
             { name: "Paano Ito Gumagana", href: "#how-it-works" },
             { name: "Mga Serbisyo", href: "#services" },
+            { name: "Mga Opisyal", href: "#officials" },
             { name: "FAQ", href: "#faq" },
         ],
         howItWorksTitle: "Paano Ito Gumagana?",
@@ -231,6 +233,30 @@ export default function Welcome({ auth }) {
         hidden: {},
         visible: { transition: { staggerChildren: 0.2 } },
     };
+    
+    // --- Animation Variants for Officials Section ---
+    const sectionVariants = {
+        hidden: {},
+        visible: {
+            transition: {
+                staggerChildren: 0.2,
+                delayChildren: 0.1,
+            }
+        }
+    };
+
+    const cardVariants = {
+        hidden: { opacity: 0, y: 50 },
+        visible: {
+            opacity: 1,
+            y: 0,
+            transition: {
+                duration: 0.6,
+                ease: "easeOut"
+            }
+        }
+    };
+    // --- End of Animation Variants ---
 
     return (
         <>
@@ -371,7 +397,7 @@ export default function Welcome({ auth }) {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </header>              
+                </header>                      
                 
                 <main className="relative z-10">
                     <div className="min-h-screen flex items-center relative overflow-hidden">
@@ -412,25 +438,23 @@ export default function Welcome({ auth }) {
                                 <img src="/images/solid.gif" className="w-full h-auto rounded-xl" alt="Solid GIF" />
                                 </motion.div> */}
                                 <motion.div
-  className="w-full mt-10 md:mt-0"
-  initial={{ opacity: 0, scale: 0.9 }}
-  whileInView={{ opacity: 1, scale: 1 }}
-  viewport={{ once: true }}
-  transition={{ duration: 0.5, delay: 0.2 }}
->
-  <video
-    src="/images/solid.mp4"
-    className="w-full h-auto rounded-xl"
-    autoPlay
-    loop
-    muted
-    playsInline
-  >
-    Your browser does not support the video tag.
-  </video>
-</motion.div>
-
-
+                                className="w-full mt-10 md:mt-0"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.5, delay: 0.2 }}
+                                >
+                                <video
+                                    src="/images/solid.mp4"
+                                    className="w-full h-auto rounded-xl"
+                                    autoPlay
+                                    loop
+                                    muted
+                                    playsInline
+                                >
+                                    Your browser does not support the video tag.
+                                </video>
+                                </motion.div>
                         </div>
                     </div>
 
@@ -452,16 +476,16 @@ export default function Welcome({ auth }) {
                             </div>
                         </div>
                     </section>
-
+                                        
                     <section id="services" className="relative py-20 sm:py-28 overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-full">
                             <svg className="absolute -top-40 -left-20 w-[80rem] h-auto text-sky-100/50 dark:text-blue-900/20" width="1280" height="1280" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1096.5 528c-303 62-436 220.5-436 436s133 374 436 436 436-133 436-436c0-215.5-133-374-436-436Zm-872 0C-88.5 590 44.5 748.5 44.5 964s-133 374-436 436-436-133-436-436c0-215.5 133-374 436-436Z" fill="currentColor"/></svg>
                         </div>
                         <div className="relative max-w-7xl mx-auto px-6 text-center">
                              <motion.div initial="hidden" whileInView="visible" variants={staggerContainer} viewport={{ once: true }}>
-                                <motion.h2 variants={slideInUp} className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">{t.servicesTitle}</motion.h2>
-                                <motion.p variants={slideInUp} className="mt-4 text-lg text-slate-600 dark:text-slate-400">{t.servicesSubtitle}</motion.p>
-                            </motion.div>
+                                 <motion.h2 variants={slideInUp} className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">{t.servicesTitle}</motion.h2>
+                                 <motion.p variants={slideInUp} className="mt-4 text-lg text-slate-600 dark:text-slate-400">{t.servicesSubtitle}</motion.p>
+                             </motion.div>
                             <div className="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
                                 <ServiceCard icon={<FileText className="text-blue-600 dark:text-blue-400"/>} title={t.service1Title} description={t.service1Desc} />
                                 <ServiceCard icon={<Megaphone className="text-blue-600 dark:text-blue-400"/>} title={t.service2Title} description={t.service2Desc} />
@@ -470,7 +494,40 @@ export default function Welcome({ auth }) {
                         </div>
                     </section>
 
-                    <section id="faq" className="py-20 sm:py-28 bg-white dark:bg-slate-900/70">
+                    {/* MEET OUR OFFICIALS SECTION */}
+                    <section id="officials" className="bg-white dark:bg-slate-900/70">
+                        <motion.div 
+                            className="py-20 sm:py-28"
+                            variants={sectionVariants}
+                            initial="hidden"
+                            whileInView="visible"
+                            viewport={{ once: true, amount: 0.2 }}
+                        >
+                            <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                                <h2 className="text-3xl font-bold text-center text-slate-900 dark:text-white sm:text-4xl mb-16">Meet Our Officials</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                                    <motion.div className="text-center group" variants={cardVariants}>
+                                        <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/mayorjoy.png" alt="City Mayor" />
+                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Joy Pascual</h3>
+                                        <p className="text-blue-600 dark:text-blue-400 font-semibold">Gapan City Mayor</p>
+                                    </motion.div>
+                                    <motion.div className="text-center group" variants={cardVariants}>
+                                        <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/congemeng.png" alt="Barangay Captain" />
+                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Emeng Pascual</h3>
+                                        <p className="text-blue-600 dark:text-blue-400 font-semibold">Nueva Ecija 4th <br />District Congressman</p>
+                                    </motion.div>
+                                    <motion.div className="text-center group" variants={cardVariants}>
+                                        <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/max.png" alt="Barangay Secretary" />
+                                        <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Max Pascual</h3>
+                                        <p className="text-blue-600 dark:text-blue-400 font-semibold">Gapan City Vice Mayor</p>
+                                    </motion.div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </section>
+                    {/* END OF OFFICIALS SECTION */}
+
+                    <section id="faq" className="py-20 sm:py-28 bg-sky-50 dark:bg-slate-900">
                         <div className="max-w-3xl mx-auto px-6">
                             <motion.div 
                                 initial="hidden" 

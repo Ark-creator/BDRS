@@ -187,7 +187,7 @@ export default function Request() {
     });
 
     const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
-    const actionStatusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Claimed', 'Rejected'];
+    const actionStatusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Rejected'];
 
     // --- REAL-TIME LISTENERS ---
     useEffect(() => {

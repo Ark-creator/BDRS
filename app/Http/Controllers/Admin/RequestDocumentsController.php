@@ -17,7 +17,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RequestDocumentsController extends Controller
 {
-    public function index(Request $request): Response
+  public function index(Request $request): Response
     {
         $filters = $request->only('search', 'status');
         $documentRequests = DocumentRequest::query()
@@ -147,19 +147,35 @@ class RequestDocumentsController extends Controller
      * A private method to handle the archiving of a document request.
      * This can be called from anywhere within this controller.
      */
+    /**
+     * --- MODIFIED HELPER METHOD ---
+     * This method now updates the original request's status AND creates an archive record,
+     * but it NO LONGER deletes the original request.
+     */
     private function archiveRequest(DocumentRequest $documentRequest, string $status, ?string $remarks = null): void
     {
+        // 1. Create the immutable history record
         ImmutableDocumentsArchiveHistory::create([
             'original_request_id' => $documentRequest->id,
             'user_id' => $documentRequest->user_id,
             'document_type_id' => $documentRequest->document_type_id,
             'form_data' => $documentRequest->form_data,
             'status' => $status,
-            'admin_remarks' => $remarks, // The remarks are correctly saved here
+            'admin_remarks' => $remarks,
             'processed_by' => auth()->id(),
             'original_created_at' => $documentRequest->created_at,
+            // Copy over payment details if they exist
+            'payment_amount' => $documentRequest->payment_amount,
+            'payment_receipt_path' => $documentRequest->payment_receipt_path,
+            'payment_status' => $documentRequest->payment_status,
+            'paid_at' => $documentRequest->paid_at,
         ]);
 
-        $documentRequest->delete();
+        // 2. Update the status on the original request instead of deleting it
+        $documentRequest->update([
+            'status' => $status,
+            'admin_remarks' => $remarks,
+            'processed_by' => auth()->id(),
+        ]);
     }
 }

@@ -6,7 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import Footer from '@/Components/Residents/Footer';
 import Announcements from '@/Components/Residents/Announcements';
 import { motion } from 'framer-motion';
-import { FileText, ArrowRight } from 'lucide-react';
+import { FileText, ArrowRight, ShieldAlert } from 'lucide-react'; // Added ShieldAlert for the banner
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
@@ -18,9 +18,17 @@ const DocumentIcon = ({ documentName }) => {
 export default function Home({ auth, documentTypes = [], announcements = [] }) {
     const [showRequestCards, setShowRequestCards] = useState(false);
     const documentsSectionRef = useRef(null);
-    const { url } = usePage();
+    const { url, flash } = usePage();
+    const { user } = auth; // Destructure user from auth prop
+    
+    // Determine if the user is verified using the accessor from the User model
+    const isVerified = user.is_verified;
 
     const handleRequestNowClick = () => {
+        // Only allow verified users to proceed
+        if (!isVerified) {
+            return;
+        }
         setShowRequestCards(true);
         setTimeout(() => {
             documentsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -42,7 +50,7 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
                     showProgress: true,
                     animate: true,
                     steps: [
-                      // walang gagalaw nito si ace lang{ element: '#how-it-works', popover: { title: 'How It Works', description: 'You can always review the 3-step process here if you need a reminder.' } },  
+                        // walang gagalaw nito si ace lang{ element: '#how-it-works', popover: { title: 'How It Works', description: 'You can always review the 3-step process here if you need a reminder.' } },  
                         { element: '#request-document-button', popover: { title: 'Request a Document', description: 'Click here to reveal the document selection section below.' } },
                         { element: '#document-selection', popover: { title: 'Select a Document', description: 'Choose the type of document you want to request from the available options.' } },
                         { element: '#document-card-example', popover: { title: 'Click to Proceed', description: 'Clicking any of these cards will take you to the request form. Please fill it out accurately.' } }
@@ -62,6 +70,25 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
                 <main>
                     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
                         <Announcements announcements={announcements} />
+
+                        {/* New: Verification Status Alert Banner */}
+                        {!isVerified && (
+                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 rounded-r-lg shadow-md">
+                                <div className="flex">
+                                    <div className="flex-shrink-0">
+                                        <ShieldAlert className="h-6 w-6 text-yellow-500" />
+                                    </div>
+                                    <div className="ml-3">
+                                        <h3 className="text-md font-bold text-yellow-800">Account Verification Required</h3>
+                                        <div className="mt-2 text-sm text-yellow-700">
+                                            <p>Your account is not yet verified. You must be verified by an admin to request documents. Please wait for the admin to approve your uploaded credentials.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {/* End of Verification Status Alert */}
+
                         <div className="py-16 sm:py-24">
                             <div className="bg-slate-50" id="how-it-works">
                                 <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -107,14 +134,20 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
                                 <button
                                     id="request-document-button"
                                     onClick={handleRequestNowClick}
-                                    className="inline-flex items-center gap-2 bg-blue-600 text-white font-semibold px-8 py-4 rounded-lg shadow-md hover:bg-blue-700 transition-transform hover:scale-105"
+                                    disabled={!isVerified}
+                                    className={`inline-flex items-center gap-2 font-semibold px-8 py-4 rounded-lg shadow-md transition-transform hover:scale-105 
+                                        ${isVerified 
+                                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        }`}
                                 >
                                     Request a Document Now
                                 </button>
                             </div>
                         </div>
 
-                        {showRequestCards && (
+                        {/* Only show document cards if user is verified AND has clicked the button */}
+                        {isVerified && showRequestCards && (
                             <motion.div
                                 ref={documentsSectionRef}
                                 id="document-selection"

@@ -50,6 +50,10 @@ class DocumentRequestController extends Controller
      */
     public function create(DocumentType $documentType)
     {
+        $user = Auth::user();
+    if (!$user->is_verified) {
+        return redirect()->route('residents.home')->with('error', 'Your account must be verified to request documents. Please wait for an admin to approve your credentials.');
+    }
         $componentName = Str::studly($documentType->name);
         $viewPath = 'Residents/papers/' . $componentName;
 
@@ -66,6 +70,11 @@ class DocumentRequestController extends Controller
      */
     public function store(Request $request)
     {
+
+         $user = Auth::user();
+    if (!$user->is_verified) {
+        return back()->with('error', 'Your account must be verified to submit a request.');
+    }
         // 1. Validate common fields required for logic
         $commonValidated = $request->validate([
             'document_type_id' => 'required|exists:document_types,id',
