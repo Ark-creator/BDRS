@@ -4,7 +4,7 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\URL; // Siguraduhing naka-import ito
 use App\Models\User;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 
@@ -25,10 +25,11 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
-        // 🔒 Force HTTPS when using ngrok or any https tunneling
-        // if ($this->app->environment('local')) {
-        //     URL::forceScheme('https');
-        // }
+        // 🔒 Force HTTPS when using ngrok, cloudflared, or any https tunneling
+        // Ito ang idinagdag/in-edit mo para gumana sa Cloudflare Tunnel
+        if ($this->app->environment('local')) {
+            URL::forceScheme('https');
+        }
 
         // Allow super admins to bypass all checks automatically
         Gate::before(function (User $user, string $ability) {

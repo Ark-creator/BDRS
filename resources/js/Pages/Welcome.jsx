@@ -402,11 +402,16 @@ export default function Welcome({ auth }) {
                                     </Link>
                                 </motion.div>
                             </motion.div>
-                             <motion.div className="w-full mt-10 md:mt-0" initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }}>
-                                <video src="/images/solid.mp4" className="w-full h-auto rounded-xl" autoPlay loop muted playsInline>
-                                    Your browser does not support the video tag.
-                                </video>
-                            </motion.div>
+                             <motion.div
+                                className="w-full mt-10 md:mt-0"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                whileInView={{ opacity: 1, scale: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.5, delay: 0.2 }}
+                                >
+                                <img src="/images/solid.gif" className="w-full h-auto rounded-xl" alt="Solid GIF" />
+                                </motion.div>
+
                         </div>
                     </div>
 
