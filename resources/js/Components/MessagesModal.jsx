@@ -1,12 +1,9 @@
-// src/components/MessagesModal.js
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { X, Send, ArrowLeft } from 'lucide-react';
-import axios from 'axios'; // 👈 Import axios
-import { route } from 'ziggy-js'; // 👈 Import ziggy
-
-// Remove initialMessages array, we will get data from props
+import axios from 'axios';
+import { route } from 'ziggy-js';
+import { usePage } from '@inertiajs/react';
 
 const Backdrop = ({ onClick }) => (
     <motion.div
@@ -18,13 +15,12 @@ const Backdrop = ({ onClick }) => (
     />
 );
 
-// 👇 --- ACCEPT NEW PROPS --- 👇
 export default function MessagesModal({ onClose, initialConversation, onNewMessage }) {
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
     const messagesEndRef = useRef(null);
+    const { auth } = usePage().props;
 
-    // 👇 --- UPDATE STATE WHEN PROPS CHANGE --- 👇
     useEffect(() => {
         setMessages(initialConversation || []);
     }, [initialConversation]);
@@ -32,8 +28,35 @@ export default function MessagesModal({ onClose, initialConversation, onNewMessa
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+    
+    // Real-time listener for admin replies
+    useEffect(() => {
+        if (!initialConversation || initialConversation.length === 0 || !auth.user) {
+            return;
+        }
 
-    // 👇 --- REWRITE SEND MESSAGE LOGIC --- 👇
+        // We need to find the parent thread ID to listen to the correct channel.
+        // We find the first message of type 'contact' to get its ID.
+        const originalMessage = initialConversation.find(msg => msg.id.startsWith('contact-'));
+        if (!originalMessage) return;
+
+        const threadId = originalMessage.id.split('-')[1];
+        if (!threadId) return;
+
+        const channel = window.Echo.private(`conversation.${threadId}`);
+
+        channel.listen('MessageSent', (event) => {
+            // When a new message arrives from the admin, call the parent's refetch function
+            onNewMessage();
+        });
+
+        // Cleanup function to leave the channel
+        return () => {
+            channel.stopListening('MessageSent');
+            window.Echo.leaveChannel(`conversation.${threadId}`);
+        };
+    }, [initialConversation, auth.user, onNewMessage]);
+
     const handleSendMessage = async (e) => {
         e.preventDefault();
         const trimmedMessage = newMessage.trim();
@@ -45,25 +68,20 @@ export default function MessagesModal({ onClose, initialConversation, onNewMessa
             sender: 'user',
         };
 
-        // Optimistically update the UI for a snappy feel
         setMessages(prevMessages => [...prevMessages, optimisticMessage]);
         setNewMessage('');
 
         try {
-            // Post the new message to the backend
             await axios.post(route('residents.conversations.store'), {
                 message: trimmedMessage,
             });
-            // On success, trigger a refetch of all messages from the parent
             onNewMessage();
         } catch (error) {
             console.error("Failed to send message:", error);
-            // Optional: Handle error, maybe show a "failed to send" indicator
-            // and revert the optimistic update
-            setMessages(messages); // Revert to original messages before the optimistic update
+            // Revert the optimistic update on failure
+            setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
         }
     };
-
 
     const modalVariants = {
         hidden: { opacity: 0, y: "100%" },
@@ -83,9 +101,7 @@ export default function MessagesModal({ onClose, initialConversation, onNewMessa
         <>
             <Backdrop onClick={onClose} />
             <motion.div
-                className="fixed inset-0 z-[2147483647] bg-white dark:bg-slate-900 flex flex-col
-                           sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[550px]
-                           sm:rounded-2xl sm:shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700 sm:dark:bg-slate-800"
+                className="fixed inset-0 z-[2147483647] bg-white dark:bg-slate-900 flex flex-col sm:inset-auto sm:bottom-6 sm:right-6 sm:w-[380px] sm:h-[550px] sm:rounded-2xl sm:shadow-2xl sm:border sm:border-slate-200 sm:dark:border-slate-700 sm:dark:bg-slate-800"
                 variants={isMobile ? modalVariants : desktopModalVariants}
                 initial="hidden"
                 animate="visible"

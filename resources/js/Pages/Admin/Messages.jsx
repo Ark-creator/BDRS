@@ -11,14 +11,13 @@ const UserAvatar = ({ user, className = 'w-10 h-10' }) => {
         return (names.length > 1 ? `${names[0][0]}${names[names.length - 1][0]}` : name.substring(0, 2)).toUpperCase();
     };
     const colorKey = (user.email?.charCodeAt(0) || 65) + (user.email?.charCodeAt(1) || 66);
-    // Pinalitan ang 'bg-sky-200 text-sky-800' ng 'bg-blue-200 text-blue-800'
     const colors = ['bg-blue-200 text-blue-800', 'bg-emerald-200 text-emerald-800', 'bg-violet-200 text-violet-800', 'bg-rose-200 text-rose-800', 'bg-amber-200 text-amber-800', 'bg-indigo-200 text-indigo-800'];
     const color = colors[colorKey % colors.length];
 
     return (
         <div className={`${className} rounded-full flex-shrink-0 flex items-center justify-center`}>
             <div className={`w-full h-full flex items-center justify-center rounded-full ${color}`}>
-                 <span className="text-sm font-bold">{getInitials(user.full_name)}</span>
+                <span className="text-sm font-bold">{getInitials(user.full_name)}</span>
             </div>
         </div>
     );
@@ -56,6 +55,7 @@ export default function Messages() {
     }, [initialMessages]);
 
     const subjectsAndFilters = useMemo(() => ['All', 'Unread', 'General Inquiry', 'Feedback', 'Support', 'Complaint'], []);
+
     const filteredConversations = useMemo(() => {
         return conversations
             .filter(conv => {
@@ -64,12 +64,13 @@ export default function Messages() {
             })
             .filter(conv => {
                 if (activeFilter === 'All') return true;
-                if (activeFilter === 'Unread') return conv.thread.some(msg => msg.status === 'unread');
+                if (activeFilter === 'Unread') return conv.thread.some(msg => msg.status === 'unread' || msg.replies.some(r => r.status === 'unread' && r.user_id !== auth.user.id));
                 return conv.thread.some(msg => msg.subject === activeFilter);
             });
-    }, [conversations, activeFilter, searchTerm]);
+    }, [conversations, activeFilter, searchTerm, auth.user.id]);
 
     const activeConversation = useMemo(() => conversations.find(c => c.user.id === activeConversationId), [activeConversationId, conversations]);
+
     const chatHistory = useMemo(() => {
         if (!activeConversation) return [];
         return activeConversation.thread
@@ -82,16 +83,35 @@ export default function Messages() {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [chatHistory]);
+    
+    useEffect(() => {
+        if (!activeConversationId) return;
+
+        const activeConv = conversations.find(c => c.user.id === activeConversationId);
+        if (!activeConv || activeConv.thread.length === 0) return;
+        
+        const threadId = activeConv.thread[0].id;
+        const channel = window.Echo.private(`conversation.${threadId}`);
+
+        channel.listen('MessageSent', () => {
+            router.reload({ preserveState: true, preserveScroll: true });
+        });
+
+        return () => {
+            channel.stopListening('MessageSent');
+            window.Echo.leaveChannel(`conversation.${threadId}`);
+        };
+    }, [activeConversationId, conversations]);
 
     const handleSelectConversation = (conversation) => {
         setActiveConversationId(conversation.user.id);
-        conversation.thread.forEach(message => {
-            if (message.status === 'unread') {
-                router.patch(route('admin.messages.updateStatus', message.id), {}, { preserveScroll: true, preserveState: true });
-            }
-        });
+        const unreadMessage = conversation.thread.find(message => message.status === 'unread' || message.replies.some(r => r.status === 'unread' && r.user_id !== auth.user.id));
+        if (unreadMessage) {
+            // Use the correct route from your web.php for marking as read
+            router.post(route('admin.messages.mark-as-read', unreadMessage.id), {}, { preserveScroll: true, preserveState: true });
+        }
     };
-
+    
     const handleReply = (e) => {
         e.preventDefault();
         if (!activeConversation || !data.reply_message.trim() || processing) return;
@@ -118,7 +138,6 @@ export default function Messages() {
             <Head title="Messages" />
             
             <div className="md:flex md:h-[calc(100vh-4rem)]">
-                {/* --- Left Panel --- */}
                 <div className={`w-full md:w-96 flex-col border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 ${activeConversationId ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
                         <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-4">Inbox</h3>
@@ -133,11 +152,10 @@ export default function Messages() {
                         </div>
                     </div>
                     <div className="flex-grow overflow-y-auto">
-                        {filteredConversations.map((conv) => <ConversationListItem key={conv.user.id} conv={conv} isActive={activeConversationId === conv.user.id} onSelect={handleSelectConversation}/>)}
+                        {filteredConversations.map((conv) => <ConversationListItem key={conv.user.id} conv={conv} authUserId={auth.user.id} isActive={activeConversationId === conv.user.id} onSelect={handleSelectConversation}/>)}
                     </div>
                 </div>
 
-                {/* --- Right Panel --- */}
                 <div className={`flex-1 ${!activeConversationId && 'hidden md:flex md:items-center md:justify-center'}`}>
                     {activeConversation ? (
                         <div key={activeConversation.user.id} className="fixed inset-0 pt-16 md:relative md:pt-0 flex flex-col w-full h-full bg-slate-50 dark:bg-slate-900 animate-fade-in">
@@ -153,7 +171,7 @@ export default function Messages() {
                             </div>
                             
                             <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto space-y-4 bg-gradient-to-b from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800/50">
-                                {chatHistory.map(item => <ChatBubble key={item.id} item={item} isAdmin={item.user_id === auth.user.id} />)}
+                                {chatHistory.map(item => <ChatBubble key={`${item.type}-${item.id}`} item={item} isAdmin={item.user_id === auth.user.id} />)}
                             </div>
 
                             <div className="p-3 border-t border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm flex-shrink-0">
@@ -167,7 +185,7 @@ export default function Messages() {
                         </div>
                     ) : (
                         <div className="text-center text-slate-500 dark:text-slate-400 p-4">
-                             <div>
+                            <div>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-20 w-20 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
@@ -183,10 +201,10 @@ export default function Messages() {
 }
 
 // --- Sub Components ---
-const ConversationListItem = ({ conv, isActive, onSelect }) => {
+const ConversationListItem = ({ conv, isActive, onSelect, authUserId }) => {
     const flatThread = conv.thread.flatMap(t => [t, ...(t.replies || [])]).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     const lastMessage = flatThread[0];
-    const unreadCount = conv.thread.filter(t => t.status === 'unread').length;
+    const unreadCount = conv.thread.filter(t => t.status === 'unread').length + conv.thread.flatMap(t => t.replies).filter(r => r.status === 'unread' && r.user_id !== authUserId).length;
 
     return (
         <button onClick={() => onSelect(conv)} className={`w-full text-left p-3 border-b border-slate-200 dark:border-slate-700 transition-colors duration-150 relative flex items-center gap-3 ${isActive ? 'bg-blue-50 dark:bg-slate-900/50' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>

@@ -1,6 +1,6 @@
 <?php
-// routes/channels.php
 
+use App\Models\ContactMessage; // 👈 THE FIX: Add this line to import the model
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -20,6 +20,22 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 
 // Add this authorization logic for the admin channel
 Broadcast::channel('admin-requests', function ($user) {
-    // Replace this with your actual check for an admin user
     return $user && ($user->can('be-admin') || $user->can('be-super-admin'));
+});
+
+/**
+ * Authorize that the user can listen to a specific conversation channel.
+ * Only the original sender (resident) or an admin can listen.
+ */
+Broadcast::channel('conversation.{contactMessageId}', function ($user, $contactMessageId) {
+    // Check if the user is an admin or super_admin. They can access any conversation.
+    if (Gate::forUser($user)->allows('be-admin')) {
+        return true;
+    }
+
+    // If not an admin, check if they are the original owner of the conversation thread.
+    $contactMessage = ContactMessage::find($contactMessageId);
+
+    // Ensure the message exists and the user is the owner.
+    return $contactMessage && (int) $user->id === (int) $contactMessage->user_id;
 });
