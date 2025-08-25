@@ -73,7 +73,7 @@ Route::middleware(['auth','verified', 'can:be-resident'])->prefix('residents')->
 
     Route::get('/messages/unread-count', [\App\Http\Controllers\Resident\MessageCounterController::class, 'getUnreadCount'])->name('messages.unread-count');
     Route::get('/messages/unread-list', [\App\Http\Controllers\Resident\MessageCounterController::class, 'getUnreadMessagesList'])->name('messages.unread-list');
-    
+
     Route::get('/request/create/{documentType}', [DocumentRequestController::class, 'create'])->name('request.create');
     // ADD this new generic route for storing the request
     Route::post('/request', [DocumentRequestController::class, 'store'])->name('request.store');
@@ -131,6 +131,7 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
     Route::patch('/messages/{message}/status', [MessagesController::class, 'updateStatus'])->name('messages.updateStatus');
     Route::post('/messages/{message}/reply', [MessagesController::class, 'storeReply'])->name('messages.storeReply');
     Route::get('/messages/unread', [MessagesCounterController::class, 'getUnreadMessages'])->name('messages.unread');
+    Route::post('/messages/{contactMessage}/mark-as-read', [\App\Http\Controllers\Admin\MessageReaderController::class, 'markAsRead'])->name('messages.mark-as-read');
 
     // --- Resourceful Routes ---
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
