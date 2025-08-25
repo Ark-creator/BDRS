@@ -10,7 +10,7 @@ import InputError from '@/Components/InputError';
 export default function SoloParent({ auth, documentType }) {
     
     const { data, setData, post, processing, errors } = useForm({
-        purpose: 'For Solo Parent Assistance', // You can set a custom default purpose here
+        purpose: 'Solo Parent Assistance', // You can set a custom default purpose here
         document_type_id: documentType.id,
     });
 

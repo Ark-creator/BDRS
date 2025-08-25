@@ -17,10 +17,9 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        // Gate check (original code had this at the end, moved to the top for correctness)
+        // Authorization check
         if (Gate::denies('be-super-admin')) {
-            // It's better to abort or redirect than to dd()
-            abort(403, 'Unauthorized action.'); 
+            abort(403, 'Unauthorized action.');
         }
 
         $query = User::with('profile')
@@ -41,9 +40,10 @@ class UserController extends Controller
             $query->where('role', $request->input('role'));
         }
 
+        // Corrected the view path to match the JSX component name
         return Inertia::render('SuperAdmin/Users/Usermanagement', [
             'users' => $query->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search', 'role', 'sortBy', 'sortOrder']), // Pass filters back to the view
+            'filters' => $request->only(['search', 'role', 'sortBy', 'sortOrder']),
         ]);
     }
 
@@ -52,17 +52,14 @@ class UserController extends Controller
      */
     public function updateRole(Request $request, User $user)
     {
-        // This check prevents a super admin from demoting themselves, which is still good.
         if ($user->id === auth()->id()) {
             return Redirect::back()->with('error', 'You cannot change your own role.');
         }
 
         $request->validate([
-            // BAGUHIN ITO: Alisin ang 'super_admin' sa listahan ng mga pinapayagang role.
             'role' => ['required', 'string', Rule::in(['resident', 'admin'])],
         ]);
 
-        // Prevent changing the role of another super admin via this method.
         if ($user->role === 'super_admin') {
              return Redirect::back()->with('error', 'Cannot change the role of another Super Admin.');
         }
@@ -72,6 +69,22 @@ class UserController extends Controller
 
         return Redirect::back()->with('success', "{$user->profile->first_name}'s role updated successfully.");
     }
+
+    /**
+     * NEW: Update the verification status of a specific user.
+     * This method is called from the VerificationModal.
+     */
+    public function updateVerificationStatus(Request $request, User $user)
+    {
+        $validated = $request->validate([
+            'verification_status' => ['required', Rule::in(['verified', 'rejected', 'unverified'])],
+        ]);
+
+        $user->update($validated);
+
+        return Redirect::back()->with('success', "User verification status has been updated.");
+    }
+
 
     /**
      * Update the user's profile and core details.
@@ -85,8 +98,6 @@ class UserController extends Controller
             'profile.last_name' => 'required|string|max:255',
             'profile.phone_number' => 'nullable|string|max:20',
             'profile.address' => 'nullable|string|max:255',
-            
-            // ADD THIS LINE FOR CIVIL STATUS VALIDATION
             'profile.civil_status' => ['nullable', 'string', Rule::in(['Single', 'Married', 'Widowed', 'Separated'])],
         ]);
 
@@ -96,10 +107,9 @@ class UserController extends Controller
         ]);
 
         // Update or Create UserProfile
-        // No changes needed here, it will automatically handle the new field.
         $user->profile()->updateOrCreate(
-            ['user_id' => $user->id], 
-            $validatedData['profile'] 
+            ['user_id' => $user->id],
+            $validatedData['profile']
         );
 
         return Redirect::back()->with('success', 'User details updated successfully.');

@@ -26,6 +26,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_enabled', // Add this
     'two_factor_code',    // Add this
     'two_factor_expires_at', // Add this
+            'verification_status', // <--- Add this
+
     ];
 
     /**
@@ -56,7 +58,7 @@ class User extends Authenticatable implements MustVerifyEmail
      * Accessor for the full name.
      * Returns "First Middle Last" if available, trims extra spaces.
      */
-    protected $appends = ['full_name'];
+    protected $appends = ['full_name', 'is_verified'];
     protected function fullName(): Attribute
 {
     return Attribute::make(
@@ -109,4 +111,11 @@ class User extends Authenticatable implements MustVerifyEmail
         ])->filter()->implode(' ')
     );
 }
+
+ protected function isVerified(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->verification_status === 'verified',
+        );
+    }
 }

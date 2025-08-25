@@ -73,6 +73,11 @@ class DocumentGenerationController extends Controller
                 $purpose = $requestData['purpose'] ?? 'N/A';
                 $templateProcessor->setValue('PURPOSE', $purpose);
                 break;
+
+            case 'Solo Parent':
+                $purpose = $requestData['purpose'] ?? 'N/A';
+                $templateProcessor->setValue('PURPOSE', $purpose);
+                break;
         }
 
         // --- CORRECTED SIGNATURE INJECTION ---
