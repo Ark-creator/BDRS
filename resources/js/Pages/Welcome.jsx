@@ -5,6 +5,7 @@ import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer
 import { TypeAnimation } from 'react-type-animation';
 import clsx from 'clsx';
 import Footer from '@/Components/Residents/Footer';
+import Announcements from '@/Components/Residents/Announcements';
 
 const FlagPH = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 6" className={className}>
@@ -194,7 +195,7 @@ const AuroraBackground = () => (
     </div>
 );
 
-export default function Welcome({ auth }) {
+export default function Welcome({ auth, announcements = [] }) {
     const [scrolled, setScrolled] = useState(false);
     const [language, setLanguage] = useState('en');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -234,7 +235,6 @@ export default function Welcome({ auth }) {
         visible: { transition: { staggerChildren: 0.2 } },
     };
     
-    // --- Animation Variants for Officials Section ---
     const sectionVariants = {
         hidden: {},
         visible: {
@@ -256,7 +256,6 @@ export default function Welcome({ auth }) {
             }
         }
     };
-    // --- End of Animation Variants ---
 
     return (
         <>
@@ -397,7 +396,7 @@ export default function Welcome({ auth }) {
                             </motion.div>
                         )}
                     </AnimatePresence>
-                </header>                      
+                </header>
                 
                 <main className="relative z-10">
                     <div className="min-h-screen flex items-center relative overflow-hidden">
@@ -405,7 +404,7 @@ export default function Welcome({ auth }) {
                         <div className="flex flex-col md:grid md:grid-cols-2 items-center gap-8 max-w-7xl mx-auto px-6 pt-28 pb-16 md:pt-24 md:pb-12 z-10">
                             <motion.div className="text-center md:text-left" initial="hidden" animate="visible" variants={staggerContainer}>
                                 <motion.span variants={slideInUp} className="inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-900/50 px-3 py-1 text-sm font-medium text-sky-800 dark:text-sky-300">{t.tagline}</motion.span>
-                                <motion.div variants={slideInUp} className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white min-h-[140px] md:min-h-[160px] md:min-h-0">
+                                <motion.div variants={slideInUp} className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white min-h-[140px] sm:min-h-[160px] md:min-h-0">
                                     <TypeAnimation
                                         sequence={[
                                             t.heroTitle,
@@ -428,22 +427,13 @@ export default function Welcome({ auth }) {
                                     </Link>
                                 </motion.div>
                             </motion.div>
-                             {/* <motion.div
+                            <motion.div
                                 className="w-full mt-10 md:mt-0"
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 whileInView={{ opacity: 1, scale: 1 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.5, delay: 0.2 }}
-                                >
-                                <img src="/images/solid.gif" className="w-full h-auto rounded-xl" alt="Solid GIF" />
-                                </motion.div> */}
-                                <motion.div
-                                className="w-full mt-10 md:mt-0"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.5, delay: 0.2 }}
-                                >
+                            >
                                 <video
                                     src="/images/solid.mp4"
                                     className="w-full h-auto rounded-xl"
@@ -454,10 +444,16 @@ export default function Welcome({ auth }) {
                                 >
                                     Your browser does not support the video tag.
                                 </video>
-                                </motion.div>
+                            </motion.div>
                         </div>
                     </div>
-
+                     {/* Announcements Section */}
+                     <div className="py-16 sm:py-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <Announcements announcements={announcements} />
+                        </div>
+                    </div>
+                                        
                     <section id="how-it-works" className="py-20 sm:py-28 relative bg-white dark:bg-slate-900/70 backdrop-blur-sm">
                         <div className="absolute inset-0 bg-[url('/images/grid.svg')] [mask-image:linear-gradient(to_bottom,white,transparent,white)] dark:opacity-20" />
                         <div className="relative max-w-7xl mx-auto px-6 text-center">
@@ -494,7 +490,6 @@ export default function Welcome({ auth }) {
                         </div>
                     </section>
 
-                    {/* MEET OUR OFFICIALS SECTION */}
                     <section id="officials" className="bg-white dark:bg-slate-900/70">
                         <motion.div 
                             className="py-20 sm:py-28"
@@ -525,7 +520,6 @@ export default function Welcome({ auth }) {
                             </div>
                         </motion.div>
                     </section>
-                    {/* END OF OFFICIALS SECTION */}
 
                     <section id="faq" className="py-20 sm:py-28 bg-sky-50 dark:bg-slate-900">
                         <div className="max-w-3xl mx-auto px-6">

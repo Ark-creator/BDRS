@@ -299,7 +299,7 @@ export default function AuthenticatedLayout({ header, children }) {
             <Link href="#!" className="p-2 rounded-lg transition relative">
                 <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
                 {residentUnreadCount > 0 && (
-                    <span className="absolute top-5 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
+                    <span className="absolute top-5 -right-6 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
                         {residentUnreadCount}
                     </span>
                 )}
