@@ -17,7 +17,6 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        // Authorization check
         if (Gate::denies('be-super-admin')) {
             abort(403, 'Unauthorized action.');
         }
@@ -25,6 +24,7 @@ class UserController extends Controller
         $query = User::with('profile')
             ->orderBy($request->input('sortBy', 'created_at'), $request->input('sortOrder', 'desc'));
 
+        // Search Filter
         if ($request->filled('search')) {
             $search = $request->input('search');
             $query->where(function ($q) use ($search) {
@@ -36,20 +36,32 @@ class UserController extends Controller
             });
         }
 
+        // Role Filter
         if ($request->filled('role') && $request->input('role') !== 'all') {
             $query->where('role', $request->input('role'));
         }
 
-        // Corrected the view path to match the JSX component name
+        // --- BAGONG LOGIC PARA SA VERIFICATION STATUS FILTER ---
+        if ($request->filled('status') && $request->input('status') !== 'all') {
+            $status = $request->input('status');
+
+            if ($status === 'unverified') {
+                // Kapag 'unverified' ang pinili, ipakita lahat ng HINDI 'verified'
+                $query->where('verification_status', '!=', 'verified');
+            } else {
+                // Para sa 'verified' status
+                $query->where('verification_status', $status);
+            }
+        }
+
         return Inertia::render('SuperAdmin/Users/Usermanagement', [
             'users' => $query->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search', 'role', 'sortBy', 'sortOrder']),
+            'filters' => $request->only(['search', 'role', 'sortBy', 'sortOrder', 'status']), // Idinagdag ang 'status'
         ]);
     }
+    
+    // ... (Ang ibang methods tulad ng update, updateRole, etc. ay HINDI na kailangan baguhin)
 
-    /**
-     * Update the role of a specific user.
-     */
     public function updateRole(Request $request, User $user)
     {
         if ($user->id === auth()->id()) {
@@ -70,25 +82,15 @@ class UserController extends Controller
         return Redirect::back()->with('success', "{$user->profile->first_name}'s role updated successfully.");
     }
 
-    /**
-     * NEW: Update the verification status of a specific user.
-     * This method is called from the VerificationModal.
-     */
     public function updateVerificationStatus(Request $request, User $user)
     {
         $validated = $request->validate([
             'verification_status' => ['required', Rule::in(['verified', 'rejected', 'unverified'])],
         ]);
-
         $user->update($validated);
-
         return Redirect::back()->with('success', "User verification status has been updated.");
     }
 
-
-    /**
-     * Update the user's profile and core details.
-     */
     public function update(Request $request, User $user)
     {
         $validatedData = $request->validate([
@@ -101,12 +103,8 @@ class UserController extends Controller
             'profile.civil_status' => ['nullable', 'string', Rule::in(['Single', 'Married', 'Widowed', 'Separated'])],
         ]);
 
-        // Update User model
-        $user->update([
-            'email' => $validatedData['email'],
-        ]);
+        $user->update(['email' => $validatedData['email']]);
 
-        // Update or Create UserProfile
         $user->profile()->updateOrCreate(
             ['user_id' => $user->id],
             $validatedData['profile']
