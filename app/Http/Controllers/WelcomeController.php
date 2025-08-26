@@ -2,31 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Route;
+use App\Models\Announcement;
 use Illuminate\Foundation\Application;
-use App\Models\Announcement; // <-- Make sure to import the Announcement model
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class WelcomeController extends Controller
 {
     /**
-     * Show the welcome page with announcements.
+     * Display the welcome page with the latest announcements.
      *
      * @return \Inertia\Response
      */
-    public function show()
+    public function show(): Response
     {
-        // Fetch the 5 most recent active announcements
-        $announcements = Announcement::where('is_active', true)
-                                     ->latest()
-                                     ->take(5)
-                                     ->get();
+        // Fetch the 5 most recent announcements from the database
+        $announcements = Announcement::latest()->take(5)->get();
 
-        // Pass the announcements and other props to the Welcome component
+        // Render the 'Welcome' Inertia component and pass the necessary props
         return Inertia::render('Welcome', [
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
-            'announcements' => $announcements, // <-- This passes the data
+            'laravelVersion' => Application::VERSION,
+            'phpVersion' => PHP_VERSION,
+            'announcements' => $announcements, // <-- Pass the announcements here
         ]);
     }
 }
