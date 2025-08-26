@@ -1,12 +1,10 @@
-// resources/js/Pages/Residents/Home.jsx
-
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
 import Footer from '@/Components/Residents/Footer';
 import Announcements from '@/Components/Residents/Announcements';
 import { motion } from 'framer-motion';
-import { FileText, ArrowRight, ShieldAlert } from 'lucide-react'; // Added ShieldAlert for the banner
+import { FileText, ArrowRight, Clock, XCircle } from 'lucide-react'; 
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 
@@ -15,17 +13,94 @@ const DocumentIcon = ({ documentName }) => {
     return icons[documentName] || <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
 };
 
+
+const VerificationStatusBanner = ({ status }) => {
+    if (!status || status === 'verified') {
+        return null;
+    }
+
+    const pendingConfig = {
+        bgColor: 'bg-sky-50 dark:bg-sky-900/40',
+        borderColor: 'border-sky-500',
+        iconBgColor: 'bg-sky-100 dark:bg-sky-800/50',
+        iconColor: 'text-sky-600 dark:text-sky-300',
+        titleColor: 'text-sky-900 dark:text-sky-100',
+        textColor: 'text-sky-800 dark:text-sky-200',
+        Icon: Clock,
+        title: 'Verification In Progress',
+        message: 'Your account is under review by an administrator. You will be notified once the review is complete. Document requests are disabled until your account is verified.'
+    };
+
+    const bannerConfig = {
+        unverified: pendingConfig,
+        pending_verification: pendingConfig,
+        rejected: {
+            bgColor: 'bg-red-50 dark:bg-red-900/40',
+            borderColor: 'border-red-500',
+            iconBgColor: 'bg-red-100 dark:bg-red-800/50',
+            iconColor: 'text-red-600 dark:text-red-300',
+            titleColor: 'text-red-900 dark:text-red-100',
+            textColor: 'text-red-800 dark:text-red-200',
+            Icon: XCircle,
+            title: 'Verification Denied',
+            message: 'Your verification request was denied, likely due to unclear documents or incorrect information. Please update your profile with the correct credentials to try again.',
+            action: {
+                href: route('profile.edit'),
+                text: 'Update Credentials',
+                className: 'bg-red-600 text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 focus:ring-red-500'
+            }
+        }
+    };
+
+    const config = bannerConfig[status];
+
+    if (!config) {
+        return null;
+    }
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className={`rounded-xl border p-5 mb-8 shadow-lg shadow-slate-400/5 ${config.bgColor} ${config.borderColor}`}
+        >
+            <div className="flex items-start gap-4">
+                <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full ${config.iconBgColor}`}>
+                    <config.Icon className={`h-6 w-6 ${config.iconColor}`} aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                    <h3 className={`text-base font-semibold ${config.titleColor}`}>{config.title}</h3>
+                    <p className={`mt-1 text-sm ${config.textColor}`}>
+                        {config.message}
+                    </p>
+                    {config.action && (
+                        <div className="mt-4">
+                            <Link
+                                href={config.action.href}
+                                className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-900 ${config.action.className}`}
+                            >
+                                {config.action.text}
+                                <ArrowRight className="h-4 w-4" />
+                            </Link>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </motion.div>
+    );
+};
+
+
 export default function Home({ auth, documentTypes = [], announcements = [] }) {
     const [showRequestCards, setShowRequestCards] = useState(false);
     const documentsSectionRef = useRef(null);
-    const { url, flash } = usePage();
-    const { user } = auth; // Destructure user from auth prop
+    const { url } = usePage();
+    const { user } = auth; 
     
-    // Determine if the user is verified using the accessor from the User model
     const isVerified = user.is_verified;
 
     const handleRequestNowClick = () => {
-        // Only allow verified users to proceed
         if (!isVerified) {
             return;
         }
@@ -50,7 +125,7 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
                     showProgress: true,
                     animate: true,
                     steps: [
-                        // walang gagalaw nito si ace lang{ element: '#how-it-works', popover: { title: 'How It Works', description: 'You can always review the 3-step process here if you need a reminder.' } },  
+                        { element: '#how-it-works', popover: { title: 'How It Works', description: 'You can always review the 3-step process here if you need a reminder.' } },  
                         { element: '#request-document-button', popover: { title: 'Request a Document', description: 'Click here to reveal the document selection section below.' } },
                         { element: '#document-selection', popover: { title: 'Select a Document', description: 'Choose the type of document you want to request from the available options.' } },
                         { element: '#document-card-example', popover: { title: 'Click to Proceed', description: 'Clicking any of these cards will take you to the request form. Please fill it out accurately.' } }
@@ -60,7 +135,7 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
                 driverObj.drive();
             }, 400); 
         }
-    }, [url]); 
+    }, [url, isVerified]); 
 
 
     return (
@@ -69,25 +144,10 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
             <div className="bg-slate-50 relative">
                 <main>
                     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+                    
+                        <VerificationStatusBanner status={user.verification_status} />
                         <Announcements announcements={announcements} />
 
-                        {/* New: Verification Status Alert Banner */}
-                        {!isVerified && (
-                            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 rounded-r-lg shadow-md">
-                                <div className="flex">
-                                    <div className="flex-shrink-0">
-                                        <ShieldAlert className="h-6 w-6 text-yellow-500" />
-                                    </div>
-                                    <div className="ml-3">
-                                        <h3 className="text-md font-bold text-yellow-800">Account Verification Required</h3>
-                                        <div className="mt-2 text-sm text-yellow-700">
-                                            <p>Your account is not yet verified. You must be verified by an admin to request documents. Please wait for the admin to approve your uploaded credentials.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        {/* End of Verification Status Alert */}
 
                         <div className="py-16 sm:py-24">
                             <div className="bg-slate-50" id="how-it-works">
@@ -146,7 +206,6 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
                             </div>
                         </div>
 
-                        {/* Only show document cards if user is verified AND has clicked the button */}
                         {isVerified && showRequestCards && (
                             <motion.div
                                 ref={documentsSectionRef}

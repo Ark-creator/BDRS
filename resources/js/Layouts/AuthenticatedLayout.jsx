@@ -150,7 +150,10 @@ export default function AuthenticatedLayout({ header, children }) {
     const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
     const [showAdminSidebarMobile, setShowAdminSidebarMobile] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
-    let hoverTimeout;
+
+    // --- HIDE FAB LOGIC ---
+    const isMessagesPage = component === 'Admin/Messages';
+    const shouldShowFab = !(isAdmin && isMessagesPage);
 
     useEffect(() => {
         const style = document.createElement('style');
@@ -198,7 +201,46 @@ export default function AuthenticatedLayout({ header, children }) {
         return () => clearInterval(interval);
     }, [isAdmin]);
 
-    const startMainTour = () => { /* ... (tour logic remains the same) ... */ };
+     const startMainTour = () => {
+        const runTour = () => {
+            const steps = [
+                { element: isMobile ? '#nav-home-mobile' : '#nav-home', popover: { title: 'Home', description: 'This is the main page of the website.', side: 'bottom' }},
+                { element: isMobile ? '#nav-my-requests-mobile' : '#nav-my-requests', popover: { title: 'My Requests', description: 'View the status of your document requests here.', side: 'bottom' }},
+                { element: isMobile ? '#nav-about-mobile' : '#nav-about', popover: { title: 'About', description: 'Learn more about our services and mission.', side: 'bottom' }},
+                { element: isMobile ? '#nav-contact-mobile' : '#nav-contact', popover: { title: 'Contact', description: 'Get in touch with us for any inquiries.', side: 'bottom' }},
+                { element: isMobile ? '#nav-faq-mobile' : '#nav-faq', popover: { title: 'FAQ', description: 'Find answers to frequently asked questions.', side: 'bottom' }},
+            ];
+
+            if (isAdmin) {
+                steps.push({ 
+                    element: '#admin-panel-icon', 
+                    popover: { title: 'Admin Panel', description: 'Access the administrative dashboard to manage the site.', side: 'bottom', align: 'end' }
+                });
+            }
+
+            steps.push(
+                { element: '#notif-icon-admin', popover: { title: 'Notifications', description: 'Check for new messages and important updates here.', side: 'bottom', align: 'end' }},
+                { element: '#tour-trigger-icon', popover: { title: 'Help & Tour', description: 'Click this button anytime to see this guide again.', side: 'bottom', align: 'end' }},
+                { element: '#user-icon', popover: { title: 'Your Account', description: 'Access your profile, settings, or log out from here.', side: 'bottom', align: 'end' }}
+            );
+            
+            const driverObj = driver({
+                showProgress: true,
+                animate: true,
+                popoverClass: 'driverjs-theme',
+                steps: steps
+            });
+
+            driverObj.drive();
+        };
+
+        if (isMobile && !isMobileNavOpen) {
+            setIsMobileNavOpen(true);
+            setTimeout(runTour, 300);
+        } else {
+            runTour();
+        }
+    };
 
     const navLinkGroups = [
         { title: 'Main', links: [{ name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> }, { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> }] },
@@ -236,7 +278,7 @@ export default function AuthenticatedLayout({ header, children }) {
             <Link href={route('admin.messages')} className="p-2 rounded-lg transition relative">
                 <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
                 {adminUnreadCount > 0 && (
-                    <span className="absolute top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
+                    <span className="absolute top-5 -right-6 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
                         {adminUnreadCount}
                     </span>
                 )}
@@ -249,7 +291,7 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const residentNotificationBell = (
         <div
-            id="notif-icon-resident"
+            id="notif-icon-admin"
             className="relative"
             onMouseEnter={() => { setIsBubbleVisible(true); }}
             onMouseLeave={() => { setIsBubbleVisible(false); }}
@@ -257,7 +299,7 @@ export default function AuthenticatedLayout({ header, children }) {
             <Link href="#!" className="p-2 rounded-lg transition relative">
                 <BellRing size={24} className="text-gray-500 dark:text-gray-400" />
                 {residentUnreadCount > 0 && (
-                    <span className="absolute top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
+                    <span className="absolute top-5 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white dark:ring-gray-800">
                         {residentUnreadCount}
                     </span>
                 )}
@@ -335,7 +377,9 @@ export default function AuthenticatedLayout({ header, children }) {
                     {header && (<header className="bg-white dark:bg-slate-800 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-4">{header}</div></header>)}
                     <div className="">{children}</div>
                 </main>
-                <FloatingActionButton />
+                
+                {shouldShowFab && <FloatingActionButton />}
+
             </div>
             <ToastContainer position="bottom-right" autoClose={5000} theme="colored" />
         </div>
