@@ -270,7 +270,10 @@ export default function Request() {
             openRejectModal(request);
             return;
         }
-        router.patch(route('admin.requests.status.update', request.id), { status: newStatus }, {
+        router.post(route('admin.requests.status.update', request.id), {
+            _method: 'PATCH', // <-- Add this line
+            status: newStatus
+        }, {
             preserveScroll: true,
             onSuccess: () => toast.success(`Request status updated to "${newStatus}".`),
             onError: () => toast.error('Failed to update status.')
@@ -280,6 +283,7 @@ export default function Request() {
     const handleRejectSubmit = (e) => {
         e.preventDefault();
         router.patch(route('admin.requests.status.update', selectedRequest.id), {
+            _method: 'PATCH',
             status: 'Rejected',
             admin_remarks: data.admin_remarks,
         }, {
