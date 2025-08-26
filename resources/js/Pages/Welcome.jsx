@@ -334,7 +334,7 @@ export default function Welcome({ auth, announcements = [] }) {
                                     transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                                     className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col bg-slate-50 dark:bg-slate-800 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10"
                                 >
-                                    <div className="p-6">
+                                    <div className="p-6 bg-white">
                                         <div className="flex items-center justify-between">
                                             <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
                                                 <img className="h-8 w-auto rounded-full" src="/images/gapanlogo.png" alt="Barangay Logo" />
@@ -382,7 +382,7 @@ export default function Welcome({ auth, announcements = [] }) {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-auto border-t border-gray-200 dark:border-gray-700/50 p-6">
+                                    <div className="mt-auto border-t border-gray-200 dark:border-gray-700/50 pb-80 bg-white">
                                         <div className="p-1 rounded-full bg-slate-200 dark:bg-slate-700 flex text-sm font-semibold">
                                             <button onClick={() => setLanguage('en')} className={clsx('w-full px-3 py-2 rounded-full transition-colors flex items-center justify-center gap-2', language === 'en' ? 'bg-white text-blue-600 shadow' : 'text-slate-600 dark:text-slate-300')}>
                                                 <FlagUSA className="h-4 w-5 rounded-sm" /> EN

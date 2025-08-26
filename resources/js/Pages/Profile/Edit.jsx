@@ -104,27 +104,28 @@ export default function Edit({ auth, mustVerifyEmail, status, userProfile }) {
                             <nav className="lg:col-span-1">
                                     <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm ring-1 ring-black/5 dark:ring-white/10 p-4">
                                         {/* Profile Header */}
-                                        <div className="flex items-center gap-4 border-b border-slate-200/80 dark:border-slate-700/50 pb-4">
-                                            <div className="h-12 w-12 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-800 shrink-0">
-                                                <User className="h-6 w-6 text-sky-600 dark:text-sky-400" />
-                                            </div>
-                                            <div>
-                                                {/* --- MODIFICATION START --- */}
-                                                <div className="flex items-center gap-2">
-                                                    <h2 className="font-bold text-slate-800 dark:text-white truncate">{auth.user.full_name}</h2>
-                                                    {/* Show badge only if user is verified */}
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                                                                                                                            <p className="text-xs text-slate-500 dark:text-slate-400">{userRole}</p>
+                        <div className="flex items-center gap-4 border-b border-slate-200/80 dark:border-slate-700/50 pb-4">
+                            
+                            <div className="h-12 w-12 bg-sky-100 dark:bg-sky-900/50 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-slate-800 shrink-0">
+                                <User className="h-6 w-6 text-sky-600 dark:text-sky-400" />
+                            </div>
 
-                                                    {auth.user.is_verified && <VerifiedBadge />}
+                            <div className="flex-1 min-w-0">
 
-                                                </div>
-                                                {/* --- MODIFICATION END --- */}
-                                            </div>
-                                        </div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="font-bold text-slate-800 dark:text-white truncate">
+                                        {auth.user.full_name}
+                                    </h2>
+                                    {auth.user.is_verified && <VerifiedBadge />}
+                                </div>
 
-                                        {/* Navigation Links */}
+                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                    {userRole}
+                                </p>
+
+                            </div>
+                        </div>
+
                                         <ul className="space-y-1 mt-4">
                                             {tabs.map(tab => (
                                                 <li key={tab.id}>
