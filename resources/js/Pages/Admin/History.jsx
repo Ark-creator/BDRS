@@ -19,9 +19,16 @@ const StatusBadge = ({ status }) => {
         'Rejected': 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
         'Claimed': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
     };
+    const baseClasses = 'px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-1.5';
+    const colorClasses = colors[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300';
+    
     return (
-        <span className={clsx('px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-x-1.5', colors[status] || 'bg-gray-200')}>
-            <span className={clsx('h-1.5 w-1.5 rounded-full', colors[status]?.replace(/text-(green|red)-[0-9]{2,3}/, 'bg-$1-500').split(' ')[1])}></span>
+        <span className={clsx(baseClasses, colorClasses)}>
+            <span className={clsx('h-1.5 w-1.5 rounded-full', {
+                'bg-red-500': status === 'Rejected',
+                'bg-green-500': status === 'Claimed',
+                'bg-gray-400': !colors[status],
+            })}></span>
             {status}
         </span>
     );
@@ -73,7 +80,18 @@ export default function History() {
     const [selectedArchive, setSelectedArchive] = useState(null);
 
     const startTour = () => {
-        // ... tour logic remains the same ...
+        const driverObj = driver({
+            showProgress: true,
+            animate: true,
+            steps: [
+                { element: '#history-header', popover: { title: 'Archive History', description: 'This page contains all completed or rejected requests.' } },
+                { element: '#history-search', popover: { title: 'Search Records', description: 'You can search for specific records by typing a name, document type, or keyword from the remarks.' } },
+                { element: '#history-status-filter', popover: { title: 'Filter by Status', description: 'Click these tabs to quickly filter the records by their final status.' } },
+                { element: '#history-list-container', popover: { title: 'Archived Records', description: 'This is the list of all archived requests. For rejected items, you have the option to restore them.' } },
+                { element: '#history-pagination', popover: { title: 'Navigate Pages', description: 'Use these controls to navigate through multiple pages of records.' } },
+            ]
+        });
+        driverObj.drive();
     };
 
     useEffect(() => {
@@ -118,12 +136,40 @@ export default function History() {
             <div className="py-12 bg-slate-50 dark:bg-gray-900/95 min-h-screen">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
                     <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-lg sm:rounded-xl">
-                        {/* Header Section */}
-                        <div id="history-header" className="p-6 border-b border-gray-200 dark:border-gray-700">
-                           {/* ... Header content ... */}
+                        
+                        <div id="history-header" className="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Archive History</h1>
+                                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                                    History of all claimed and rejected transactions.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2 w-full md:w-auto">
+                                <div id="history-search" className="relative w-full md:w-64">
+                                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                        <Search className="h-5 w-5 text-gray-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={filter.search}
+                                        onChange={e => setFilter({ ...filter, search: e.target.value })}
+                                        placeholder="Search..."
+                                        className="block w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 pl-10 pr-4 py-2 text-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                </div>
+                                   <button
+                                        onClick={startTour}
+                                        className="flex items-center gap-1 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                        aria-label="Start tour"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5L7 9.167A1 1 0 007 10.833L9.133 13.5a1 1 0 001.734 0L13 10.833A1 1 0 0013 9.167L10.867 6.5A1 1 0 0010 7z" clipRule="evenodd" />
+                                        </svg>
+                                        <span className="hidden sm:inline text-xs">Need Help?</span>
+                                    </button>
+                            </div>
                         </div>
 
-                        {/* Filter Tabs */}
                         <div id="history-status-filter" className="p-4 border-b border-gray-200 dark:border-gray-700">
                             <div className="flex flex-wrap gap-2">
                                 {['All', 'Claimed', 'Rejected'].map(status => (
@@ -139,7 +185,6 @@ export default function History() {
                         </div>
                         
                         <div id="history-list-container">
-                            {/* Mobile Card View */}
                             <div className="md:hidden">
                                 {archives.data.length > 0 ? archives.data.map(archive => (
                                     <div key={archive.id} className="border-b dark:border-gray-700 p-4 space-y-3">
@@ -148,9 +193,11 @@ export default function History() {
                                             <StatusBadge status={archive.status} />
                                         </div>
                                         <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                                            {/* ... card details ... */}
+                                            <p><span className="font-semibold">Document:</span> {archive.document_type?.name}</p>
+                                            <p><span className="font-semibold">Archived:</span> {new Date(archive.original_created_at || archive.created_at).toLocaleDateString()}</p>
+                                            <p><span className="font-semibold">Processed by:</span> {archive.processor?.full_name || 'N/A'}</p>
+                                            <p className="italic"><span className="font-semibold">Remarks:</span> {archive.admin_remarks || '-'}</p>
                                         </div>
-                                        {/* Restore Button for Mobile */}
                                         {archive.status === 'Rejected' && (
                                             <div className="pt-3 border-t dark:border-gray-600">
                                                 <button 
@@ -171,23 +218,22 @@ export default function History() {
                                 )}
                             </div>
                             
-                            {/* Desktop Table View */}
                             <div className="hidden md:block overflow-x-auto">
                                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead className="bg-blue-600 text-white">
                                         <tr>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-gray-300 uppercase">Requestor</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-gray-300 uppercase">Document</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-gray-300 uppercase">Final Status</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-gray-300 uppercase">Remarks</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-gray-300 uppercase">Date Archived</th>
-                                            <th scope="col" className="px-6 py-3 text-left text-xs font-semibold dark:text-gray-300 uppercase">Processed By</th>
-                                            <th scope="col" className="px-6 py-3 text-center text-xs font-semibold dark:text-gray-300 uppercase">Action</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold dark:text-gray-300 uppercase tracking-wider">Requestor</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold dark:text-gray-300 uppercase tracking-wider">Document</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold dark:text-gray-300 uppercase tracking-wider">Final Status</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold dark:text-gray-300 uppercase tracking-wider">Remarks</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold dark:text-gray-300 uppercase tracking-wider">Date Archived</th>
+                                            <th scope="col" className="px-6 py-3 text-left text-xs font-bold dark:text-gray-300 uppercase tracking-wider">Processed By</th>
+                                            <th scope="col" className="px-6 py-3 text-center text-xs font-bold dark:text-gray-300 uppercase tracking-wider">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                         {archives.data.length > 0 ? archives.data.map(archive => (
-                                            <tr key={archive.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100 dark:odd:bg-gray-800 dark:even:bg-gray-900/50 dark:hover:bg-sky-900/20">
+                                            <tr key={archive.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{archive.user?.full_name || 'N/A'}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{archive.document_type?.name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={archive.status} /></td>
@@ -220,12 +266,11 @@ export default function History() {
                             </div>
                         </div>
                         
-                        {/* Pagination */}
                         <div id="history-pagination" className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 dark:border-gray-700 gap-4">
                             <p className="text-sm text-gray-700 dark:text-gray-400">
                                 Showing <span className="font-medium">{archives.from || 0}</span> to <span className="font-medium">{archives.to || 0}</span> of <span className="font-medium">{archives.total || 0}</span> results
                             </p>
-                            {archives.links && archives.links.length > 0 && (
+                            {archives.links && archives.links.length > 3 && (
                                 <nav className="flex items-center gap-1 flex-wrap justify-center">
                                     {archives.links.map((link, index) => {
                                         const label = link.label.replace('&laquo;', '«').replace('&raquo;', '»');
