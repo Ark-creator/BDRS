@@ -233,7 +233,7 @@ export default function Request() {
                 { element: '#search-input', popover: { title: 'Search', description: 'Quickly find a specific request by typing the resident\'s name or the document type.' } },
                 { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Click these buttons to filter the list and see only the requests with that status.' } },
                 { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all the active requests. On mobile, it appears as cards, and on desktop, as a table.' } },
-                { element: '#actions_item', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
+                { element: '#actions-items', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
                 { element: '#pagination-section', popover: { title: 'Pagination', description: 'Use these controls to navigate between different pages of requests.' } }
             ]
         });
@@ -494,7 +494,7 @@ export default function Request() {
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={request.status} /></td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(request.created_at).toLocaleDateString()}</td>
                                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${index === 0 ? 'actions-column-item' : ''}`}>
-                                                    <div className="flex items-center gap-2">
+                                                    <div  id="actions-items" className="flex items-center gap-2">
                                                         {renderActions(request, index)}
                                                         {request.payment_receipt_url && (
                                                             <button
