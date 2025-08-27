@@ -4,7 +4,9 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\WelcomeController;
 use App\Http\Controllers\Admin\HistoryController;
+use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Resident\HomeController;
 use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -14,14 +16,13 @@ use App\Http\Controllers\Resident\ContactUsController;
 use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Admin\MessagesCounterController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
+
 use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Resident\DocumentRequestController;
-
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+
 use App\Http\Controllers\SuperAdmin\UserVerificationController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
-
-use App\Http\Controllers\WelcomeController;
 
     Route::get('/', [WelcomeController::class, 'show']);
 // --- PUBLIC ROUTES ---
@@ -148,6 +149,8 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
 
     Route::get('/requests/{documentRequest}/receipt', [RequestDocumentsController::class, 'showReceipt'])
          ->name('requests.receipt');
+         Route::get('/payment', PaymentController::class)->name('payment');
+
 });
 
 
