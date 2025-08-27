@@ -62,7 +62,7 @@ Route::middleware(['auth','verified', 'can:be-resident'])->prefix('residents')->
     Route::get('/', fn() => Inertia::render('Residents/Index'))->name('index');
     Route::get('/home', HomeController::class)->name('home');
     Route::get('/about', fn() => Inertia::render('Residents/About'))->name('about');
-    Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
+    // Route::get('/contact-us', fn() => Inertia::render('Residents/ContactUs'))->name('contact');
     Route::get('/faq', fn() => Inertia::render('Residents/Faq'))->name('faq');
     
     // this route is for Contact Us
