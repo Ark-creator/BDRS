@@ -221,7 +221,7 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
                                     <tbody className="bg-white">
                                         {localUsers.length > 0 ? (
                                             localUsers.map((user) => (
-                                                <tr key={user.id}>
+                                                <tr key={user.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100 dark:odd:bg-gray-800 dark:even:bg-gray-900/50 dark:hover:bg-sky-900/20">
                                                     <td data-label="Name" className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.full_name}</td>
                                                     <td data-label="Email" className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
                                                     <td data-label="Role" className="px-6 py-4 whitespace-nowrap text-sm">

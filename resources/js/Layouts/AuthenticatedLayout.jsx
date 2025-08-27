@@ -197,7 +197,7 @@ export default function AuthenticatedLayout({ header, children }) {
             } catch (error) { console.error("Error fetching unread data:", error); }
         };
         fetchUnreadData();
-        const interval = setInterval(fetchUnreadData, 30000);
+        const interval = setInterval(fetchUnreadData, 4000);
         return () => clearInterval(interval);
     }, [isAdmin]);
 

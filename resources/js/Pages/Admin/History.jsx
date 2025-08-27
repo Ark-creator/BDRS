@@ -233,7 +233,7 @@ export default function History() {
                                     </thead>
                                     <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                         {archives.data.length > 0 ? archives.data.map(archive => (
-                                            <tr key={archive.id} className="hover:bg-slate-50 dark:hover:bg-gray-700/50">
+                                            <tr key={archive.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100 dark:odd:bg-gray-800 dark:even:bg-gray-900/50 dark:hover:bg-sky-900/20">
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{archive.user?.full_name || 'N/A'}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{archive.document_type?.name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={archive.status} /></td>

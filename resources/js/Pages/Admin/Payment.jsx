@@ -47,7 +47,7 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                 { element: '#payment-header', popover: { title: 'Payment History', description: 'Dito mo makikita ang lahat ng bayad na transaksyon para sa Business Permit.' } },
                 { element: '#payment-search-input', popover: { title: 'Search Transactions', description: 'Maghanap gamit ang pangalan ng residente.' } },
                 { element: '#payment-list-container', popover: { title: 'Transaction Records', description: 'Ito ang listahan ng mga bayad na transaksyon.' } },
-                { element: '#first-receipt-button', popover: { title: 'View Receipt', description: 'I-click ang icon na ito para makita ang resibo.', side: "left" } },
+                { element: '#receipt-buttons', popover: { title: 'View Receipt', description: 'I-click ang icon na ito para makita ang resibo.', side: "left" } },
             ]
         });
         driverObj.drive();
@@ -118,20 +118,20 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                                     
                                     <div className="hidden md:block overflow-x-auto">
                                         <table className="min-w-full">
-                                            <thead className="bg-slate-50 dark:bg-slate-700/50">
+                                            <thead className="bg-blue-600 text-white">
                                                 <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Requestor</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Document</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Amount</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Status</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Date</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Processed By</th>
-                                                    <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Receipt</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-bold  dark:text-slate-300 uppercase">Requestor</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-bold  dark:text-slate-300 uppercase">Document</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-bold  dark:text-slate-300 uppercase">Amount</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-bold  dark:text-slate-300 uppercase">Status</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-bold  dark:text-slate-300 uppercase">Date</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-bold  dark:text-slate-300 uppercase">Processed By</th>
+                                                    <th className="px-6 py-3 text-center text-xs font-bold  dark:text-slate-300 uppercase">Receipt</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                                                 {paymentData.map((payment, index) => (
-                                                    <motion.tr variants={itemVariants} key={payment.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                                                    <motion.tr variants={itemVariants} key={payment.id} className="odd:bg-white even:bg-slate-100 hover:bg-sky-100 dark:odd:bg-gray-800 dark:even:bg-gray-900/50 dark:hover:bg-sky-900/20">
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                                                             {payment.requestor_name}
                                                         </td>
@@ -142,7 +142,7 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">{payment.date}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">{payment.processed_by || 'N/A'}</td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                        <td id="receipt-buttons" className="px-6 py-4 whitespace-nowrap text-center">
                                                             {payment.payment_receipt_url && (<button id={index === 0 ? 'first-receipt-button' : undefined} onClick={() => openReceiptModal(payment)} className="p-2 text-blue-600 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-full transition"><Eye className="w-5 h-5" /></button>)}
                                                         </td>
                                                     </motion.tr>
