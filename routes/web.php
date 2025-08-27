@@ -1,5 +1,4 @@
 <?php
-
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
@@ -16,12 +15,10 @@ use App\Http\Controllers\Resident\ContactUsController;
 use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Admin\MessagesCounterController;
 use App\Http\Controllers\Admin\RequestDocumentsController; 
-
 use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 
-use App\Http\Controllers\SuperAdmin\UserVerificationController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 
     Route::get('/', [WelcomeController::class, 'show']);

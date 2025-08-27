@@ -6,23 +6,18 @@ import clsx from 'clsx';
 import { motion } from 'framer-motion';
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
-import { HelpCircle } from 'lucide-react';
 
 // Icons
-import { Search, DollarSign, FileText, CalendarDays, Eye, FileQuestion, X, CheckCircle2, Clock, XCircle, UserCheck } from 'lucide-react';
-
-// --- StatusBadge and Modal components remain the same ---
+import { Search, DollarSign, FileText, CalendarDays, Eye, FileQuestion, X, CheckCircle2, UserCheck, HelpCircle } from 'lucide-react';
 
 const StatusBadge = ({ status }) => {
+    // Since only 'Paid' is shown, this could be simplified, but keeping it is fine.
     const config = {
         'Paid': { classes: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', icon: <CheckCircle2 size={14} /> },
-        'Pending Payment': { classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', icon: <Clock size={14} /> },
-        'Rejected': { classes: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', icon: <XCircle size={14} /> },
     };
     const currentStatus = config[status] || { classes: 'bg-gray-200', icon: <DollarSign size={14} /> };
     return <span className={clsx('px-2 py-1 text-xs font-medium rounded-full inline-flex items-center gap-x-1.5', currentStatus.classes)}>{currentStatus.icon}{status}</span>;
 };
-
 
 const Modal = ({ show, onClose, children, title }) => {
     useEffect(() => { const handleEsc = (e) => e.keyCode === 27 && onClose(); window.addEventListener('keydown', handleEsc); return () => window.removeEventListener('keydown', handleEsc); }, [onClose]);
@@ -37,29 +32,26 @@ const Modal = ({ show, onClose, children, title }) => {
     );
 };
 
-
 export default function Payment({ payments = { data: [], links: [] }, filters = {} }) {
     const isInitialMount = useRef(true);
-    const [filter, setFilter] = useState({ search: filters.search || '', status: filters.status || 'All' });
+    // REMOVED: Status property from the filter state
+    const [filter, setFilter] = useState({ search: filters.search || '' });
     const [debouncedFilter] = useDebounce(filter, 300);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
 
-    // --- Tour function remains the same ---
-     const startTour = () => {
+    const startTour = () => {
         const driverObj = driver({
             showProgress: true, popoverClass: 'driverjs-theme',
             steps: [
-                { element: '#payment-header', popover: { title: 'Payment History', description: 'Dito mo makikita ang lahat ng transaksyon.' } },
+                { element: '#payment-header', popover: { title: 'Payment History', description: 'Dito mo makikita ang lahat ng bayad na transaksyon para sa Business Permit.' } },
                 { element: '#payment-search-input', popover: { title: 'Search Transactions', description: 'Maghanap gamit ang pangalan ng residente.' } },
-                { element: '#payment-status-filter', popover: { title: 'Filter by Status', description: 'I-filter ang listahan sa "Paid" o "Unpaid".' } },
-                { element: '#payment-list-container', popover: { title: 'Transaction Records', description: 'Ito ang listahan ng mga transaksyon.' } },
+                { element: '#payment-list-container', popover: { title: 'Transaction Records', description: 'Ito ang listahan ng mga bayad na transaksyon.' } },
                 { element: '#first-receipt-button', popover: { title: 'View Receipt', description: 'I-click ang icon na ito para makita ang resibo.', side: "left" } },
             ]
         });
         driverObj.drive();
     };
-
 
     useEffect(() => {
         if (isInitialMount.current) { isInitialMount.current = false; return; }
@@ -68,7 +60,6 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
 
     const openReceiptModal = (payment) => { setSelectedPayment(payment); setShowReceiptModal(true); };
     
-    // The paymentData prop already contains all data from the controller, so no changes needed here.
     const paymentData = useMemo(() => payments.data || [], [payments.data]);
     
     const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
@@ -83,11 +74,10 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 px-4">
                     <div className="bg-white dark:bg-slate-800 overflow-hidden shadow-lg sm:rounded-xl">
                         
-                        {/* --- Header and Search/Filter UI remain the same --- */}
                         <div id="payment-header" className="p-6 flex flex-col md:flex-row gap-4 justify-between md:items-center border-b border-slate-200 dark:border-slate-700">
                              <div>
                                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Payment Transactions</h1>
-                                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">History of all paid and unpaid transactions.</p>
+                                 <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">History of all paid Business Permit transactions.</p>
                              </div>
                              <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
                                  <div className="relative flex-grow md:flex-grow-0">
@@ -100,28 +90,12 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                                  </button>
                              </div>
                          </div>
-                         <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-                             <div id="payment-status-filter" className="flex items-center gap-6">
-                                 {['All', 'Paid', 'Unpaid'].map(status => (
-                                     <button 
-                                         key={status} 
-                                         onClick={() => setFilter({ ...filter, status })} 
-                                         className={clsx('px-3 py-2 text-sm font-semibold rounded-lg transition-colors duration-200', 
-                                             filter.status === status 
-                                             ? 'bg-blue-600 text-white shadow-md' 
-                                             : 'text-slate-500 hover:text-blue-600 dark:text-slate-400 dark:hover:text-white'
-                                         )}
-                                     >
-                                         {status}
-                                     </button>
-                                 ))}
-                             </div>
-                         </div>
+                         
+                         {/* REMOVED: The entire block for filter buttons is now gone. */}
                         
                         <motion.div id="payment-list-container" variants={containerVariants} initial="hidden" animate="visible">
                             {paymentData.length > 0 ? (
                                 <>
-                                    {/* UPDATED: Mobile View now includes Document Type and Amount */}
                                     <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
                                         {paymentData.map((payment, index) => (
                                             <motion.div variants={itemVariants} key={payment.id} className="p-4 space-y-3">
@@ -142,7 +116,6 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                                         ))}
                                     </div>
                                     
-                                    {/* UPDATED: Desktop Table now includes Document Type and Amount columns */}
                                     <div className="hidden md:block overflow-x-auto">
                                         <table className="min-w-full">
                                             <thead className="bg-slate-50 dark:bg-slate-700/50">
@@ -150,6 +123,7 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                                                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Requestor</th>
                                                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Document</th>
                                                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Amount</th>
+                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Status</th>
                                                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Date</th>
                                                     <th className="px-6 py-3 text-left text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Processed By</th>
                                                     <th className="px-6 py-3 text-center text-xs font-bold text-slate-500 dark:text-slate-300 uppercase">Receipt</th>
@@ -158,12 +132,14 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                                             <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
                                                 {paymentData.map((payment, index) => (
                                                     <motion.tr variants={itemVariants} key={payment.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                            <div className="font-medium text-gray-900 dark:text-white">{payment.requestor_name}</div>
-                                                            <div className="text-slate-500 mt-1"><StatusBadge status={payment.status} /></div>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                                                            {payment.requestor_name}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">{payment.document_name}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-800 dark:text-gray-200">₱{Number(payment.amount).toFixed(2)}</td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">
+                                                            <StatusBadge status={payment.status} />
+                                                        </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">{payment.date}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-300">{payment.processed_by || 'N/A'}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -176,11 +152,10 @@ export default function Payment({ payments = { data: [], links: [] }, filters = 
                                     </div>
                                 </>
                             ) : (
-                                <div className="text-center py-20"><FileQuestion className="mx-auto h-16 w-16 text-slate-400" /><h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">No Transactions Found</h3><p className="mt-2 text-sm text-slate-500">Try adjusting your search or filter.</p></div>
+                                <div className="text-center py-20"><FileQuestion className="mx-auto h-16 w-16 text-slate-400" /><h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-white">No Paid Transactions Found</h3><p className="mt-2 text-sm text-slate-500">There are no completed payments to show yet.</p></div>
                             )}
                         </motion.div>
                         
-                        {/* --- Pagination and Modal remain the same --- */}
                         {paymentData.length > 0 && (
                              <div className="px-6 py-4 flex flex-col sm:flex-row items-center justify-between border-t border-slate-200 dark:border-slate-700 gap-4">
                                  <p className="text-sm text-slate-700 dark:text-slate-400">Showing <span className="font-medium">{payments.from || 0}</span> to <span className="font-medium">{payments.to || 0}</span> of <span className="font-medium">{payments.total || 0}</span> results</p>
