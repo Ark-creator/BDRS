@@ -510,7 +510,7 @@ export default function Request() {
                                                         )}
                                                         {request.status === 'Processing' && (
                                                             <>
-                                                                <button onClick={() => handlePreviewClick(request)} title="Preview" className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"><Eye /></button>
+                                                                {/* <button onClick={() => handlePreviewClick(request)} title="Preview" className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"><Eye /></button> */}
                                                                 <a href={route('admin.requests.generate', request.id)} title="Generate" className="p-2 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md"><Download /></a>
                                                             </>
                                                         )}
