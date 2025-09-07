@@ -1,7 +1,5 @@
 <?php
 
-// FILE: app/Http/Controllers/Admin/DocumentGenerationController.php
-
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -38,8 +36,18 @@ class DocumentGenerationController extends Controller
         }
         // --- END: CORRECTED SIGNATURE VALIDATION ---
 
-        // Construct template path from document type name
-        $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
+        // Check if this is the specific eduk template
+        $isEdukDocument = str_contains(strtolower($documentType->name), 'eduk') || 
+                          str_contains(strtolower($documentType->name), 'pagpapatunay');
+        
+        // Use specific template for eduk documents, otherwise use the default naming convention
+        if ($isEdukDocument) {
+            $templateName = 'pagpapatunay_eduk.docx';
+        } else {
+            // Construct template path from document type name (original logic)
+            $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
+        }
+        
         $templatePath = storage_path("app/templates/{$templateName}");
 
         if (!file_exists($templatePath)) {
@@ -59,7 +67,18 @@ class DocumentGenerationController extends Controller
         $templateProcessor->setValue('DAY', date('jS'));
         $templateProcessor->setValue('MONTH_YEAR', date('F Y'));
 
-        // --- Set document-specific values ---
+        // --- SPECIAL HANDLING FOR PAGPAPATUNAY EDUK DOCUMENT ---
+        if ($isEdukDocument) {
+            // Add specific variables for the eduk template
+            $templateProcessor->setValue('CURRENT_DATE', date('F j, Y'));
+            $templateProcessor->setValue('ADDRESS', $profile->address ?? 'N/A');
+            
+            // You might need to add more specific variables based on your eduk template
+            // For example, if your template has variables like PURPOSE, DISABILITY_TYPE, etc.
+            // Add them here based on the request data
+        }
+
+        // --- Set document-specific values for other document types ---
         switch ($documentType->name) {
             case 'pwd':
                 $disability = $requestData['disability_type'] ?? 'Not Specified';
@@ -83,7 +102,6 @@ class DocumentGenerationController extends Controller
         // --- CORRECTED SIGNATURE INJECTION ---
         // Fetch the signature path from the request's form_data.
         $signaturePath = $requestData['signature_path'] ?? null;
-    // dd($signaturePath); 
 
         if ($isResidency && $signaturePath) {
             // The signature was saved to the 'local' disk, which is storage/app/
