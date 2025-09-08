@@ -63,6 +63,13 @@ class DocumentTypeSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Pagpapatunay Eduk',
+                'description' => 'A certificate of educational attainment verification.',
+                'template_path' => 'templates/pagpapatunay_eduk.docx', // Note the .docx extension
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }

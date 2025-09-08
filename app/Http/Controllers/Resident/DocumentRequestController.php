@@ -116,8 +116,35 @@ class DocumentRequestController extends Controller
                     $formData['purpose'] = $specificData['purpose'];
                 }
                 break;
+                 case 'Pagpapatunay Eduk':
+            $specificData = $request->validate([
+                'school_name' => 'required|string|max:255',
+                'school_address' => 'required|string|max:255',
+                'course_program' => 'required|string|max:255',
+                'year_level' => 'required|string|max:255',
+                'academic_year' => 'required|string|max:255',
+                'purpose' => 'required|string|max:255',
+                'other_purpose' => 'nullable|string|max:255',
+            ]);
+            
+            // Handle purpose field
+            if ($specificData['purpose'] === 'Others') {
+                $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
+            } else {
+                $formData['purpose'] = $specificData['purpose'];
+            }
+            
+            // Add other education-specific fields
+            $formData['school_name'] = $specificData['school_name'];
+            $formData['school_address'] = $specificData['school_address'];
+            $formData['course_program'] = $specificData['course_program'];
+            $formData['year_level'] = $specificData['year_level'];
+            $formData['academic_year'] = $specificData['academic_year'];
+            break;
 
-            default:
+        default:
+            // Default case for any other documents
+            break;
                 // Default case for any other documents
                 break;
         }
