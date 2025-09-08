@@ -24,6 +24,7 @@ const EyeOpenIcon = () => <svg className="h-5 w-5 text-gray-500" fill="none" str
 const EyeClosedIcon = () => <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>;
 const CheckIcon = () => <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>;
 const CrossIcon = () => <svg className="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>;
+const MapPinIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
 const getPasswordValidationState = (password) => { const hasUpperCase = /[A-Z]/.test(password); const hasLowerCase = /[a-z]/.test(password); const hasNumber = /[0-9]/.test(password); const hasSpecialChar = /[^A-Za-z0-9]/.test(password); const hasValidLength = password.length >= 8 && password.length <= 16; const checks = { 'Uppercase letter': hasUpperCase, 'Lowercase letter': hasLowerCase, 'Number': hasNumber, 'Special character': hasSpecialChar, '8-16 characters': hasValidLength, }; const strength = Object.values(checks).filter(Boolean).length; const isValid = strength === 5; return { strength, checks, isValid }; };
 const PasswordStrengthIndicator = ({ password }) => { const { strength, checks } = useMemo(() => getPasswordValidationState(password), [password]); if (!password) return null; const strengthColors = [ 'bg-slate-200', 'bg-red-500', 'bg-red-500', 'bg-yellow-500', 'bg-yellow-500', 'bg-green-500' ]; return ( <div className="mt-3 space-y-2 p-3 bg-slate-50/75 rounded-lg border border-slate-200"> <div className="flex items-center gap-3"> <p className="text-sm font-medium text-slate-600 shrink-0">Strength:</p> <div className="w-full bg-slate-200 rounded-full h-2.5"> <div className={`h-2.5 rounded-full transition-all duration-300 ${strengthColors[strength]}`} style={{ width: `${(strength / 5) * 100}%` }}></div> </div> </div> <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1"> {Object.entries(checks).map(([requirement, isMet]) => ( <div key={requirement} className="flex items-center gap-2"> {isMet ? <CheckIcon /> : <CrossIcon />} <span className={`text-xs ${isMet ? 'text-slate-700' : 'text-slate-500'}`}>{requirement}</span> </div> ))} </div> </div> ); };
 const ValidationIndicator = ({ status }) => { const iconContainer = "absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"; if (status === 'checking') { return ( <div className={iconContainer}> <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> </div> ); } if (status === 'valid') { return ( <div className={iconContainer}> <CheckIcon /> </div> ); } if (status === 'invalid') { return ( <div className={iconContainer}> <CrossIcon /> </div> ); } return null; };
@@ -128,9 +129,9 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
                     {error ? (
                         <div className="w-full h-full flex items-center justify-center text-center text-red-600 bg-red-50 rounded-md p-4">{error}</div>
                     ) : (
-                        <video 
-                            ref={videoRef} 
-                            autoPlay 
+                        <video
+                            ref={videoRef}
+                            autoPlay
                             playsInline
                             className={`w-full h-full object-contain rounded-md ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                         ></video>
@@ -149,89 +150,146 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
 };
 
 // --- STEP COMPONENTS ---
-const Step1_BasicInfo = ({ data, setData, errors }) => (
-    <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Basic Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label htmlFor="first_name" className="font-medium text-slate-700 text-sm mb-2 block">First Name</label>
-                <CustomTextInput id="first_name" name="first_name" icon={<UserIcon />} value={data.first_name} onChange={(e) => setData('first_name', e.target.value)} required autoFocus error={errors.first_name} />
-                <InputError message={errors.first_name} className="mt-2" />
-            </div>
-            <div>
-                <label htmlFor="last_name" className="font-medium text-slate-700 text-sm mb-2 block">Last Name</label>
-                <CustomTextInput id="last_name" name="last_name" icon={<UserIcon />} value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} required error={errors.last_name} />
-                <InputError message={errors.last_name} className="mt-2" />
-            </div>
-        </div>
-        <div>
-            <label htmlFor="middle_name" className="font-medium text-slate-700 text-sm mb-2 block">Middle Name <span className="text-slate-400">(Optional)</span></label>
-            <CustomTextInput id="middle_name" name="middle_name" icon={<UserIcon />} value={data.middle_name} onChange={(e) => setData('middle_name', e.target.value)} error={errors.middle_name} />
-            <InputError message={errors.middle_name} className="mt-2" />
-        </div>
-    </div>
-);
+const Step1_BasicInfo = ({ data, setData, errors }) => {
+    const suffixes = ['Jr.', 'Sr.', 'II', 'III', 'IV', 'V'];
 
-const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, ageValidation }) => (
-    <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
-        <div>
-            <label htmlFor="address" className="font-medium text-slate-700 text-sm mb-2 block">Full Address</label>
-            <CustomTextInput id="address" name="address" icon={<HomeIcon />} value={data.address} onChange={(e) => setData('address', e.target.value)} required error={errors.address} />
-            <InputError message={errors.address} className="mt-2" />
-        </div>
-         <div>
-            <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
-            <div className="relative">
-                <CustomTextInput
-                    id="phone_number"
-                    name="phone_number"
-                    type="tel"
-                    icon={<PhoneIcon />}
-                    value={data.phone_number}
-                    onChange={(e) => setData('phone_number', e.target.value)}
-                    required
-                    error={errors.phone_number || phoneValidation.status === 'invalid'}
-                    className="pr-12"
-                />
-                {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
-            </div>
-            {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
-            <InputError message={errors.phone_number} className="mt-2" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
-                <div className="relative">
-                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="pr-12 text-sm h-12" error={errors.birthday || (data.birthday && !ageValidation.isValid)} />
-                    {data.birthday && <ValidationIndicator status={ageValidation.isValid ? 'valid' : 'invalid'} />}
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="first_name" className="font-medium text-slate-700 text-sm mb-2 block">First Name</label>
+                    <CustomTextInput id="first_name" name="first_name" icon={<UserIcon />} value={data.first_name} onChange={(e) => setData('first_name', e.target.value)} required autoFocus error={errors.first_name} />
+                    <InputError message={errors.first_name} className="mt-2" />
                 </div>
-                {!ageValidation.isValid && data.birthday && <InputError message={ageValidation.message} className="mt-2" />}
-                <InputError message={errors.birthday} className="mt-2" />
+                <div>
+                    <label htmlFor="last_name" className="font-medium text-slate-700 text-sm mb-2 block">Last Name</label>
+                    <CustomTextInput id="last_name" name="last_name" icon={<UserIcon />} value={data.last_name} onChange={(e) => setData('last_name', e.target.value)} required error={errors.last_name} />
+                    <InputError message={errors.last_name} className="mt-2" />
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                    <label htmlFor="middle_name" className="font-medium text-slate-700 text-sm mb-2 block">Middle Name <span className="text-slate-400">(Optional)</span></label>
+                    <CustomTextInput id="middle_name" name="middle_name" icon={<UserIcon />} value={data.middle_name} onChange={(e) => setData('middle_name', e.target.value)} error={errors.middle_name} />
+                    <InputError message={errors.middle_name} className="mt-2" />
+                </div>
+                <div>
+                    <label htmlFor="suffix" className="font-medium text-slate-700 text-sm mb-2 block">Suffix <span className="text-slate-400">(Optional)</span></label>
+                    <CustomSelect id="suffix" name="suffix" icon={<UserIcon />} value={data.suffix} onChange={(e) => setData('suffix', e.target.value)} error={errors.suffix}>
+                        <option value="">None</option>
+                        {suffixes.map(s => <option key={s} value={s}>{s}</option>)}
+                    </CustomSelect>
+                    <InputError message={errors.suffix} className="mt-2" />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locations, isLoadingLocations }) => {
+
+    const provinces = useMemo(() => (locations ? Object.keys(locations).sort() : []), [locations]);
+    const cities = useMemo(() => (data.province && locations ? Object.keys(locations[data.province]).sort() : []), [data.province, locations]);
+    const barangays = useMemo(() => (data.province && data.city && locations ? locations[data.province][data.city].sort() : []), [data.province, data.city, locations]);
+
+    const handlePhoneChange = (e) => {
+        const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
+        setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
+    };
+    
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
+
+            {/* Address Dropdowns */}
+            <div>
+                <label htmlFor="province" className="font-medium text-slate-700 text-sm mb-2 block">Province</label>
+                <CustomSelect id="province" name="province" icon={<MapPinIcon />} value={data.province} onChange={(e) => setData({ ...data, province: e.target.value, city: '', barangay: '' })} required error={errors.province} disabled={isLoadingLocations}>
+                    <option value="">{isLoadingLocations ? 'Loading...' : 'Select Province...'}</option>
+                    {provinces.map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                </CustomSelect>
+                <InputError message={errors.province} className="mt-2" />
+            </div>
+
+            <div>
+                <label htmlFor="city" className="font-medium text-slate-700 text-sm mb-2 block">City / Municipality</label>
+                <CustomSelect id="city" name="city" icon={<MapPinIcon />} value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, barangay: '' })} required error={errors.city} disabled={!data.province}>
+                    <option value="">Select City / Municipality...</option>
+                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                </CustomSelect>
+                <InputError message={errors.city} className="mt-2" />
+            </div>
+
+            <div>
+                <label htmlFor="barangay" className="font-medium text-slate-700 text-sm mb-2 block">Barangay</label>
+                <CustomSelect id="barangay" name="barangay" icon={<MapPinIcon />} value={data.barangay} onChange={(e) => setData('barangay', e.target.value)} required error={errors.barangay} disabled={!data.city}>
+                    <option value="">Select Barangay...</option>
+                    {barangays.map(brgy => <option key={brgy} value={brgy}>{brgy}</option>)}
+                </CustomSelect>
+                <InputError message={errors.barangay} className="mt-2" />
+            </div>
+
+            <div>
+                <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
+                <CustomTextInput id="street_address" name="street_address" icon={<HomeIcon />} value={data.street_address} onChange={(e) => setData('street_address', e.target.value)} required error={errors.street_address} />
+                <InputError message={errors.street_address} className="mt-2" />
+            </div>
+            
+             <div>
+                <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <PhoneIcon />
+                        <span className="text-slate-500 ml-2">+63</span>
+                    </div>
+                    <input
+                        id="phone_number"
+                        name="phone_number"
+                        type="tel"
+                        value={data.phone_number}
+                        onChange={handlePhoneChange}
+                        placeholder="9XX-XXX-XXXX"
+                        required
+                        className={`w-full pl-24 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ (errors.phone_number || phoneValidation.status === 'invalid') ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' }`}
+                    />
+                    {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
+                </div>
+                {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
+                <InputError message={errors.phone_number} className="mt-2" />
+            </div>
+
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
+                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="text-sm h-12" error={errors.birthday} />
+                    <InputError message={errors.birthday} className="mt-2" />
+                </div>
+                <div>
+                    <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
+                    <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </CustomSelect>
+                     <InputError message={errors.gender} className="mt-2" />
+                </div>
             </div>
             <div>
-                <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
-                <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
+                <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
+                <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
                     <option value="">Select...</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Separated">Separated</option>
                 </CustomSelect>
-                 <InputError message={errors.gender} className="mt-2" />
+                <InputError message={errors.civil_status} className="mt-2" />
             </div>
         </div>
-        <div>
-            <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
-            <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
-                <option value="">Select...</option>
-                <option value="Single">Single</option>
-                <option value="Married">Married</option>
-                <option value="Widowed">Widowed</option>
-                <option value="Separated">Separated</option>
-            </CustomSelect>
-            <InputError message={errors.civil_status} className="mt-2" />
-        </div>
-    </div>
-);
+    );
+};
 
 const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setPasswordVisible, confirmPasswordVisible, setConfirmPasswordVisible, passwordsDoNotMatch, emailValidation }) => (
     <div className="space-y-4">
@@ -268,7 +326,7 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
             <label htmlFor="password_confirmation" className="font-medium text-slate-700 text-sm mb-2 block">Confirm Password</label>
               <div className="relative">
                 <CustomTextInput id="password_confirmation" name="password_confirmation" type={confirmPasswordVisible ? 'text' : 'password'} icon={<LockIcon />} value={data.password_confirmation} onChange={(e) => setData('password_confirmation', e.target.value)} required error={errors.password_confirmation || passwordsDoNotMatch} />
-                 <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-sm z-10"> {confirmPasswordVisible ? <EyeClosedIcon /> : <EyeOpenIcon />} </button>
+                   <button type="button" onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)} className="absolute inset-y-0 right-0 pr-4 flex items-center text-sm z-10"> {confirmPasswordVisible ? <EyeClosedIcon /> : <EyeOpenIcon />} </button>
             </div>
             {passwordsDoNotMatch && <InputError message="Passwords do not match." className="mt-2" />}
             <InputError message={errors.password_confirmation} className="mt-2" />
@@ -313,7 +371,7 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
 
     return (
         <>
-            <CameraModal 
+            <CameraModal
                 isOpen={isCameraOpen}
                 onClose={() => setIsCameraOpen(false)}
                 onCapture={handleCapture}
@@ -358,7 +416,7 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
                     </div>
                     <SecondaryButton type="button" onClick={() => { setCameraTarget('face'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Take Picture of Face</SecondaryButton>
                 </div>
-                
+
                 <div className={`pt-2 flex items-start ${!termsViewed ? 'opacity-60' : ''}`} title={!termsViewed ? 'Please view the Terms and Conditions first to enable this.' : ''}>
                     <div className="flex items-center h-5">
                         <input id="terms" name="terms" type="checkbox" className={`focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded ${!termsViewed ? 'cursor-not-allowed' : ''}`} checked={agreeToTerms} onChange={(e) => setAgreeToTerms(e.target.checked)} disabled={!termsViewed} />
@@ -381,17 +439,34 @@ export default function Register() {
     const [agreeToTerms, setAgreeToTerms] = useState(false);
     const [termsViewed, setTermsViewed] = useState(false);
     const formContainerRef = useRef(null);
-    const formRef = useRef(null); // MODIFIED: Ref for the entire form
+    const formRef = useRef(null);
+    const [locations, setLocations] = useState(null);
+    const [isLoadingLocations, setIsLoadingLocations] = useState(true);
 
     const { data, setData, post, processing, errors, reset, clearErrors, setError } = useForm({
-        first_name: '', last_name: '', middle_name: '', address: '',
+        first_name: '', last_name: '', middle_name: '', suffix: '',
+        province: '', city: '', barangay: '', street_address: '',
         phone_number: '', birthday: '', gender: '', civil_status: '',
         email: '', password: '', password_confirmation: '',
-        valid_id_type: '', 
-        valid_id_front_image: null, 
-        valid_id_back_image: null, 
+        valid_id_type: '',
+        valid_id_front_image: null,
+        valid_id_back_image: null,
         face_image: null,
     });
+
+    // --- Fetch Location Data ---
+    useEffect(() => {
+        fetch('/ph_locations.json')
+            .then(response => response.json())
+            .then(data => {
+                setLocations(data);
+                setIsLoadingLocations(false);
+            })
+            .catch(error => {
+                console.error("Failed to load location data:", error);
+                setIsLoadingLocations(false);
+            });
+    }, []);
 
     // --- Validations ---
     const passwordValidation = useMemo(() => getPasswordValidationState(data.password), [data.password]);
@@ -400,24 +475,16 @@ export default function Register() {
     const [emailValidation, setEmailValidation] = useState({ status: 'idle', message: '' });
 
     const ageValidation = useMemo(() => {
-        if (!data.birthday) return { isValid: false, message: '' };
-        const today = new Date();
-        const birthDate = new Date(data.birthday);
-        const cutoffDate = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-        if (birthDate > cutoffDate) return { isValid: false, message: 'You must be at least 18 years old.' };
         return { isValid: true, message: '' };
     }, [data.birthday]);
 
-    // --- Step Field Definitions ---
-    // MODIFIED: Define required fields for each step
     const stepFields = {
         1: ['first_name', 'last_name'],
-        2: ['address', 'phone_number', 'birthday', 'gender', 'civil_status'],
+        2: ['province', 'city', 'barangay', 'street_address', 'phone_number', 'birthday', 'gender', 'civil_status'],
         3: ['email', 'password', 'password_confirmation'],
         4: ['valid_id_type', 'valid_id_front_image', 'valid_id_back_image', 'face_image', 'terms']
     };
 
-    // --- Actions ---
     const submit = (e) => {
         e.preventDefault();
         clearErrors();
@@ -434,26 +501,32 @@ export default function Register() {
             return;
         }
 
+        const formData = {
+            ...data,
+            phone_number: `+63${data.phone_number}`
+        };
+
         post(route('register'), {
+            data: formData,
             forceFormData: true,
             onSuccess: () => {
                 reset('password', 'password_confirmation');
             },
-            onError: (errors) => {
-                console.error('Registration failed with errors:', errors);
+            onError: (errs) => {
+                console.error('Registration failed with errors:', errs);
             },
         });
     };
 
-    // MODIFIED: Smarter step navigation with validation
     const validateAndNavigate = (direction) => {
         clearErrors();
         let canProceed = true;
-        
+
         if (direction === 'next') {
             const currentStepFields = stepFields[step];
             for (const field of currentStepFields) {
-                if (!data[field]) {
+                const value = field === 'terms' ? agreeToTerms : data[field];
+                if (!value) {
                     setError(field, 'This field is required.');
                     canProceed = false;
                 }
@@ -463,10 +536,10 @@ export default function Register() {
         if (canProceed) {
             setStep(prev => direction === 'next' ? Math.min(prev + 1, 4) : Math.max(prev - 1, 1));
         } else {
-             const firstErrorField = formRef.current.querySelector('[class*="border-red-500"]');
-             if (firstErrorField) {
-                firstErrorField.focus();
-                firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              const firstErrorField = formRef.current.querySelector('[class*="border-red-500"]');
+                if (firstErrorField) {
+                    firstErrorField.focus();
+                    firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
         }
     };
@@ -480,13 +553,13 @@ export default function Register() {
 
     // --- Async Validations ---
     useEffect(() => {
-        if (!data.phone_number) {
+        if (!data.phone_number || data.phone_number.length !== 10) {
             setPhoneValidation({ status: 'idle', message: '' });
             return;
         }
         setPhoneValidation({ status: 'checking', message: '' });
         const handler = setTimeout(() => {
-            axios.post('/validate-phone', { phone_number: data.phone_number })
+            axios.post('/validate-phone', { phone_number: `+63${data.phone_number}` })
                  .then(res => setPhoneValidation(res.data.is_taken ? { status: 'invalid', message: 'Phone number is already taken.' } : { status: 'valid', message: '' }))
                  .catch(() => setPhoneValidation({ status: 'idle', message: 'Could not verify number.' }));
         }, 500);
@@ -517,14 +590,13 @@ export default function Register() {
     const renderStep = () => {
         switch (step) {
             case 1: return <Step1_BasicInfo data={data} setData={setData} errors={errors} />;
-            case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} ageValidation={ageValidation} />;
+            case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} locations={locations} isLoadingLocations={isLoadingLocations}/>;
             case 3: return <Step3_AccountCredentials data={data} setData={setData} errors={errors} passwordVisible={passwordVisible} setPasswordVisible={setPasswordVisible} confirmPasswordVisible={confirmPasswordVisible} setConfirmPasswordVisible={setConfirmPasswordVisible} passwordsDoNotMatch={passwordsDoNotMatch} emailValidation={emailValidation} />;
             case 4: return <Step4_Verification data={data} setData={setData} errors={errors} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} />;
             default: return null;
         }
     };
     
-    // MODIFIED: Handle modal close and checkbox state
     const handleTermsClose = () => {
         setIsTermsModalOpen(false);
         setTermsViewed(true);
