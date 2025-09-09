@@ -3,11 +3,11 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Barangay;
 use App\Models\UserProfile;
 use App\Models\DocumentRequest;
 use App\Models\DocumentType;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
 
 class ResidentSeeder extends Seeder
 {
@@ -16,35 +16,43 @@ class ResidentSeeder extends Seeder
      */
     public function run(): void
     {
-        // Kinukuha natin ang lahat ng IDs mula sa document_types table.
-        // Mahalaga na nauna nang tumakbo ang DocumentTypeSeeder.
-        $documentTypeIds = DocumentType::pluck('id');
+        // Get all the barangays
+        $barangays = Barangay::all();
 
-        // Check kung may document types na, kung wala, hihinto tayo.
-        if ($documentTypeIds->isEmpty()) {
-            $this->command->warn('Walang nahanap na Document Types. Pakitakbo muna ang DocumentTypeSeeder.');
-            return;
-        }
+        // Loop through each barangay to create residents for it
+        foreach ($barangays as $barangay) {
 
-        // Gagawa tayo ng 2500 na sample resident users para umabot sa 2000+ records.
-        User::factory(2500)->create()->each(function ($user) use ($documentTypeIds) {
-            
-            // Para sa bawat user na ginawa, gagawan natin sila ng profile.
-            UserProfile::factory()->create([
-                'user_id' => $user->id,
-            ]);
+            // Get the document types that ONLY belong to the current barangay
+            $documentTypeIds = DocumentType::where('barangay_id', $barangay->id)->pluck('id');
 
-            // Bawat user ay magre-request ng random na bilang
-            // ng dokumento (mula 1 hanggang 3).
-            $requestsCount = rand(1, 3);
-
-            for ($i = 0; $i < $requestsCount; $i++) {
-                DocumentRequest::factory()->create([
-                    'user_id' => $user->id,
-                    // Random na pipili ng document type id.
-                    'document_type_id' => $documentTypeIds->random(),
-                ]);
+            if ($documentTypeIds->isEmpty()) {
+                $this->command->warn("No document types found for Barangay '{$barangay->name}'. Skipping resident creation for this barangay.");
+                continue; // Move to the next barangay
             }
-        });
+
+            // Create 50 residents for the current barangay
+            User::factory(50)
+                ->state(['barangay_id' => $barangay->id]) // Assign the user to the current barangay
+                ->create()
+                ->each(function ($user) use ($documentTypeIds) {
+                    
+                    // Create a profile for each user
+                    UserProfile::factory()->create([
+                        'user_id' => $user->id,
+                    ]);
+
+                    // Each user will request 1 to 3 documents
+                    $requestsCount = rand(1, 3);
+
+                    for ($i = 0; $i < $requestsCount; $i++) {
+                        DocumentRequest::factory()->create([
+                            'user_id' => $user->id,
+                            'barangay_id' => $user->barangay_id, // Also add barangay_id here
+                            // Randomly pick a document type ID from the ones available for this user's barangay
+                            'document_type_id' => $documentTypeIds->random(),
+                        ]);
+                    }
+                });
+        }
     }
 }

@@ -9,6 +9,9 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo; 
+
+
 use Illuminate\Foundation\Auth\User as Authenticatable;
 
 class User extends Authenticatable implements MustVerifyEmail 
@@ -23,10 +26,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'password',
         'role',
         'status',
-        'two_factor_enabled', // Add this
-    'two_factor_code',    // Add this
-    'two_factor_expires_at', // Add this
-            'verification_status', // <--- Add this
+        'two_factor_enabled', 
+        'two_factor_code',    
+        'two_factor_expires_at', 
+        'verification_status', 
+        'barangay_id',
 
     ];
 
@@ -90,6 +94,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(DocumentRequest::class);
     }
 
+    public function barangay(): BelongsTo
+{
+    return $this->belongsTo(Barangay::class);
+}
+
     /**
      * Relationship: Requests processed by this user.
      */
@@ -118,4 +127,7 @@ class User extends Authenticatable implements MustVerifyEmail
             get: fn () => $this->verification_status === 'verified',
         );
     }
+
+    
 }
+

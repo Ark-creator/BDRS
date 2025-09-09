@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage; // Import the Storage facade
+use App\Models\Traits\BelongsToTenant;
 
 class Announcement extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     /**
      * The attributes that are mass assignable.
@@ -23,6 +24,7 @@ class Announcement extends Model
         'image',
         'link',
         'user_id',
+        'barangay_id',
     ];
 
     /**
@@ -45,6 +47,11 @@ class Announcement extends Model
         return null; // Return null if there is no image
     }
 
+
+    public function barangay(): BelongsTo
+{
+    return $this->belongsTo(Barangay::class);
+}
     /**
      * Get the user that owns the announcement.
      */

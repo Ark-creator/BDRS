@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BelongsToTenant;
 
 class DocumentType extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     protected $fillable = [
         'name',
@@ -18,6 +19,7 @@ class DocumentType extends Model
         'requirements_description',
         'is_archived',
         'archived_by',
+        'barangay_id',
     ];
 
     /**
