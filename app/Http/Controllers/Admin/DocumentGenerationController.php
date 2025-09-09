@@ -27,28 +27,23 @@ class DocumentGenerationController extends Controller
 
         // --- Prepare data for the template ---
         $requestData = $documentRequest->form_data;
-        $isResidency = str_contains(strtolower($documentType->name), 'residency');
-        
-        // Require signature if residency type
+        $documentTypeName = strtolower($documentType->name);
+
+        $isResidency = str_contains($documentTypeName, 'residency');
         if ($isResidency && empty($requestData['signature_path'])) {
             return back()->with('error', "Generation failed: The signature is missing from this document request.");
         }
 
-        // Check if this is the specific eduk template
-        $isEdukDocument = str_contains(strtolower($documentType->name), 'eduk') || 
-                          str_contains(strtolower($documentType->name), 'pagpapatunay');
+        // --- Template Selection Logic ---
+        $isEdukDocument = str_contains($documentTypeName, 'eduk') || str_contains($documentTypeName, 'pagpapatunay');
+        $isOathDocument = str_contains($documentTypeName, 'oath') || str_contains($documentTypeName, 'undertaking');
         
-        // Check if this is the oath of undertaking template
-        $isOathDocument = str_contains(strtolower($documentType->name), 'oath') || 
-                          str_contains(strtolower($documentType->name), 'undertaking');
-        
-        // Use specific template for different document types
         if ($isEdukDocument) {
             $templateName = 'pagpapatunay_eduk.docx';
         } elseif ($isOathDocument) {
             $templateName = 'oath_of_undertaking.docx';
         } else {
-            $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
+            $templateName = Str::snake($documentTypeName) . '_template.docx';
         }
         
         $templatePath = storage_path("app/templates/{$templateName}");
@@ -59,50 +54,45 @@ class DocumentGenerationController extends Controller
 
         $templateProcessor = new TemplateProcessor($templatePath);
 
-        // --- Prepare common data values ---
+        // --- Prepare and Set Common Values ---
         $nameParts = array_filter([$profile->first_name, $profile->middle_name, $profile->last_name]);
         $fullName = strtoupper(implode(' ', $nameParts));
-        $age = $profile->birthday ? Carbon::parse($profile->birthday)->age : 'N/A';
-        $address = $profile->address ?? 'N/A';
-
-        // --- Set common values in the template ---
+        
         $templateProcessor->setValue('FULL_NAME', $fullName);
-        $templateProcessor->setValue('AGE', $age);
-        $templateProcessor->setValue('ADDRESS', $address);
+        $templateProcessor->setValue('AGE', $profile->birthday ? Carbon::parse($profile->birthday)->age : 'N/A');
+        $templateProcessor->setValue('ADDRESS', $profile->address ?? 'N/A');
         $templateProcessor->setValue('DAY', date('jS'));
         $templateProcessor->setValue('MONTH_YEAR', date('F Y'));
         $templateProcessor->setValue('CURRENT_DATE', date('F j, Y'));
 
-        // --- SPECIAL HANDLING FOR PAGPAPATUNAY EDUK DOCUMENT ---
-        if ($isEdukDocument) {
-            $templateProcessor->setValue('SCHOOL_NAME', $requestData['school_name'] ?? 'N/A');
-            $templateProcessor->setValue('SCHOOL_ADDRESS', $requestData['school_address'] ?? 'N/A');
-            $templateProcessor->setValue('COURSE_PROGRAM', $requestData['course_program'] ?? 'N/A');
-            $templateProcessor->setValue('YEAR_LEVEL', $requestData['year_level'] ?? 'N/A');
-            $templateProcessor->setValue('ACADEMIC_YEAR', $requestData['academic_year'] ?? 'N/A');
-            $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
-        }
-
-        // --- SPECIAL HANDLING FOR OATH OF UNDERTAKING DOCUMENT ---
-        if ($isOathDocument) {
-            $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
-            $templateProcessor->setValue('SPECIFIC_UNDERTAKING', $requestData['specific_undertaking'] ?? 'N/A');
-        }
-
-        // --- Set document-specific values for other document types ---
+        // --- SET DOCUMENT-SPECIFIC VALUES (CONSOLIDATED) ---
+        // Lahat ng logic para sa pag-set ng data ay nasa iisang switch block na.
         switch ($documentType->name) {
+            // NOTE: Palitan ang string sa case ng eksaktong pangalan sa iyong database.
+            case 'Pagpapatunay Eduk': 
+                $templateProcessor->setValue('SCHOOL_NAME', $requestData['school_name'] ?? 'N/A');
+                $templateProcessor->setValue('SCHOOL_ADDRESS', $requestData['school_address'] ?? 'N/A');
+                $templateProcessor->setValue('COURSE_PROGRAM', $requestData['course_program'] ?? 'N/A');
+                $templateProcessor->setValue('YEAR_LEVEL', $requestData['year_level'] ?? 'N/A');
+                $templateProcessor->setValue('ACADEMIC_YEAR', $requestData['academic_year'] ?? 'N/A');
+                $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
+                break;
+
+            // NOTE: Palitan ang string sa case ng eksaktong pangalan sa iyong database.
+            case 'Oath of Undertaking':
+                $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
+                $templateProcessor->setValue('SPECIFIC_UNDERTAKING', $requestData['specific_undertaking'] ?? 'N/A');
+                break;
+                
             case 'Brgy Business Permit':
-                $businessName = $requestData['business_name'] ?? 'N/A';
-                $businessAddress = $requestData['business_address'] ?? 'N/A';
-                $templateProcessor->setValue('BUSINESS_NAME', $businessName);
-                $templateProcessor->setValue('BUSINESS_ADDRESS', $businessAddress);
+                $templateProcessor->setValue('BUSINESS_NAME', $requestData['business_name'] ?? 'N/A');
+                $templateProcessor->setValue('BUSINESS_ADDRESS', $requestData['business_address'] ?? 'N/A');
                 break;
 
             case 'Job Seeker':
-                $years = $requestData['years_qualified'] ?? 'N/A';
-                $templateProcessor->setValue('YEARS_QUALIFIED', $years);
+                $templateProcessor->setValue('YEARS_QUALIFIED', $requestData['years_qualified'] ?? 'N/A');
                 break;
-
+            
             case 'pwd':
                 $disability = $requestData['disability_type'] ?? 'Not Specified';
                 if ($disability === 'Others') {
@@ -112,21 +102,14 @@ class DocumentGenerationController extends Controller
                 break;
 
             case 'GP Indigency':
-                $purpose = $requestData['purpose'] ?? 'N/A';
-                $templateProcessor->setValue('PURPOSE', $purpose);
-                break;
-
             case 'Solo Parent':
-                $purpose = $requestData['purpose'] ?? 'N/A';
-                $templateProcessor->setValue('PURPOSE', $purpose);
+                $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
                 break;
         }
 
-        // --- FIXED SIGNATURE INJECTION ---
+        // --- Signature Injection ---
         $signaturePath = $requestData['signature_path'] ?? null;
-
         if (($isResidency || $isOathDocument) && $signaturePath) {
-            // always look inside storage/app/private/
             $signatureFullPath = storage_path('app/private/' . $signaturePath);
 
             if (file_exists($signatureFullPath)) {
@@ -141,10 +124,9 @@ class DocumentGenerationController extends Controller
             }
         }
 
-        // Update the request status
+        // --- Finalize and Download ---
         $documentRequest->update(['status' => 'Ready for Pickup', 'processed_by' => auth()->id()]);
         
-        // Prepare file for download
         $filePrefix = Str::studly($documentType->name);
         $fileName = "{$filePrefix}Cert_{$profile->last_name}.docx";
         $pathToSave = storage_path("app/public/generated/{$fileName}");
