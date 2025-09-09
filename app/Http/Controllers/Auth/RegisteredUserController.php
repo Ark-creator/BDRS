@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Http\Controllers\Controller;
 use App\Models\User;
-use Illuminate\Auth\Events\Registered;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB; // DB Facade for transactions
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage; // Add Storage facade
-use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
+use App\Models\Barangay;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rules;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\Storage; // Add Storage facade
+use Illuminate\Support\Facades\DB; // DB Facade for transactions
 
 class RegisteredUserController extends Controller
 {
@@ -30,68 +31,75 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-    public function store(Request $request): RedirectResponse
-{
-    $validatedData = $request->validate([
-        'first_name' => 'required|string|max:255',
-        'last_name' => 'required|string|max:255',
-        'middle_name' => 'nullable|string|max:255',
-        'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
-        'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        'address' => 'required|string|max:255',
-        'phone_number' => 'nullable|string|max:20|unique:user_profiles,phone_number',
-        'birthday' => 'nullable|date',
-        'gender' => 'nullable|string|in:Male,Female,Other',
-        'civil_status' => 'nullable|string|max:50',
-        'profile_picture_url' => 'nullable|string|max:255',
-
-        // --- FILE UPLOADS VALIDATION ---
-        'valid_id_type' => 'required|string|max:255',
-        'valid_id_front_image' => 'required|file|mimes:jpeg,png,jpg,gif|max:2048',
-        'valid_id_back_image' => 'required|file|mimes:jpeg,png,jpg,gif|max:2048',
-        'face_image' => 'required|file|mimes:jpeg,png,jpg,gif|max:2048',
-        // --- END OF FILE VALIDATION ---
-    ]);
-
-    $user = DB::transaction(function () use ($request) {
-        $user = User::create([
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'resident',
-            'two_factor_enabled' => true
+      public function store(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'suffix' => 'nullable|string|max:20',
+            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'province' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255|exists:barangays,name', // Validate that the barangay name exists in your database
+            'street_address' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20|unique:user_profiles,phone_number',
+            'birthday' => 'required|date',
+            'gender' => 'required|string|in:Male,Female',
+            'civil_status' => 'required|string|max:50',
+            'valid_id_type' => 'required|string|max:255',
+            'valid_id_front_image' => 'required|file|mimes:jpeg,png,jpg|max:2048',
+            'valid_id_back_image' => 'required|file|mimes:jpeg,png,jpg|max:2048',
+            'face_image' => 'required|file|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        // --- HANDLE FILE UPLOADS ---
-        $idFrontPath = $request->file('valid_id_front_image')->store('id_images', 'public');
-        $idBackPath = $request->file('valid_id_back_image')->store('id_images', 'public');
-        $faceImagePath = $request->file('face_image')->store('face_images', 'public');
-        // --- END OF FILE UPLOADS ---
+        $user = DB::transaction(function () use ($request) {
+            // STEP 1: Find the Barangay model from the name provided in the form.
+            // We need this to get the foreign key ID.
+            $barangay = Barangay::where('name', $request->barangay)->firstOrFail();
 
-        $user->profile()->create([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'middle_name' => $request->middle_name,
-            'address' => $request->address,
-            'phone_number' => $request->phone_number,
-            'birthday' => $request->birthday,
-            'gender' => $request->gender,
-            'civil_status' => $request->civil_status,
-            'profile_picture_url' => $request->profile_picture_url,
+            // STEP 2: Create the User, assigning the barangay_id for system logic.
+            // This is the "keycard" for data scoping.
+            $user = User::create([
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'resident',
+                'barangay_id' => $barangay->id, // <-- ASSIGN THE FOREIGN KEY
+                'two_factor_enabled' => true
+            ]);
 
-            // --- SAVE FILE PATHS ---
-            'valid_id_type' => $request->valid_id_type,
-            'valid_id_front_path' => $idFrontPath,
-            'valid_id_back_path' => $idBackPath,
-            'face_image_path' => $faceImagePath,
-            // --- END OF SAVING FILE PATHS ---
-        ]);
+            // Handle file uploads
+            $idFrontPath = $request->file('valid_id_front_image')->store('id_images', 'public');
+            $idBackPath = $request->file('valid_id_back_image')->store('id_images', 'public');
+            $faceImagePath = $request->file('face_image')->store('face_images', 'public');
 
-        return $user;
-    });
+            // STEP 3: Create the User Profile with the full text address for display.
+            // This is the "business card" with descriptive info.
+            $user->profile()->create([
+                'first_name' => $request->first_name,
+                'last_name' => $request->last_name,
+                'middle_name' => $request->middle_name,
+                'suffix' => $request->suffix,
+                'province' => $request->province,
+                'city' => $request->city,
+                'barangay' => $request->barangay, // <-- SAVE THE NAME
+                'street_address' => $request->street_address,
+                'phone_number' => $request->phone_number,
+                'birthday' => $request->birthday,
+                'gender' => $request->gender,
+                'civil_status' => $request->civil_status,
+                'valid_id_type' => $request->valid_id_type,
+                'valid_id_front_path' => $idFrontPath,
+                'valid_id_back_path' => $idBackPath,
+                'face_image_path' => $faceImagePath,
+            ]);
 
-    event(new Registered($user));
-    // Auth::login($user);
+            return $user;
+        });
+
+        event(new Registered($user));
 
         return redirect(route('verification.notice'));
-}
+    }
 }

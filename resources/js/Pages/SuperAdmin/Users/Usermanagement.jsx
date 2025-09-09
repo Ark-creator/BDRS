@@ -215,7 +215,10 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
                                             <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Role</th>
                                             <th scope="col" onClick={() => handleSort('created_at')} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider cursor-pointer">Registered On</th>
                                             <th scope="col" className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider">Verification</th>
-                                            <th scope="col" className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider">Actions</th>
+                                            {/* CORRECTED: Show Actions header ONLY for admin */}
+                                            {auth.user.role === 'admin' && (
+                                                <th scope="col" className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider">Actions</th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white">
@@ -226,25 +229,41 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
                                                     <td data-label="Email" className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{user.email}</td>
                                                     <td data-label="Role" className="px-6 py-4 whitespace-nowrap text-sm">
                                                         {updatingUserRole === user.id ? <LoadingSpinner /> : (
-                                                            <select value={user.role} onChange={(e) => handleRoleChange(e, user)} className={`block w-auto rounded-md px-3 py-1 text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 ${roleBadgeClasses[user.role]}`} disabled={user.id === auth.user.id && user.role === 'super_admin'}>
-                                                                <option value="resident">Resident</option>
-                                                                <option value="admin">Admin</option>
-                                                            </select>
+                                                            <>
+                                                                {/* CORRECTED: Show dropdown for super_admin */}
+                                                                {auth.user.role === 'super_admin' ? (
+                                                                    <select value={user.role} onChange={(e) => handleRoleChange(e, user)} className={`block w-auto rounded-md px-3 py-1 text-xs font-medium border-0 focus:ring-2 focus:ring-blue-500 ${roleBadgeClasses[user.role]}`} disabled={user.id === auth.user.id || user.role === 'super_admin'}>
+                                                                        <option value="resident">Resident</option>
+                                                                        <option value="admin">Admin</option>
+                                                                    </select>
+                                                                ) : (
+                                                                    // CORRECTED: Show static badge for admin
+                                                                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full capitalize ${roleBadgeClasses[user.role]}`}>
+                                                                        {user.role}
+                                                                    </span>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </td>
                                                     <td data-label="Registered On" className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{new Date(user.created_at).toLocaleDateString()}</td>
                                                     <td data-label="Verification" className="px-6 py-4 whitespace-nowrap text-sm"><VerificationStatusBadge status={user.verification_status} /></td>
-                                                    <td data-label="Actions" className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                        <div className="flex items-center justify-end space-x-2">
-                                                            <button onClick={() => handleOpenVerificationModal(user)} className="px-3 py-1.5 bg-yellow-500 text-white text-xs font-bold rounded-md hover:bg-yellow-600 transition-colors">Review</button>
-                                                            <button onClick={() => handleOpenEditModal(user)} className="flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-md hover:bg-blue-700 transition-colors"><Edit size={12} className="mr-1"/> Edit</button>
-                                                        </div>
-                                                    </td>
+                                                    
+                                                    {/* CORRECTED: Show Actions cell ONLY for admin */}
+                                                    {auth.user.role === 'admin' && (
+                                                        <td data-label="Actions" className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                            <div className="flex items-center justify-end space-x-2">
+                                                                {/* Buttons for admin */}
+                                                                <button onClick={() => handleOpenVerificationModal(user)} className="px-3 py-1.5 bg-yellow-500 text-white text-xs font-bold rounded-md hover:bg-yellow-600 transition-colors">Review</button>
+                                                                <button onClick={() => handleOpenEditModal(user)} className="flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-md hover:bg-blue-700 transition-colors"><Edit size={12} className="mr-1"/> Edit</button>
+                                                            </div>
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             ))
                                         ) : (
                                             <tr>
-                                                <td colSpan="6" className="px-6 py-12 text-center text-gray-500">No users found for the selected filters.</td>
+                                                {/* CORRECTED: Dynamic colspan */}
+                                                <td colSpan={auth.user.role === 'admin' ? 6 : 5} className="px-6 py-12 text-center text-gray-500">No users found for the selected filters.</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -276,3 +295,4 @@ export default function UserManagement({ auth, users: initialUsers, filters }) {
         </>
     );
 }
+

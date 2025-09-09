@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class UserProfile extends Model
 {
@@ -20,8 +20,13 @@ class UserProfile extends Model
         'first_name',
         'middle_name',
         'last_name',
+        'suffix', // ADDED: For suffixes like Jr., Sr., III
         'phone_number',
-        'address',
+        // 'address', // REMOVED: Replaced by structured address fields
+        'province',       // ADDED: For the user's province
+        'city',           // ADDED: For the user's city/municipality
+        'barangay',       // ADDED: For the user's barangay
+        'street_address', // ADDED: For the specific street and house number
         'birthday',
         'gender',
         'civil_status',
@@ -51,26 +56,24 @@ class UserProfile extends Model
     }
 
     /**
-     * NEW: Accessor to get the user's full name.
-     *
-     * This combines the first, middle, and last names into a single string.
-     * It gracefully handles cases where the middle name is null.
+     * UPDATED: Accessor to get the user's full name, including suffix.
      *
      * @return string
      */
     public function getFullNameAttribute(): string
     {
-        // Start with the first name
-        $fullName = $this->first_name;
+        return trim("{$this->first_name} {$this->middle_name} {$this->last_name} {$this->suffix}");
+    }
 
-        // Add the middle name if it exists
-        if (!empty($this->middle_name)) {
-            $fullName .= ' ' . $this->middle_name;
-        }
-
-        // Add the last name
-        $fullName .= ' ' . $this->last_name;
-
-        return $fullName;
+    /**
+     * NEW: Accessor to get the user's full, formatted address.
+     *
+     * This combines the separate address fields into a single, readable string.
+     *
+     * @return string
+     */
+    public function getFullAddressAttribute(): string
+    {
+        return "{$this->street_address}, {$this->barangay}, {$this->city}, {$this->province}";
     }
 }
