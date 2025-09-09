@@ -22,6 +22,7 @@ class ImmutableDocumentsArchiveHistory extends Model
         'admin_remarks',
         'processed_by',
         'original_created_at',
+        'barangay_id',
     ];
 
     protected $casts = [

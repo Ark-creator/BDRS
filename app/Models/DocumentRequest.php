@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Traits\BelongsToTenant;
 use Illuminate\Support\Facades\Storage; // <-- Import the Storage facade
 
 class DocumentRequest extends Model
 {
-    use HasFactory;
+    use HasFactory, BelongsToTenant;
 
     /**
      * The attributes that are mass assignable.
@@ -26,7 +27,8 @@ class DocumentRequest extends Model
         'payment_status',
         'payment_receipt_path',
         'paid_at',
-                'claim_voucher_code', // Add this line
+        'claim_voucher_code',
+        'barangay_id',
 
     ];
 
