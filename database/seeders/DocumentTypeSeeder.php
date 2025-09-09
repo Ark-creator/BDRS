@@ -77,6 +77,13 @@ class DocumentTypeSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Job Seeker',
+                'description' => 'A certificate for Job Seekers.',
+                'template_path' => 'templates/job_seeker_template.docx', // Note the .docx extension
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }

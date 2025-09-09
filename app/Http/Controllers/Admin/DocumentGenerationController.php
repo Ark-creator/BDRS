@@ -26,15 +26,13 @@ class DocumentGenerationController extends Controller
         }
 
         // --- Prepare data for the template ---
-        $requestData = $documentRequest->form_data; // This now contains the signature path
+        $requestData = $documentRequest->form_data;
         $isResidency = str_contains(strtolower($documentType->name), 'residency');
         
-        // --- START: CORRECTED SIGNATURE VALIDATION ---
-        // We now check for the signature path within the request's own form_data.
+        // Require signature if residency type
         if ($isResidency && empty($requestData['signature_path'])) {
             return back()->with('error', "Generation failed: The signature is missing from this document request.");
         }
-        // --- END: CORRECTED SIGNATURE VALIDATION ---
 
         // Check if this is the specific eduk template
         $isEdukDocument = str_contains(strtolower($documentType->name), 'eduk') || 
@@ -50,7 +48,6 @@ class DocumentGenerationController extends Controller
         } elseif ($isOathDocument) {
             $templateName = 'oath_of_undertaking.docx';
         } else {
-            // Construct template path from document type name (original logic)
             $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
         }
         
@@ -78,7 +75,6 @@ class DocumentGenerationController extends Controller
 
         // --- SPECIAL HANDLING FOR PAGPAPATUNAY EDUK DOCUMENT ---
         if ($isEdukDocument) {
-            // Add specific variables for the eduk template
             $templateProcessor->setValue('SCHOOL_NAME', $requestData['school_name'] ?? 'N/A');
             $templateProcessor->setValue('SCHOOL_ADDRESS', $requestData['school_address'] ?? 'N/A');
             $templateProcessor->setValue('COURSE_PROGRAM', $requestData['course_program'] ?? 'N/A');
@@ -89,14 +85,24 @@ class DocumentGenerationController extends Controller
 
         // --- SPECIAL HANDLING FOR OATH OF UNDERTAKING DOCUMENT ---
         if ($isOathDocument) {
-            // Add specific variables for the oath template
             $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
             $templateProcessor->setValue('SPECIFIC_UNDERTAKING', $requestData['specific_undertaking'] ?? 'N/A');
-            // Add any other specific variables for the oath template
         }
 
         // --- Set document-specific values for other document types ---
         switch ($documentType->name) {
+            case 'Brgy Business Permit':
+                $businessName = $requestData['business_name'] ?? 'N/A';
+                $businessAddress = $requestData['business_address'] ?? 'N/A';
+                $templateProcessor->setValue('BUSINESS_NAME', $businessName);
+                $templateProcessor->setValue('BUSINESS_ADDRESS', $businessAddress);
+                break;
+
+            case 'Job Seeker':
+                $years = $requestData['years_qualified'] ?? 'N/A';
+                $templateProcessor->setValue('YEARS_QUALIFIED', $years);
+                break;
+
             case 'pwd':
                 $disability = $requestData['disability_type'] ?? 'Not Specified';
                 if ($disability === 'Others') {
@@ -116,12 +122,11 @@ class DocumentGenerationController extends Controller
                 break;
         }
 
-        // --- CORRECTED SIGNATURE INJECTION ---
-        // Fetch the signature path from the request's form_data.
+        // --- FIXED SIGNATURE INJECTION ---
         $signaturePath = $requestData['signature_path'] ?? null;
 
         if (($isResidency || $isOathDocument) && $signaturePath) {
-            // The signature was saved to the 'local' disk, which is storage/app/
+            // always look inside storage/app/private/
             $signatureFullPath = storage_path('app/private/' . $signaturePath);
 
             if (file_exists($signatureFullPath)) {
@@ -132,7 +137,6 @@ class DocumentGenerationController extends Controller
                     'ratio' => true
                 ]);
             } else {
-                // Optional: Handle cases where the path exists but the file is missing.
                 return back()->with('error', 'Generation failed: Signature file not found on server.');
             }
         }
@@ -145,7 +149,6 @@ class DocumentGenerationController extends Controller
         $fileName = "{$filePrefix}Cert_{$profile->last_name}.docx";
         $pathToSave = storage_path("app/public/generated/{$fileName}");
 
-        // Ensure the generated directory exists
         if (!is_dir(dirname($pathToSave))) {
             mkdir(dirname($pathToSave), 0755, true);
         }

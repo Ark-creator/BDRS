@@ -57,9 +57,10 @@ class DocumentRequestController extends Controller
                 ->with('error', 'Your account must be verified to request documents. Please wait for an admin to approve your credentials.');
         }
 
-        // ✅ Explicit mapping para sigurado sa component path
+        // Explicit mapping to ensure correct component paths
         $map = [
             'Brgy Business Permit' => 'BrgyBusinessPermit',
+            'Job Seeker'           => 'JobSeeker', // Added for Job Seeker
             'Barangay Clearance'   => 'BrgyClearance',
             'Certificate of Indigency' => 'GpIndigency',
             'Indigency'            => 'Indigency',
@@ -101,13 +102,19 @@ class DocumentRequestController extends Controller
         $documentType = DocumentType::find($commonValidated['document_type_id']);
         $formData = [];
 
-        // 2. Handle specific fields
+        // 2. Handle specific fields based on document type
         switch ($documentType->name) {
             case 'Brgy Business Permit':
                 $formData = $request->validate([
                     'business_name'    => 'required|string|max:255',
                     'business_type'    => 'required|string|max:255',
                     'business_address' => 'required|string',
+                ]);
+                break;
+
+            case 'Job Seeker':
+                $formData = $request->validate([
+                    'years_qualified' => 'required|numeric|min:1',
                 ]);
                 break;
 
@@ -154,9 +161,9 @@ class DocumentRequestController extends Controller
 
             case 'Oath of Undertaking':
                 $specificData = $request->validate([
-                    'purpose'             => 'required|string|max:255',
+                    'purpose'            => 'required|string|max:255',
                     'specific_undertaking'=> 'required|string|max:500',
-                    'other_purpose'       => 'nullable|string|max:255',
+                    'other_purpose'      => 'nullable|string|max:255',
                 ]);
 
                 $formData['purpose'] = $specificData['purpose'] === 'Others'
@@ -167,26 +174,21 @@ class DocumentRequestController extends Controller
                 break;
 
             default:
-                // fallback
+                // fallback for documents with no extra fields
                 break;
         }
 
-        // 3. Handle Signature
+        // 3. Handle Signature if provided
         if (!empty($commonValidated['signature_data'])) {
             $image = str_replace('data:image/png;base64,', '', $commonValidated['signature_data']);
             $image = str_replace(' ', '+', $image);
             $imageData = base64_decode($image);
 
             $fileName = 'signature_' . auth()->id() . '_' . uniqid() . '.png';
-            $signaturePath = 'signatures/' . $fileName;
+            $signaturePath = 'private/signatures/' . $fileName;
 
             Storage::disk('local')->put($signaturePath, $imageData);
             $formData['signature_path'] = $signaturePath;
-
-            if ($userProfile = auth()->user()->profile) {
-                $userProfile->signature_data = $signaturePath;
-                $userProfile->save();
-            }
         }
 
         // 4. Save document request
@@ -197,7 +199,7 @@ class DocumentRequestController extends Controller
             'form_data'        => $formData,
         ]);
 
-        // 5. Fire event
+        // 5. Fire event to notify admins
         DocumentRequestCreated::dispatch($newRequest);
 
         return redirect()
@@ -205,6 +207,9 @@ class DocumentRequestController extends Controller
             ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
     }
 
+    /**
+     * Handle the submission of a payment receipt.
+     */
     public function submitPayment(Request $request, DocumentRequest $documentRequest)
     {
         if ($documentRequest->user_id !== Auth::id()) {
