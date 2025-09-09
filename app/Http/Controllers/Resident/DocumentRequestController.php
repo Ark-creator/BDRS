@@ -27,7 +27,7 @@ class DocumentRequestController extends Controller
             ->where('user_id', $userId)
             ->with(['documentType', 'user'])
             ->latest()
-            ->paginate(5, ['*'], 'active_page') // Paginate active requests
+            ->paginate(5, ['*'], 'active_page')
             ->withQueryString();
 
         // Fetch past requests (Claimed or Rejected) from the archive table
@@ -36,12 +36,12 @@ class DocumentRequestController extends Controller
             ->whereIn('status', ['Claimed', 'Rejected'])
             ->with(['documentType', 'processor.profile'])
             ->latest('original_created_at')
-            ->paginate(5, ['*'], 'past_page') // Paginate past requests separately
+            ->paginate(5, ['*'], 'past_page')
             ->withQueryString();
 
         return Inertia::render('Residents/MyRequests', [
             'activeRequests' => $activeRequests,
-            'pastRequests' => $pastRequests,
+            'pastRequests'   => $pastRequests,
         ]);
     }
 
@@ -51,13 +51,30 @@ class DocumentRequestController extends Controller
     public function create(DocumentType $documentType)
     {
         $user = Auth::user();
-    if (!$user->is_verified) {
-        return redirect()->route('residents.home')->with('error', 'Your account must be verified to request documents. Please wait for an admin to approve your credentials.');
-    }
-        $componentName = Str::studly($documentType->name);
+
+        if (!$user->is_verified) {
+            return redirect()->route('residents.home')
+                ->with('error', 'Your account must be verified to request documents. Please wait for an admin to approve your credentials.');
+        }
+
+        // ✅ Explicit mapping para sigurado sa component path
+        $map = [
+            'Brgy Business Permit' => 'BrgyBusinessPermit',
+            'Barangay Clearance'   => 'BrgyClearance',
+            'Certificate of Indigency' => 'GpIndigency',
+            'Indigency'            => 'Indigency',
+            'Oath of Undertaking'  => 'OathOfUndertaking',
+            'Pagpapatunay Eduk'    => 'PagpapatunayEduk',
+            'pwd'                  => 'Pwd',
+            'Residency'            => 'Residency',
+            'Solo Parent'          => 'SoloParent',
+            'Akap'                 => 'Akap',
+        ];
+
+        $componentName = $map[$documentType->name] ?? Str::studly($documentType->name);
         $viewPath = 'Residents/papers/' . $componentName;
 
-        $userProfile = Auth::user()->profile;
+        $userProfile = $user->profile;
 
         return Inertia::render($viewPath, [
             'documentType' => $documentType,
@@ -69,136 +86,124 @@ class DocumentRequestController extends Controller
      * Store a newly created document request in the database.
      */
     public function store(Request $request)
-{
-    $user = Auth::user();
-    if (!$user->is_verified) {
-        return back()->with('error', 'Your account must be verified to submit a request.');
-    }
-    
-    // 1. Validate common fields required for logic
-    $commonValidated = $request->validate([
-        'document_type_id' => 'required|exists:document_types,id',
-        'signature_data' => 'nullable|string',
-    ]);
-
-    $documentType = DocumentType::find($commonValidated['document_type_id']);
-    $formData = []; // Initialize empty array for specific form data
-
-    // 2. Use a switch statement to handle logic for each document type
-    switch ($documentType->name) {
-        case 'Brgy Business Permit':
-            $specificData = $request->validate([
-                'business_name' => 'required|string|max:255',
-                'business_type' => 'required|string|max:255',
-                'business_address' => 'required|string',
-            ]);
-            $formData = $specificData;
-            break;
-
-        case 'pwd':
-            $specificData = $request->validate([
-                'disability_type' => 'required|string|max:255',
-                'other_disability' => 'nullable|string|max:255',
-            ]);
-            $formData = $specificData;
-            break;
-
-        case 'Certificate of Indigency':
-        case 'Solo Parent':
-        case 'Barangay Clearance':
-            $specificData = $request->validate([
-                'purpose' => 'required|string|max:255',
-                'other_purpose' => 'nullable|string|max:255',
-            ]);
-            if ($specificData['purpose'] === 'Others') {
-                $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
-            } else {
-                $formData['purpose'] = $specificData['purpose'];
-            }
-            break;
-            
-        case 'Pagpapatunay Eduk':
-            $specificData = $request->validate([
-                'school_name' => 'required|string|max:255',
-                'school_address' => 'required|string|max:255',
-                'course_program' => 'required|string|max:255',
-                'year_level' => 'required|string|max:255',
-                'academic_year' => 'required|string|max:255',
-                'purpose' => 'required|string|max:255',
-                'other_purpose' => 'nullable|string|max:255',
-            ]);
-            
-            // Handle purpose field
-            if ($specificData['purpose'] === 'Others') {
-                $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
-            } else {
-                $formData['purpose'] = $specificData['purpose'];
-            }
-            
-            // Add other education-specific fields
-            $formData['school_name'] = $specificData['school_name'];
-            $formData['school_address'] = $specificData['school_address'];
-            $formData['course_program'] = $specificData['course_program'];
-            $formData['year_level'] = $specificData['year_level'];
-            $formData['academic_year'] = $specificData['academic_year'];
-            break;
-            
-        case 'Oath of Undertaking':
-            $specificData = $request->validate([
-                'purpose' => 'required|string|max:255',
-                'specific_undertaking' => 'required|string|max:500',
-                'other_purpose' => 'nullable|string|max:255',
-            ]);
-            
-            // Handle purpose field
-            if ($specificData['purpose'] === 'Others') {
-                $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
-            } else {
-                $formData['purpose'] = $specificData['purpose'];
-            }
-            
-            // Add undertaking-specific field
-            $formData['specific_undertaking'] = $specificData['specific_undertaking'];
-            break;
-
-        default:
-            // Default case for any other documents
-            break;
-    }
-
-    // 3. Handle Signature
-    if (!empty($commonValidated['signature_data'])) {
-        $image = str_replace('data:image/png;base64,', '', $commonValidated['signature_data']);
-        $image = str_replace(' ', '+', $image);
-        $imageData = base64_decode($image);
-
-        $fileName = 'signature_' . auth()->id() . '_' . uniqid() . '.png';
-        $signaturePath = 'signatures/' . $fileName;
-
-        Storage::disk('local')->put($signaturePath, $imageData);
-        $formData['signature_path'] = $signaturePath;
-
-        if ($userProfile = auth()->user()->profile) {
-            $userProfile->signature_data = $signaturePath;
-            $userProfile->save();
+    {
+        $user = Auth::user();
+        if (!$user->is_verified) {
+            return back()->with('error', 'Your account must be verified to submit a request.');
         }
+
+        // 1. Validate common fields
+        $commonValidated = $request->validate([
+            'document_type_id' => 'required|exists:document_types,id',
+            'signature_data'   => 'nullable|string',
+        ]);
+
+        $documentType = DocumentType::find($commonValidated['document_type_id']);
+        $formData = [];
+
+        // 2. Handle specific fields
+        switch ($documentType->name) {
+            case 'Brgy Business Permit':
+                $formData = $request->validate([
+                    'business_name'    => 'required|string|max:255',
+                    'business_type'    => 'required|string|max:255',
+                    'business_address' => 'required|string',
+                ]);
+                break;
+
+            case 'pwd':
+                $formData = $request->validate([
+                    'disability_type'  => 'required|string|max:255',
+                    'other_disability' => 'nullable|string|max:255',
+                ]);
+                break;
+
+            case 'Certificate of Indigency':
+            case 'Solo Parent':
+            case 'Barangay Clearance':
+                $specificData = $request->validate([
+                    'purpose'       => 'required|string|max:255',
+                    'other_purpose' => 'nullable|string|max:255',
+                ]);
+                $formData['purpose'] = $specificData['purpose'] === 'Others'
+                    ? ($specificData['other_purpose'] ?? 'Not specified')
+                    : $specificData['purpose'];
+                break;
+
+            case 'Pagpapatunay Eduk':
+                $specificData = $request->validate([
+                    'school_name'    => 'required|string|max:255',
+                    'school_address' => 'required|string|max:255',
+                    'course_program' => 'required|string|max:255',
+                    'year_level'     => 'required|string|max:255',
+                    'academic_year'  => 'required|string|max:255',
+                    'purpose'        => 'required|string|max:255',
+                    'other_purpose'  => 'nullable|string|max:255',
+                ]);
+
+                $formData['purpose'] = $specificData['purpose'] === 'Others'
+                    ? ($specificData['other_purpose'] ?? 'Not specified')
+                    : $specificData['purpose'];
+
+                $formData['school_name']    = $specificData['school_name'];
+                $formData['school_address'] = $specificData['school_address'];
+                $formData['course_program'] = $specificData['course_program'];
+                $formData['year_level']     = $specificData['year_level'];
+                $formData['academic_year']  = $specificData['academic_year'];
+                break;
+
+            case 'Oath of Undertaking':
+                $specificData = $request->validate([
+                    'purpose'             => 'required|string|max:255',
+                    'specific_undertaking'=> 'required|string|max:500',
+                    'other_purpose'       => 'nullable|string|max:255',
+                ]);
+
+                $formData['purpose'] = $specificData['purpose'] === 'Others'
+                    ? ($specificData['other_purpose'] ?? 'Not specified')
+                    : $specificData['purpose'];
+
+                $formData['specific_undertaking'] = $specificData['specific_undertaking'];
+                break;
+
+            default:
+                // fallback
+                break;
+        }
+
+        // 3. Handle Signature
+        if (!empty($commonValidated['signature_data'])) {
+            $image = str_replace('data:image/png;base64,', '', $commonValidated['signature_data']);
+            $image = str_replace(' ', '+', $image);
+            $imageData = base64_decode($image);
+
+            $fileName = 'signature_' . auth()->id() . '_' . uniqid() . '.png';
+            $signaturePath = 'signatures/' . $fileName;
+
+            Storage::disk('local')->put($signaturePath, $imageData);
+            $formData['signature_path'] = $signaturePath;
+
+            if ($userProfile = auth()->user()->profile) {
+                $userProfile->signature_data = $signaturePath;
+                $userProfile->save();
+            }
+        }
+
+        // 4. Save document request
+        $newRequest = DocumentRequest::create([
+            'user_id'          => auth()->id(),
+            'document_type_id' => $commonValidated['document_type_id'],
+            'status'           => 'Pending',
+            'form_data'        => $formData,
+        ]);
+
+        // 5. Fire event
+        DocumentRequestCreated::dispatch($newRequest);
+
+        return redirect()
+            ->route('residents.requests.index')
+            ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
     }
-
-    // 4. Create the document request record
-    $newRequest = DocumentRequest::create([
-        'user_id'          => auth()->id(),
-        'document_type_id' => $commonValidated['document_type_id'],
-        'status'           => 'Pending',
-        'form_data'        => $formData,
-    ]);
-
-    // 5. Dispatch the event
-    DocumentRequestCreated::dispatch($newRequest);
-
-    return redirect()
-        ->route('residents.requests.index') // Redirect to the "My Requests" page
-        ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
-}
 
     public function submitPayment(Request $request, DocumentRequest $documentRequest)
     {
@@ -218,9 +223,9 @@ class DocumentRequestController extends Controller
 
         $documentRequest->update([
             'payment_receipt_path' => $path,
-            'payment_status' => 'paid',
-            'paid_at' => now(),
-            'status' => 'Processing',
+            'payment_status'       => 'paid',
+            'paid_at'              => now(),
+            'status'               => 'Processing',
         ]);
 
         return redirect()->route('residents.requests.index')
