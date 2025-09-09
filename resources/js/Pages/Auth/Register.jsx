@@ -191,8 +191,11 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locatio
 
     const provinces = useMemo(() => (locations ? Object.keys(locations).sort() : []), [locations]);
     const cities = useMemo(() => (data.province && locations ? Object.keys(locations[data.province]).sort() : []), [data.province, locations]);
-    const barangays = useMemo(() => (data.province && data.city && locations ? locations[data.province][data.city].sort() : []), [data.province, data.city, locations]);
-
+    const barangays = useMemo(() => (
+        data.province && data.city && locations && locations[data.province] && locations[data.province][data.city] 
+        ? locations[data.province][data.city].sort() 
+        : []
+    ), [data.province, data.city, locations]);
     const handlePhoneChange = (e) => {
         const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
         setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
@@ -456,17 +459,22 @@ export default function Register() {
 
     // --- Fetch Location Data ---
     useEffect(() => {
-        fetch('/ph_locations.json')
-            .then(response => response.json())
-            .then(data => {
-                setLocations(data);
-                setIsLoadingLocations(false);
-            })
-            .catch(error => {
-                console.error("Failed to load location data:", error);
-                setIsLoadingLocations(false);
-            });
-    }, []);
+    fetch('/ph_locations.json')
+        .then(response => response.json())
+        .then(locationData => {
+            setLocations(locationData);
+            setIsLoadingLocations(false);
+            setData(prevData => ({
+                ...prevData,
+                province: 'Nueva Ecija',
+                city: 'City of Gapan'
+            }));
+        })
+        .catch(error => {
+            console.error("Failed to load location data:", error);
+            setIsLoadingLocations(false);
+        });
+}, []);
 
     // --- Validations ---
     const passwordValidation = useMemo(() => getPasswordValidationState(data.password), [data.password]);
@@ -485,6 +493,7 @@ export default function Register() {
         4: ['valid_id_type', 'valid_id_front_image', 'valid_id_back_image', 'face_image', 'terms']
     };
 
+   
     const submit = (e) => {
         e.preventDefault();
         clearErrors();

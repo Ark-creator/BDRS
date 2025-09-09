@@ -121,6 +121,9 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
     
      Route::post('/requests/{documentRequest}/set-payment', [RequestDocumentsController::class, 'setPaymentAmount'])
          ->name('requests.set-payment');
+     Route::get('/settings', function () {
+        return Inertia::render('Admin/Settings');
+    })->name('settings');
     // --- Document Types Routes ---
     Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
     Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
@@ -173,7 +176,10 @@ Route::middleware(['auth', 'verified', 'can:be-super-admin'])
     Route::patch('/users/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
 
     Route::patch('/users/{user}/verify', [SuperAdminUserController::class, 'updateVerificationStatus'])->name('users.verify');
-
+    
+    Route::get('/settings', function () {
+        return Inertia::render('SuperAdmin/Settings');
+    })->name('settings');
 
 });
 
