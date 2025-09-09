@@ -40,9 +40,15 @@ class DocumentGenerationController extends Controller
         $isEdukDocument = str_contains(strtolower($documentType->name), 'eduk') || 
                           str_contains(strtolower($documentType->name), 'pagpapatunay');
         
-        // Use specific template for eduk documents, otherwise use the default naming convention
+        // Check if this is the oath of undertaking template
+        $isOathDocument = str_contains(strtolower($documentType->name), 'oath') || 
+                          str_contains(strtolower($documentType->name), 'undertaking');
+        
+        // Use specific template for different document types
         if ($isEdukDocument) {
             $templateName = 'pagpapatunay_eduk.docx';
+        } elseif ($isOathDocument) {
+            $templateName = 'oath_of_undertaking.docx';
         } else {
             // Construct template path from document type name (original logic)
             $templateName = Str::snake(Str::lower($documentType->name)) . '_template.docx';
@@ -60,22 +66,33 @@ class DocumentGenerationController extends Controller
         $nameParts = array_filter([$profile->first_name, $profile->middle_name, $profile->last_name]);
         $fullName = strtoupper(implode(' ', $nameParts));
         $age = $profile->birthday ? Carbon::parse($profile->birthday)->age : 'N/A';
+        $address = $profile->address ?? 'N/A';
 
         // --- Set common values in the template ---
         $templateProcessor->setValue('FULL_NAME', $fullName);
         $templateProcessor->setValue('AGE', $age);
+        $templateProcessor->setValue('ADDRESS', $address);
         $templateProcessor->setValue('DAY', date('jS'));
         $templateProcessor->setValue('MONTH_YEAR', date('F Y'));
+        $templateProcessor->setValue('CURRENT_DATE', date('F j, Y'));
 
         // --- SPECIAL HANDLING FOR PAGPAPATUNAY EDUK DOCUMENT ---
         if ($isEdukDocument) {
             // Add specific variables for the eduk template
-            $templateProcessor->setValue('CURRENT_DATE', date('F j, Y'));
-            $templateProcessor->setValue('ADDRESS', $profile->address ?? 'N/A');
-            
-            // You might need to add more specific variables based on your eduk template
-            // For example, if your template has variables like PURPOSE, DISABILITY_TYPE, etc.
-            // Add them here based on the request data
+            $templateProcessor->setValue('SCHOOL_NAME', $requestData['school_name'] ?? 'N/A');
+            $templateProcessor->setValue('SCHOOL_ADDRESS', $requestData['school_address'] ?? 'N/A');
+            $templateProcessor->setValue('COURSE_PROGRAM', $requestData['course_program'] ?? 'N/A');
+            $templateProcessor->setValue('YEAR_LEVEL', $requestData['year_level'] ?? 'N/A');
+            $templateProcessor->setValue('ACADEMIC_YEAR', $requestData['academic_year'] ?? 'N/A');
+            $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
+        }
+
+        // --- SPECIAL HANDLING FOR OATH OF UNDERTAKING DOCUMENT ---
+        if ($isOathDocument) {
+            // Add specific variables for the oath template
+            $templateProcessor->setValue('PURPOSE', $requestData['purpose'] ?? 'N/A');
+            $templateProcessor->setValue('SPECIFIC_UNDERTAKING', $requestData['specific_undertaking'] ?? 'N/A');
+            // Add any other specific variables for the oath template
         }
 
         // --- Set document-specific values for other document types ---
@@ -103,7 +120,7 @@ class DocumentGenerationController extends Controller
         // Fetch the signature path from the request's form_data.
         $signaturePath = $requestData['signature_path'] ?? null;
 
-        if ($isResidency && $signaturePath) {
+        if (($isResidency || $isOathDocument) && $signaturePath) {
             // The signature was saved to the 'local' disk, which is storage/app/
             $signatureFullPath = storage_path('app/private/' . $signaturePath);
 

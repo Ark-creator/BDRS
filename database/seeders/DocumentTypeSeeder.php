@@ -70,6 +70,13 @@ class DocumentTypeSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'Oath of Undertaking',
+                'description' => 'A sworn statement of undertaking.',
+                'template_path' => 'templates/oath_of_undertaking.docx', // Note the .docx extension
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ]);
     }
 }

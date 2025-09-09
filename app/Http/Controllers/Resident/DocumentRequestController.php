@@ -69,54 +69,55 @@ class DocumentRequestController extends Controller
      * Store a newly created document request in the database.
      */
     public function store(Request $request)
-    {
-
-         $user = Auth::user();
+{
+    $user = Auth::user();
     if (!$user->is_verified) {
         return back()->with('error', 'Your account must be verified to submit a request.');
     }
-        // 1. Validate common fields required for logic
-        $commonValidated = $request->validate([
-            'document_type_id' => 'required|exists:document_types,id',
-            'signature_data' => 'nullable|string',
-        ]);
+    
+    // 1. Validate common fields required for logic
+    $commonValidated = $request->validate([
+        'document_type_id' => 'required|exists:document_types,id',
+        'signature_data' => 'nullable|string',
+    ]);
 
-        $documentType = DocumentType::find($commonValidated['document_type_id']);
-        $formData = []; // Initialize empty array for specific form data
+    $documentType = DocumentType::find($commonValidated['document_type_id']);
+    $formData = []; // Initialize empty array for specific form data
 
-        // 2. Use a switch statement to handle logic for each document type
-        switch ($documentType->name) {
-            case 'Brgy Business Permit':
-                $specificData = $request->validate([
-                    'business_name' => 'required|string|max:255',
-                    'business_type' => 'required|string|max:255',
-                    'business_address' => 'required|string',
-                ]);
-                $formData = $specificData;
-                break;
+    // 2. Use a switch statement to handle logic for each document type
+    switch ($documentType->name) {
+        case 'Brgy Business Permit':
+            $specificData = $request->validate([
+                'business_name' => 'required|string|max:255',
+                'business_type' => 'required|string|max:255',
+                'business_address' => 'required|string',
+            ]);
+            $formData = $specificData;
+            break;
 
-            case 'pwd':
-                $specificData = $request->validate([
-                    'disability_type' => 'required|string|max:255',
-                    'other_disability' => 'nullable|string|max:255',
-                ]);
-                $formData = $specificData;
-                break;
+        case 'pwd':
+            $specificData = $request->validate([
+                'disability_type' => 'required|string|max:255',
+                'other_disability' => 'nullable|string|max:255',
+            ]);
+            $formData = $specificData;
+            break;
 
-            case 'Certificate of Indigency':
-            case 'Solo Parent':
-            case 'Barangay Clearance':
-                $specificData = $request->validate([
-                    'purpose' => 'required|string|max:255',
-                    'other_purpose' => 'nullable|string|max:255',
-                ]);
-                if ($specificData['purpose'] === 'Others') {
-                    $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
-                } else {
-                    $formData['purpose'] = $specificData['purpose'];
-                }
-                break;
-                 case 'Pagpapatunay Eduk':
+        case 'Certificate of Indigency':
+        case 'Solo Parent':
+        case 'Barangay Clearance':
+            $specificData = $request->validate([
+                'purpose' => 'required|string|max:255',
+                'other_purpose' => 'nullable|string|max:255',
+            ]);
+            if ($specificData['purpose'] === 'Others') {
+                $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
+            } else {
+                $formData['purpose'] = $specificData['purpose'];
+            }
+            break;
+            
+        case 'Pagpapatunay Eduk':
             $specificData = $request->validate([
                 'school_name' => 'required|string|max:255',
                 'school_address' => 'required|string|max:255',
@@ -141,47 +142,63 @@ class DocumentRequestController extends Controller
             $formData['year_level'] = $specificData['year_level'];
             $formData['academic_year'] = $specificData['academic_year'];
             break;
+            
+        case 'Oath of Undertaking':
+            $specificData = $request->validate([
+                'purpose' => 'required|string|max:255',
+                'specific_undertaking' => 'required|string|max:500',
+                'other_purpose' => 'nullable|string|max:255',
+            ]);
+            
+            // Handle purpose field
+            if ($specificData['purpose'] === 'Others') {
+                $formData['purpose'] = $specificData['other_purpose'] ?? 'Not specified';
+            } else {
+                $formData['purpose'] = $specificData['purpose'];
+            }
+            
+            // Add undertaking-specific field
+            $formData['specific_undertaking'] = $specificData['specific_undertaking'];
+            break;
 
         default:
             // Default case for any other documents
             break;
-                // Default case for any other documents
-                break;
-        }
-
-        // 3. Handle Signature
-        if (!empty($commonValidated['signature_data'])) {
-            $image = str_replace('data:image/png;base64,', '', $commonValidated['signature_data']);
-            $image = str_replace(' ', '+', $image);
-            $imageData = base64_decode($image);
-
-            $fileName = 'signature_' . auth()->id() . '_' . uniqid() . '.png';
-            $signaturePath = 'signatures/' . $fileName;
-
-            Storage::disk('local')->put($signaturePath, $imageData);
-            $formData['signature_path'] = $signaturePath;
-
-            if ($userProfile = auth()->user()->profile) {
-                $userProfile->signature_data = $signaturePath;
-                $userProfile->save();
-            }
-        }
-
-        // 4. Create the document request record
-        $newRequest = DocumentRequest::create([
-            'user_id'          => auth()->id(),
-            'document_type_id' => $commonValidated['document_type_id'],
-            'status'           => 'Pending',
-            'form_data'        => $formData,
-        ]);
-
-        // 5. Dispatch the event
-        DocumentRequestCreated::dispatch($newRequest);
-
-        return redirect()
-            ->route('residents.requests.index') // Redirect to the "My Requests" page
-            ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
     }
+
+    // 3. Handle Signature
+    if (!empty($commonValidated['signature_data'])) {
+        $image = str_replace('data:image/png;base64,', '', $commonValidated['signature_data']);
+        $image = str_replace(' ', '+', $image);
+        $imageData = base64_decode($image);
+
+        $fileName = 'signature_' . auth()->id() . '_' . uniqid() . '.png';
+        $signaturePath = 'signatures/' . $fileName;
+
+        Storage::disk('local')->put($signaturePath, $imageData);
+        $formData['signature_path'] = $signaturePath;
+
+        if ($userProfile = auth()->user()->profile) {
+            $userProfile->signature_data = $signaturePath;
+            $userProfile->save();
+        }
+    }
+
+    // 4. Create the document request record
+    $newRequest = DocumentRequest::create([
+        'user_id'          => auth()->id(),
+        'document_type_id' => $commonValidated['document_type_id'],
+        'status'           => 'Pending',
+        'form_data'        => $formData,
+    ]);
+
+    // 5. Dispatch the event
+    DocumentRequestCreated::dispatch($newRequest);
+
+    return redirect()
+        ->route('residents.requests.index') // Redirect to the "My Requests" page
+        ->with('success', 'Request for ' . $documentType->name . ' submitted successfully!');
+}
 
     public function submitPayment(Request $request, DocumentRequest $documentRequest)
     {
