@@ -15,7 +15,7 @@ import {
     LayoutDashboard, Megaphone, FileText, FolderGit2, History,
     MessageSquareMore, CreditCard, PanelLeftClose, PanelLeftOpen, ChevronDown,
     BellRing, Menu, X, ArrowLeft, Users,
-    HelpCircle, LogOut
+    HelpCircle, LogOut, Settings // <<< 1. Import the Settings icon
 } from 'lucide-react';
 
 // --- Components ---
@@ -56,6 +56,7 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
                 { element: '#nav-item-history', popover: { title: '📜 History', description: 'A log of past activities and transactions in the system.', side: "right", align: 'start' }},
                 { element: '#nav-item-payments', popover: { title: '💳 Payments', description: 'Track payment transactions for services.', side: "right", align: 'start' }},
                 { element: '#nav-item-messages', popover: { title: '💬 Messages', description: 'Read messages from residents here. The red dot indicates a new message.', side: "right", align: 'start' }},
+                { element: '#nav-item-settings', popover: { title: '⚙️ Settings', description: 'Configure system settings and preferences here.', side: "right", align: 'start' }},
                 { element: '#sidebar-user-profile', popover: { title: '👤 User Profile', description: 'See who is logged in. You can also log out from here.', side: "top", align: 'start' }},
                 { element: '#help-button-container', popover: { title: '💡 Help & Guide', description: 'Just click this again if you want to see this guide again. Hope it helps!', side: "top", align: 'start' }}
             ]
@@ -197,7 +198,7 @@ export default function AuthenticatedLayout({ header, children }) {
             } catch (error) { console.error("Error fetching unread data:", error); }
         };
         fetchUnreadData();
-        const interval = setInterval(fetchUnreadData, 30000);
+        const interval = setInterval(fetchUnreadData, 4000);
         return () => clearInterval(interval);
     }, [isAdmin]);
 
@@ -244,8 +245,17 @@ export default function AuthenticatedLayout({ header, children }) {
 
     const navLinkGroups = [
         { title: 'Main', links: [{ name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> }, { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> }] },
-        { title: 'Management', links: [{ name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> }, { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> }, ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : [])] },
-        { title: 'Account', links: [{ name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> }, { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> }, { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: adminUnreadCount }] },
+        { title: 'Management', links: [{ name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> }, { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> }, ...(isSuperAdmin || isAdmin  ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : [])] },
+        { 
+            title: 'Account', 
+            links: [
+                { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> }, 
+                { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> }, 
+                { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: adminUnreadCount },
+                // <<< 2. Add the new settings link object
+                { name: 'Settings', href: route('admin.settings'), active: route().current('admin.settings'), icon: <Settings size={18} /> }
+            ] 
+        },
     ];
 
     const NotificationBubble = ({ messages, count, isForAdmin }) => (

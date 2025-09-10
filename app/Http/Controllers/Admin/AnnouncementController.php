@@ -47,6 +47,7 @@ class AnnouncementController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'link' => 'nullable|url',
+            // 'barangay_id' => Auth::user()->barangay_id,
             // Changed max size to 10MB (10240 KB)
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:10240',
         ]);
@@ -59,6 +60,7 @@ class AnnouncementController extends Controller
             'description' => $request->description,
             'link' => $request->link,
             'image' => $imagePath,
+            'barangay_id' => Auth::user()->barangay_id,
             'user_id' => Auth::id(), // Get the currently logged-in user's ID
         ]);
 

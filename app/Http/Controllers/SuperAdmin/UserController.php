@@ -17,12 +17,22 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        if (Gate::denies('be-super-admin')) {
+        // MODIFIED: Allow both super_admin and admin to view this page.
+        // We will create this 'manage-users' Gate in the AuthServiceProvider.
+        if (Gate::denies('manage-users')) {
             abort(403, 'Unauthorized action.');
         }
 
         $query = User::with('profile')
             ->orderBy($request->input('sortBy', 'created_at'), $request->input('sortOrder', 'desc'));
+
+        // --- NEW: SCOPE QUERY FOR ADMINS ---
+        // If the logged-in user is an admin, only show users from their barangay.
+        // Super admins can still see everyone.
+        if (auth()->user()->role === 'admin') {
+            $query->where('barangay_id', auth()->user()->barangay_id);
+        }
+        // --- END OF NEW LOGIC ---
 
         // Search Filter
         if ($request->filled('search')) {
@@ -41,29 +51,23 @@ class UserController extends Controller
             $query->where('role', $request->input('role'));
         }
 
-        // --- BAGONG LOGIC PARA SA VERIFICATION STATUS FILTER ---
+        // Verification Status Filter
         if ($request->filled('status') && $request->input('status') !== 'all') {
             $status = $request->input('status');
-
-            if ($status === 'unverified') {
-                // Kapag 'unverified' ang pinili, ipakita lahat ng HINDI 'verified'
-                $query->where('verification_status', '!=', 'verified');
-            } else {
-                // Para sa 'verified' status
-                $query->where('verification_status', $status);
-            }
+            $query->where('verification_status', $status === 'unverified' ? '!=' : '=', $status === 'unverified' ? 'verified' : $status);
         }
 
         return Inertia::render('SuperAdmin/Users/Usermanagement', [
             'users' => $query->paginate(10)->withQueryString(),
-            'filters' => $request->only(['search', 'role', 'sortBy', 'sortOrder', 'status']), // Idinagdag ang 'status'
+            'filters' => $request->only(['search', 'role', 'sortBy', 'sortOrder', 'status']),
         ]);
     }
-    
-    // ... (Ang ibang methods tulad ng update, updateRole, etc. ay HINDI na kailangan baguhin)
 
     public function updateRole(Request $request, User $user)
     {
+        // ADDED: Only super admins can change roles.
+        Gate::authorize('be-super-admin');
+
         if ($user->id === auth()->id()) {
             return Redirect::back()->with('error', 'You cannot change your own role.');
         }
@@ -84,8 +88,16 @@ class UserController extends Controller
 
     public function updateVerificationStatus(Request $request, User $user)
     {
+        // ADDED: Only admins can verify users.
+        Gate::authorize('be-admin');
+
+        // ADDED: Security check to ensure admin can only verify users in their own barangay.
+        if (auth()->user()->barangay_id !== $user->barangay_id) {
+            abort(403, 'You can only verify users within your own barangay.');
+        }
+
         $validated = $request->validate([
-            'verification_status' => ['required', Rule::in(['verified', 'rejected', 'unverified'])],
+            'verification_status' => ['required', Rule::in(['verified', 'rejected', 'unverified', 'pending_verification'])],
         ]);
         $user->update($validated);
         return Redirect::back()->with('success', "User verification status has been updated.");
@@ -93,13 +105,20 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        // ADDED: Only allow super admins to edit user profile details from this panel.
+        Gate::authorize('be-super-admin');
+
         $validatedData = $request->validate([
             'email' => ['required', 'email', Rule::unique('users')->ignore($user->id)],
             'profile.first_name' => 'required|string|max:255',
             'profile.middle_name' => 'nullable|string|max:255',
             'profile.last_name' => 'required|string|max:255',
+            'profile.suffix' => 'nullable|string|max:20',
             'profile.phone_number' => 'nullable|string|max:20',
-            'profile.address' => 'nullable|string|max:255',
+            'profile.province' => 'required|string|max:255',
+            'profile.city' => 'required|string|max:255',
+            'profile.barangay' => 'required|string|max:255',
+            'profile.street_address' => 'required|string|max:255',
             'profile.civil_status' => ['nullable', 'string', Rule::in(['Single', 'Married', 'Widowed', 'Separated'])],
         ]);
 

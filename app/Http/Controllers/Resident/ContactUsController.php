@@ -26,6 +26,7 @@ class ContactUsController extends Controller
             'user_id' => Auth::id(), // Get the ID of the currently authenticated user
             'subject' => $validated['subject'],
             'message' => $validated['message'],
+            'barangay_id' => Auth::user()->barangay_id,
             'status' => 'unread', // Default status for new messages
         ]);
 

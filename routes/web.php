@@ -22,6 +22,8 @@ use App\Http\Controllers\Admin\RequestDocumentsController;
 use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+use App\Models\Barangay;
+
 
 
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
@@ -40,6 +42,14 @@ use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
 // routes/web.php
 
 // ... other routes
+
+Route::get('/get-barangays', function () {
+    // This will only return barangays that belong to municipality_id = 1
+    // You can make this dynamic later if you have multiple municipalities
+    return response()->json(
+        Barangay::where('municipality_id', 1)->orderBy('name')->get(['id', 'name'])
+    );
+})->name('barangays.get');
 
 Route::post('/validate-phone', [ValidationController::class, 'checkPhone'])->name('validation.phone');
     Route::post('/validate-email', [ValidationController::class, 'checkEmail'])->name('validation.email');
@@ -121,6 +131,9 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
     
      Route::post('/requests/{documentRequest}/set-payment', [RequestDocumentsController::class, 'setPaymentAmount'])
          ->name('requests.set-payment');
+     Route::get('/settings', function () {
+        return Inertia::render('Admin/Settings');
+    })->name('settings');
     // --- Document Types Routes ---
     Route::get('/documents', [DocumentsListController::class, 'index'])->name('documents');
     Route::patch('/documents/{documentType}', [DocumentsListController::class, 'update'])->name('documents.update');
@@ -158,11 +171,12 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
 
 // --- SUPER ADMIN ROUTES ---
 // Only superadmins (because gate check is strict)
-Route::middleware(['auth', 'verified', 'can:be-super-admin'])
+Route::middleware(['auth', 'verified', 'can:manage-users'])
     ->prefix('superadmin')
     ->name('superadmin.')
     ->group(function () {
-    
+        
+     
     // This route shows the list of users on the management page.
     Route::get('/users', [SuperAdminUserController::class, 'index'])->name('users.index');
     
@@ -173,7 +187,18 @@ Route::middleware(['auth', 'verified', 'can:be-super-admin'])
     Route::patch('/users/{user}', [SuperAdminUserController::class, 'update'])->name('users.update');
 
     Route::patch('/users/{user}/verify', [SuperAdminUserController::class, 'updateVerificationStatus'])->name('users.verify');
+    
 
+    });
+
+    Route::middleware(['auth', 'verified', 'can:be-super-admin'])
+    ->prefix('superadmin')
+    ->name('superadmin.')
+    ->group(function () {
+
+    Route::get('/settings', function () {
+        return Inertia::render('SuperAdmin/Settings');
+    })->name('settings');
 
 });
 

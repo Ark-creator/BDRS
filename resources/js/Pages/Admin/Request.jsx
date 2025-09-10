@@ -187,7 +187,7 @@ export default function Request() {
     });
 
     const filterStatusOptions = ['All', 'Pending', 'Processing', 'Ready to Pickup'];
-    const actionStatusOptions = ['Pending', 'Processing', 'Ready to Pickup', 'Rejected'];
+    const actionStatusOptions = ['Processing', 'Ready to Pickup', 'Rejected'];
 
     // --- REAL-TIME LISTENERS ---
     useEffect(() => {
@@ -233,7 +233,7 @@ export default function Request() {
                 { element: '#search-input', popover: { title: 'Search', description: 'Quickly find a specific request by typing the resident\'s name or the document type.' } },
                 { element: '#status-filter-tabs', popover: { title: 'Filter by Status', description: 'Click these buttons to filter the list and see only the requests with that status.' } },
                 { element: '#requests-list-container', popover: { title: 'Requests List', description: 'This area shows all the active requests. On mobile, it appears as cards, and on desktop, as a table.' } },
-                { element: '#actions_item', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
+                { element: '#actions-items', popover: { title: 'Actions', description: 'Use this dropdown to change the status of a request. Selecting "Claimed" or "Rejected" will archive the request.' } },
                 { element: '#pagination-section', popover: { title: 'Pagination', description: 'Use these controls to navigate between different pages of requests.' } }
             ]
         });
@@ -337,15 +337,16 @@ export default function Request() {
         }
     };
 
-    const renderActions = (request, index) => {
+   const renderActions = (request, index) => {
         const isBusinessPermit = request.document_type?.name === 'Brgy Business Permit';
 
+        // Case 1: Business Permit is PENDING initial assessment.
         if (isBusinessPermit && request.status === 'Pending') {
             return (
                 <button
                     onClick={() => {
                         setSelectedRequest(request);
-                        reset('payment_amount');
+                        reset('payment_amount'); // Ensure amount is clear for initial assessment
                         setShowPaymentModal(true);
                     }}
                     className="flex items-center gap-x-2 w-full justify-center md:w-auto px-3 py-1 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition"
@@ -356,9 +357,28 @@ export default function Request() {
             );
         }
 
+        // Case 2: Request is WAITING FOR PAYMENT and needs re-assessment.
+        if (request.status === 'Waiting for Payment') {
+            return (
+                <button
+                    onClick={() => {
+                        setSelectedRequest(request);
+                        // Pre-fill the form with the existing amount for re-assessment
+                        setData('payment_amount', request.payment_amount || '');
+                        setShowPaymentModal(true);
+                    }}
+                    className="flex items-center gap-x-2 w-full justify-center md:w-auto px-3 py-1 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
+                >
+                    <CircleDollarSign className="w-5 h-5" />
+                    Re-assess Payment
+                </button>
+            );
+        }
+
+        // Default Case: For all other statuses, show the status change dropdown.
         return (
             <select
-                id={index === 0 ? "actions_item" : undefined}
+                id={index === 0 ? "actions-items" : undefined}
                 value={request.status}
                 onChange={(e) => handleStatusChange(request, e.target.value)}
                 className="w-full text-xs border-gray-300 rounded-md py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-white"
@@ -494,7 +514,7 @@ export default function Request() {
                                                 <td className="px-6 py-4 whitespace-nowrap"><StatusBadge status={request.status} /></td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{new Date(request.created_at).toLocaleDateString()}</td>
                                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${index === 0 ? 'actions-column-item' : ''}`}>
-                                                    <div className="flex items-center gap-2">
+                                                    <div  id="actions-items" className="flex items-center gap-2">
                                                         {renderActions(request, index)}
                                                         {request.payment_receipt_url && (
                                                             <button

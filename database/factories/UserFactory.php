@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Barangay;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -24,11 +25,17 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            // 'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+
+            // ADDED: Default values for required fields
+            'role' => 'resident', // Default role for a factory-created user
+            'status' => 'active',
+            'verification_status' => 'verified',
+            'barangay_id' => Barangay::inRandomOrder()->first()->id, // Dynamically assign a random barangay
+            'two_factor_enabled' => false,
         ];
     }
 
@@ -42,3 +49,4 @@ class UserFactory extends Factory
         ]);
     }
 }
+
