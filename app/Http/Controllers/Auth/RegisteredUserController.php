@@ -14,15 +14,20 @@ use Illuminate\Support\Facades\Storage; // Add Storage facade
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 use Inertia\Response;
-
+use App\Models\WelcomeContent;
 class RegisteredUserController extends Controller
 {
     /**
      * Display the registration view.
      */
-    public function create(): Response
+     public function create(): Response
     {
-        return Inertia::render('Auth/Register');
+   
+        $footerData = WelcomeContent::first();
+
+        return Inertia::render('Auth/Register', [
+            'footerData' => $footerData, 
+        ]);
     }
 
     /**

@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-
+use App\Models\WelcomeContent; 
 class PasswordResetLinkController extends Controller
 {
     /**
@@ -17,8 +17,10 @@ class PasswordResetLinkController extends Controller
      */
     public function create(): Response
     {
+        $footerData = WelcomeContent::first();
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
+             'footerData' => $footerData,
         ]);
     }
 

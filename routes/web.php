@@ -23,8 +23,10 @@ use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Resident\DocumentRequestController;
 use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
 
-
+// --- Admin & SuperAdmin Controllers ---
+use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\SuperAdmin\UserController as SuperAdminUserController;
+use App\Http\Controllers\SuperAdmin\ContentSettingsController;
 
     Route::get('/', [WelcomeController::class, 'show']);
 // --- PUBLIC ROUTES ---
@@ -177,10 +179,8 @@ Route::middleware(['auth', 'verified', 'can:be-super-admin'])
 
     Route::patch('/users/{user}/verify', [SuperAdminUserController::class, 'updateVerificationStatus'])->name('users.verify');
     
-    Route::get('/settings', function () {
-        return Inertia::render('SuperAdmin/Settings');
-    })->name('settings');
-
+     Route::get('/settings', [ContentSettingsController::class, 'show'])->name('settings');
+    Route::patch('/settings', [ContentSettingsController::class, 'update'])->name('settings.update');
 });
 
 // Auth scaffolding routes

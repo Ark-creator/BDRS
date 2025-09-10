@@ -15,7 +15,7 @@ import {
     LayoutDashboard, Megaphone, FileText, FolderGit2, History,
     MessageSquareMore, CreditCard, PanelLeftClose, PanelLeftOpen, ChevronDown,
     BellRing, Menu, X, ArrowLeft, Users,
-    HelpCircle, LogOut, Settings // <<< 1. Import the Settings icon
+    HelpCircle, LogOut, Settings
 } from 'lucide-react';
 
 // --- Components ---
@@ -213,8 +213,8 @@ export default function AuthenticatedLayout({ header, children }) {
             ];
 
             if (isAdmin) {
-                steps.push({ 
-                    element: '#admin-panel-icon', 
+                steps.push({
+                    element: '#admin-panel-icon',
                     popover: { title: 'Admin Panel', description: 'Access the administrative dashboard to manage the site.', side: 'bottom', align: 'end' }
                 });
             }
@@ -224,7 +224,7 @@ export default function AuthenticatedLayout({ header, children }) {
                 { element: '#tour-trigger-icon', popover: { title: 'Help & Tour', description: 'Click this button anytime to see this guide again.', side: 'bottom', align: 'end' }},
                 { element: '#user-icon', popover: { title: 'Your Account', description: 'Access your profile, settings, or log out from here.', side: 'bottom', align: 'end' }}
             );
-            
+
             const driverObj = driver({
                 showProgress: true,
                 animate: true,
@@ -246,15 +246,30 @@ export default function AuthenticatedLayout({ header, children }) {
     const navLinkGroups = [
         { title: 'Main', links: [{ name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> }, { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> }] },
         { title: 'Management', links: [{ name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> }, { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> }, ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : [])] },
-        { 
-            title: 'Account', 
+        {
+            title: 'Account',
             links: [
-                { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> }, 
-                { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> }, 
+                { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> },
+                { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> },
                 { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: adminUnreadCount },
-                // <<< 2. Add the new settings link object
-                { name: 'Settings', href: route('admin.settings'), active: route().current('admin.settings'), icon: <Settings size={18} /> }
-            ] 
+                // --- MODIFICATION START ---
+                // Conditionally render the correct settings link based on the user's role.
+                ...(isSuperAdmin
+                    ? [{
+                        name: 'Content Management', // Use a more descriptive name for super admin
+                        href: route('superadmin.settings'), // Point to the super admin's settings page
+                        active: route().current('superadmin.settings'),
+                        icon: <Settings size={18} />
+                    }]
+                    : [{
+                        name: 'Settings', // Use the generic name for regular admin
+                        href: route('admin.settings'), // Point to the regular admin's settings page
+                        active: route().current('admin.settings'),
+                        icon: <Settings size={18} />
+                    }]
+                )
+                // --- MODIFICATION END ---
+            ]
         },
     ];
 
@@ -347,7 +362,7 @@ export default function AuthenticatedLayout({ header, children }) {
                             </div>
                             <div className="flex items-center gap-2">
                                 {isAdmin && (<Link id="admin-panel-icon" href={route('admin.dashboard')} className="p-2 rounded-lg transition" title="Admin Panel"><Users size={24} className="text-gray-500 dark:text-gray-400" /></Link>)}
-                                
+
                                 {isAdmin ? adminNotificationBell : residentNotificationBell}
 
                                 <button id="tour-trigger-icon" onClick={startMainTour} className="p-2 rounded-lg transition" title="Start Tour"><HelpCircle size={24} className="text-gray-500 dark:text-gray-400" /></button>
@@ -387,7 +402,7 @@ export default function AuthenticatedLayout({ header, children }) {
                     {header && (<header className="bg-white dark:bg-slate-800 shadow-sm"><div className="max-w-7xl mx-auto px-6 py-4">{header}</div></header>)}
                     <div className="">{children}</div>
                 </main>
-                
+
                 {shouldShowFab && <FloatingActionButton />}
 
             </div>
