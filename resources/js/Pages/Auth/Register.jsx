@@ -7,7 +7,6 @@ import InputError from '@/Components/InputError';
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
 const TermsModal = ({ isOpen, onClose, children }) => { if (!isOpen) return null; return ( <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4 animate-fade-in-fast" role="dialog" aria-modal="true" aria-labelledby="modal-title" > <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"> <div className="flex justify-between items-center p-4 border-b shrink-0"> <h2 id="modal-title" className="text-xl font-semibold text-slate-800">Terms and Conditions</h2> <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors" aria-label="Close" > <CloseIcon /> </button> </div> <div className="p-6 overflow-y-auto"> {children} </div> <div className="p-4 border-t bg-slate-50 text-right shrink-0 rounded-b-lg"> <PrimaryButton onClick={onClose} className="w-auto px-8 !py-2 !text-sm"> I Understand </PrimaryButton> </div> </div> </div> ); };
 const TermsAndConditionsContent = () => ( <div className="prose prose-sm max-w-none text-slate-600"> <p><strong>Last Updated:</strong> {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p> <p>Welcome to the Barangay San Lorenzo Document Request System. By creating an account and using this service, you agree to comply with and be bound by the following terms and conditions of use.</p> <br /> <h4>1. Acceptance of Terms</h4> <p>This service is provided to the residents of Barangay San Lorenzo, Gapan City, for the purpose of requesting official barangay documents online. By accessing or using the service, you agree to these Terms and Conditions and our Privacy Policy.</p> <br /> <h4>2. User Account and Responsibilities</h4> <ul> <li>You must be a legitimate resident of Barangay San Lorenzo to create an account.</li> <li>You are responsible for providing accurate, current, and complete information during the registration process. Any falsification of information may lead to the suspension of your account and legal action.</li> <li>You are responsible for maintaining the confidentiality of your account password and for all activities that occur under your account.</li> </ul> <br /> <h4>3. Document Request Process</h4> <ul> <li>All document requests are subject to verification and approval by authorized barangay personnel.</li> <li>The processing times for document requests are estimates and are not guaranteed.</li> <li>Fees may apply for certain documents. You will be notified of any applicable fees before your request is finalized. All payments must be settled through the official channels specified by the barangay.</li> <li>The collection of documents must be done in person at the barangay hall unless another delivery method is specified and approved. You must present a valid ID upon collection.</li> </ul> <br /> <h4>4. Data Privacy</h4> <p>We are committed to protecting your privacy in accordance with the Data Privacy Act of 2012 (R.A. 10173) of the Philippines. The personal information you provide will be used exclusively for processing your document requests and for official communication. Your data will not be shared with third parties without your explicit consent, except as required by law.</p> <br /> <h4>5. Prohibited Conduct</h4> <p>You agree not to use this service for any unlawful purpose, including but not limited to submitting fraudulent requests, attempting to access unauthorized data, or disrupting the service's operations.</p> <br /> <h4>6. Disclaimer</h4> <p>This service is provided "as is" without any warranties. The Barangay does not guarantee that the service will be error-free or uninterrupted. The accuracy of the information you provide is your sole responsibility.</p> <br /> <h4>7. Limitation of Liability</h4> <p>You understand and agree that your use of this system is at your own risk. While the Barangay and its developers implement reasonable security measures to protect your information, we cannot guarantee absolute security against all potential threats such as sophisticated cyber-attacks. The internet is not a completely secure environment.</p> <p>To the fullest extent permitted by law, **Barangay San Lorenzo, its officials, employees, and the system developers shall not be liable** for any direct, indirect, incidental, or consequential damages, including but not limited to data loss, unauthorized access, or information leaks resulting from security breaches or system failures beyond our reasonable control. By using this service, you agree to hold the Barangay and its developers harmless from any claims arising from such incidents.</p> <br /> <h4>8. Changes to Terms</h4> <p>Barangay San Lorenzo reserves the right to modify these terms and conditions at any time. We will notify you of any changes by posting the new terms on this site. Your continued use of the service after any such changes constitutes your acceptance of the new terms.</p> <br /> <h4>9. Contact Information</h4> <p>If you have any questions about these Terms and Conditions, please contact the Barangay Hall directly.</p> </div> );
-const AuthLayout = ({ title, description }) => ( <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url('/images/brgy.png')" }}> <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-blue-800/90"></div> <div className="relative z-10"> <div className="flex items-center mb-8"> <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 p-2 shadow-lg"> <img src="/images/gapanlogo.png" alt="Barangay Logo" className="w-full h-full rounded-full" /> </div> <h1 className="text-3xl font-bold tracking-tight text-shadow">{title}</h1> </div> <p className="text-blue-100 text-lg leading-relaxed text-shadow-sm">{description}</p> <p className="text-xs text-blue-200 mt-12 opacity-75">Gapan City, Nueva Ecija</p> </div> </div> );
 const CustomTextInput = ({ icon, className = '', error, ...props }) => ( <div className="relative"> <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"> {icon} </div> <input {...props} className={`w-full pl-12 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' } ${className}`} /> </div> );
 const CustomSelect = ({ icon, children, error, className = '', ...props }) => ( <div className="relative"> <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"> {icon} </div> <select {...props} className={`w-full pl-12 pr-10 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white appearance-none ${ error ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50'} ${className}`}> {children} </select> <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"> <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg> </div> </div> );
 const PrimaryButton = ({ className = '', disabled, children, ...props }) => ( <button {...props} className={ `w-full group flex justify-center items-center px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 border border-transparent rounded-lg font-semibold text-base text-white tracking-widest hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all ease-in-out duration-300 shadow-lg hover:shadow-xl hover:-translate-y-0.5 ${ disabled && 'opacity-50 cursor-not-allowed' } ` + className } disabled={disabled} > {children} </button> );
@@ -31,6 +30,26 @@ const ValidationIndicator = ({ status }) => { const iconContainer = "absolute in
 const CameraIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
 const IdCardIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v1m-4 0h4m-9 4h2m-2 4h4m6-4v4m-2-2h4"></path></svg>;
 
+
+const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
+    <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url('/images/brgy.png')" }}>
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-blue-800/90"></div>
+        <div className="relative z-10">
+            <div className="flex items-center mb-8">
+                 <div className="w-20 h-20 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 shrink-0">
+                    <img className="rounded-full p-2" src={logoUrl || '/images/gapanlogo.png'} alt="Website Logo" />
+                </div>
+                <div>
+                    {/* Ang h1 ay para sa subtitle */}
+                    <h1 className="text-3xl font-bold tracking-tight text-shadow">{title}</h1>
+                </div>
+            </div>
+            <p className="text-blue-100 text-lg leading-relaxed text-shadow-sm">{description}</p>
+            {/* Ang main title (footer_title) ay nasa baba */}
+            <p className="text-xs text-blue-200 mt-12 opacity-75">{mainTitle}</p>
+        </div>
+    </div>
+);
 // --- CAMERA MODAL COMPONENT ---
 const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
     const videoRef = useRef(null);
@@ -208,7 +227,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locatio
             {/* Address Dropdowns */}
             <div>
                 <label htmlFor="province" className="font-medium text-slate-700 text-sm mb-2 block">Province</label>
-                <CustomSelect id="province" name="province" icon={<MapPinIcon />} value={data.province} onChange={(e) => setData({ ...data, province: e.target.value, city: '', barangay: '' })} required error={errors.province} disabled={isLoadingLocations}>
+                <CustomSelect id="province" name="province" icon={<MapPinIcon />} value={data.province} onChange={(e) => setData({ ...data, province: e.target.value, city: '', barangay: '' })} required error={errors.province} disabled={true}>
                     <option value="">{isLoadingLocations ? 'Loading...' : 'Select Province...'}</option>
                     {provinces.map(prov => <option key={prov} value={prov}>{prov}</option>)}
                 </CustomSelect>
@@ -217,7 +236,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locatio
 
             <div>
                 <label htmlFor="city" className="font-medium text-slate-700 text-sm mb-2 block">City / Municipality</label>
-                <CustomSelect id="city" name="city" icon={<MapPinIcon />} value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, barangay: '' })} required error={errors.city} disabled={!data.province}>
+                <CustomSelect id="city" name="city" icon={<MapPinIcon />} value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, barangay: '' })} required error={errors.city} disabled={true}>
                     <option value="">Select City / Municipality...</option>
                     {cities.map(city => <option key={city} value={city}>{city}</option>)}
                 </CustomSelect>
@@ -434,7 +453,7 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
 };
 
 // --- MAIN REGISTER COMPONENT ---
-export default function Register() {
+export default function Register({ footerData }) {
     const [step, setStep] = useState(1);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
@@ -623,7 +642,12 @@ export default function Register() {
                 <style>{`.animate-fade-in { animation: fadeIn 0.5s ease-in-out; } @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } } .animate-fade-in-fast { animation: fadeIn 0.2s ease-in-out; }`}</style>
                 <div className="flex items-center justify-center min-h-screen p-4">
                     <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
-                        <AuthLayout title="Brgy. San Lorenzo" description="Join our community portal. Register for an account to access barangay services, announcements, and more." />
+                         <AuthLayout
+                            title={footerData?.footer_subtitle}
+                            mainTitle={footerData?.footer_title || 'Gapan City, Nueva Ecija'}
+                            description="Join our community portal. Register for an account to access barangay services, announcements, and more."
+                            logoUrl={footerData?.footer_logo_url}
+                        />
                         <div className="w-full md:w-1/2 p-6 md:p-10 flex flex-col">
                             <div className="flex justify-center mb-6 md:hidden">
                                 <img src="/images/gapanlogo.png" alt="Barangay Logo" className="h-16 w-16" />

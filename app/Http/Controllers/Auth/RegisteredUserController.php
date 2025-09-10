@@ -14,16 +14,20 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Storage; // Add Storage facade
-use Illuminate\Support\Facades\DB; // DB Facade for transactions
-
+use App\Models\WelcomeContent;
 class RegisteredUserController extends Controller
 {
     /**
      * Display the registration view.
      */
-    public function create(): Response
+     public function create(): Response
     {
-        return Inertia::render('Auth/Register');
+   
+        $footerData = WelcomeContent::first();
+
+        return Inertia::render('Auth/Register', [
+            'footerData' => $footerData, 
+        ]);
     }
 
     /**

@@ -3,18 +3,22 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 
-const AuthLayout = ({ title, description, children }) => (
+const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
     <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url(/images/brgy.png"}}>
         <div className="absolute inset-0 bg-blue-800 opacity-75"></div>
         <div className="relative z-10">
-            <div className="flex items-center mb-8">
-                <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30">
-                    <img className="rounded-full p-2" src="/images/gapanlogo.png" alt="logo" />
+            <div className="flex items-center mb-6">
+                <div className="w-20 h-20 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 shrink-0">
+                    <img className="rounded-full p-2" src={logoUrl || '/images/gapanlogo.png'} alt="Website Logo" />
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
+                <div>
+                 
+                    <h1 className="text-3xl font-bold tracking-tight leading-tight">{title}</h1>
+                </div>
             </div>
             <p className="text-blue-100 text-lg leading-relaxed">{description}</p>
-            <p className="text-xs text-blue-200 mt-12 opacity-75">Gapan City, Nueva Ecija</p>
+            
+            <p className="text-xs text-blue-200 mt-12 opacity-75">{mainTitle}</p>
         </div>
     </div>
 );
@@ -42,13 +46,11 @@ const CustomTextInput = ({ icon, isFocused = false, ...props }) => {
     );
 };
 
-// Icons as SVG components
 const MailIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>;
 const LockIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>;
 const EyeOpenIcon = () => <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>;
 const EyeClosedIcon = () => <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>;
 
-// Redesigned Primary Button
 const PrimaryButton = ({ className = '', disabled, children, ...props }) => (
     <button
         {...props}
@@ -63,7 +65,7 @@ const PrimaryButton = ({ className = '', disabled, children, ...props }) => (
     </button>
 );
 
-export default function Login({ status, canResetPassword }) {
+export default function Login({ status, canResetPassword, footerData }) {
     const [passwordVisible, setPasswordVisible] = useState(false);
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -85,13 +87,16 @@ export default function Login({ status, canResetPassword }) {
 
     return (
         <div className="bg-sky-50">
-            <Head title="Log in | Brgy. San Lorenzo" />
+            <Head title="Log in" />
             <div className="flex items-center justify-center min-h-screen p-4">
                 <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
                     
+                    {/* PAPALUIN KO GAGALAW NITO */}
                     <AuthLayout
-                        title="Brgy. San Lorenzo"
+                        title={footerData?.footer_subtitle}
+                        mainTitle={footerData?.footer_title || 'Gapan City, Nueva Ecija'}
                         description="Welcome back! Please log in to your account to access community services and announcements."
+                        logoUrl={footerData?.footer_logo_url}
                     />
 
                     {/* Right Side: Login Form */}

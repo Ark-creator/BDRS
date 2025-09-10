@@ -2,15 +2,14 @@ import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 
-// --- COMPONENTS (Para sa Consistency, kinopya mula sa Register page) ---
-
-const AuthLayout = ({ title, description }) => (
+const AuthLayout = ({ title, description, logoUrl }) => (
     <div className="w-full md:w-1/2 text-white p-8 md:p-12 flex flex-col justify-center relative bg-cover bg-center" style={{ backgroundImage: "url('/images/brgy.png')" }}>
         <div className="absolute inset-0 bg-gradient-to-br from-blue-900/80 to-blue-800/90"></div>
         <div className="relative z-10">
             <div className="flex items-center mb-8">
-                <div className="w-16 h-16 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 p-2 shadow-lg">
-                    <img src="/images/gapanlogo.png" alt="Barangay Logo" className="w-full h-full" />
+                <div className="w-20 h-20 mr-4 bg-white/20 rounded-full flex items-center justify-center ring-4 ring-white/30 p-2 shadow-lg">
+                 
+                    <img src={logoUrl || "/images/gapanlogo.png"} alt="Website Logo" className="w-full h-full rounded-full" />
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight text-shadow">{title}</h1>
             </div>
@@ -63,9 +62,7 @@ const MailIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" strok
 const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
 
 
-// --- UPDATED FORGOT PASSWORD COMPONENT ---
-
-export default function ForgotPassword({ status }) {
+export default function ForgotPassword({ status, footerData }) {
     const { data, setData, post, processing, errors } = useForm({
         email: '',
     });
@@ -81,18 +78,17 @@ export default function ForgotPassword({ status }) {
             <div className="flex items-center justify-center min-h-screen p-4">
                 <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
 
-                    {/* --- Left Panel --- */}
                     <AuthLayout
+                        logoUrl={footerData?.footer_logo_url} 
                         title="Reset Your Password"
                         description="Don't worry, it happens. Enter the email address associated with your account, and we'll send you a link to choose a new password."
                     />
 
-                    {/* --- Right Panel (Form) --- */}
                     <div className="w-full md:w-1/2 p-6 md:p-12 flex flex-col">
                         <h2 className="text-2xl font-bold text-slate-800 mb-2">Forgot Your Password?</h2>
                         <p className="text-slate-500 mb-6">Let's get you back on track.</p>
 
-                        {/* --- Success Status Message --- */}
+                       
                         {status && (
                             <div className="mb-4 flex items-center gap-3 rounded-md bg-green-50 p-4 text-sm font-medium text-green-800 ring-1 ring-inset ring-green-200">
                                 <CheckCircleIcon />

@@ -12,7 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Notifications\TwoFactorCode; // Add this import
-
+use App\Models\WelcomeContent;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -21,9 +21,11 @@ class AuthenticatedSessionController extends Controller
      */
     public function create(): Response
     {
+        $footerData = WelcomeContent::first();
         return Inertia::render('Auth/Login', [
             'canResetPassword' => Route::has('password.request'),
             'status' => session('status'),
+            'footerData' => $footerData,
         ]);
     }
    
