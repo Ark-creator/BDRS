@@ -24,7 +24,7 @@ class MunicipalitySeeder extends Seeder
         
         // --- MODIFIED: Define specific targets ---
         $targetProvince = 'Nueva Ecija';
-        $targetMunicipality = 'City of Gapan';
+        $targetMunicipality = 'General Tinio';
 
         if (!isset($locations[$targetProvince][$targetMunicipality])) {
             $this->command->error("The location '{$targetMunicipality}, {$targetProvince}' was not found in the JSON file.");

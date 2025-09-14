@@ -643,8 +643,8 @@ export default function Register({ footerData }) {
                 <div className="flex items-center justify-center min-h-screen p-4">
                     <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
                          <AuthLayout
-                            title={footerData?.footer_subtitle}
-                            mainTitle={footerData?.footer_title || 'Gapan City, Nueva Ecija'}
+                            title={footerData?.footer_title}
+                            mainTitle={footerData?.footer_subtitle || 'Gapan City, Nueva Ecija'}
                             description="Join our community portal. Register for an account to access barangay services, announcements, and more."
                             logoUrl={footerData?.footer_logo_url}
                         />

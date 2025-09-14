@@ -33,7 +33,8 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
     const [openSections, setOpenSections] = useState({
         Main: true,
         Management: true,
-        Account: true
+        Records: true,
+        Content: true
     });
 
     const toggleSection = (title) => {
@@ -118,8 +119,8 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
                 {isMobile && (<button onClick={() => setShowAdminSidebarMobile(false)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Close sidebar"><X size={20} /></button>)}
             </div>
             <nav className="flex-1 p-3 overflow-y-auto"><div className="flex flex-col gap-y-4">{navLinks.map((group) => (<NavGroup key={group.title} group={group} id={`nav-group-${group.title.toLowerCase()}`} />))}</div></nav>
-            <div className="p-3 mt-auto border-t border-slate-200/80 dark:border-slate-800 shrink-0">
-                <div id="help-button-container" className="mb-2"><button onClick={handleHelpTour} title="Help & Tour" className={clsx('flex w-full items-center gap-3.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 group', 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400', (isCollapsed && !mobileOpen) && 'justify-center')}><HelpCircle size={18} />{!(isCollapsed && !mobileOpen) && <span className="flex-1 whitespace-nowrap">Help & Tour</span>}</button></div>
+            <div className="p-2 mt-auto border-t border-slate-200/80 dark:border-slate-800 shrink-0">
+                <div id="help-button-container" className="mb-1"><button onClick={handleHelpTour} title="Help & Tour" className={clsx('flex w-full items-center gap-3.5 rounded-lg px-3 py-1 text-sm font-medium transition-colors duration-200 group', 'text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-blue-400', (isCollapsed && !mobileOpen) && 'justify-center')}><HelpCircle size={18} />{!(isCollapsed && !mobileOpen) && <span className="flex-1 whitespace-nowrap">Help & Tour</span>}</button></div>
                 <div id="sidebar-user-profile" className="p-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                     <div className="flex items-center gap-3">
                         <i className="fa-solid fa-circle-user text-3xl text-blue-800 dark:text-blue-400 shrink-0"></i>
@@ -244,34 +245,49 @@ export default function AuthenticatedLayout({ header, children }) {
     };
 
     const navLinkGroups = [
-        { title: 'Main', links: [{ name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> }, { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> }] },
-        { title: 'Management', links: [{ name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> }, { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> }, ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : [])] },
-        {
-            title: 'Account',
-            links: [
-                { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> },
-                { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> },
-                { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: adminUnreadCount },
-                // --- MODIFICATION START ---
-                // Conditionally render the correct settings link based on the user's role.
-                ...(isSuperAdmin
-                    ? [{
-                        name: 'Content Management', // Use a more descriptive name for super admin
-                        href: route('superadmin.settings'), // Point to the super admin's settings page
-                        active: route().current('superadmin.settings'),
-                        icon: <Settings size={18} />
-                    }]
-                    : [{
-                        name: 'Settings', // Use the generic name for regular admin
-                        href: route('admin.settings'), // Point to the regular admin's settings page
-                        active: route().current('admin.settings'),
-                        icon: <Settings size={18} />
-                    }]
-                )
-                // --- MODIFICATION END ---
-            ]
-        },
-    ];
+    {
+        title: 'Main',
+        links: [
+            { name: 'Dashboard', href: route('admin.dashboard'), active: route().current('admin.dashboard'), icon: <LayoutDashboard size={18} /> },
+        ]
+    },
+    {
+        title: 'Management',
+        links: [
+            { name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> },
+            { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> },
+            ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : []),
+            { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: adminUnreadCount },
+        ]
+    },
+    {
+        title: 'Records',
+        links: [
+            { name: 'History', href: route('admin.history'), active: route().current('admin.history'), icon: <History size={18} /> },
+            { name: 'Payments', href: route('admin.payment'), active: route().current('admin.payment'), icon: <CreditCard size={18} /> },
+        ]
+    },
+    {
+        title: 'Content',
+        links: [
+            { name: 'Announcements', href: route('admin.announcements.index'), active: route().current('admin.announcements.index'), icon: <Megaphone size={18} /> },
+            ...(isSuperAdmin
+                ? [{
+                    name: 'Settings',
+                    href: route('superadmin.settings'),
+                    active: route().current('superadmin.settings'),
+                    icon: <Settings size={18} />
+                  }]
+                : [{
+                    name: 'Settings',
+                    href: route('admin.settings'),
+                    active: route().current('admin.settings'),
+                    icon: <Settings size={18} />
+                  }]
+            )
+        ]
+    }
+];
 
     const NotificationBubble = ({ messages, count, isForAdmin }) => (
         <motion.div

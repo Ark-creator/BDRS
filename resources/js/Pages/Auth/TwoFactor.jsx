@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Head, Link, useForm, router } from '@inertiajs/react';
 
+// --- HELPER COMPONENTS ---
+
 const KeypadIcon = ({ className }) => (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
         <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 10h.01M7 13h.01M10 7h.01M10 10h.01M10 13h.01M13 7h.01M13 10h.01M13 13h.01M16 7h.01M16 10h.01M16 13h.01" />
@@ -69,7 +71,6 @@ const OtpInput = ({ length = 6, value, onChange, status, onValueChange }) => {
         }
     }, [status]);
 
-
     const handleChange = (element, index) => {
         onValueChange();
         const digit = element.value.replace(/[^0-9]/g, '');
@@ -120,12 +121,19 @@ const OtpInput = ({ length = 6, value, onChange, status, onValueChange }) => {
     );
 };
 
-export default function TwoFactor() {
+// --- MAIN COMPONENT ---
+
+export default function TwoFactor({ two_factor_method = 'sms' }) {
     const [submissionStatus, setSubmissionStatus] = useState('idle');
     const [cooldown, setCooldown] = useState(0);
     const [resending, setResending] = useState(false);
     const [resentMessageVisible, setResentMessageVisible] = useState(false);
     
+    const [currentMethod, setCurrentMethod] = useState(two_factor_method);
+
+    const deliveryMethod = currentMethod === 'sms' ? 'phone' : 'email';
+    const destination = currentMethod === 'sms' ? 'registered phone number' : 'email address';
+
     const { data, setData, post, processing, reset, clearErrors } = useForm({
         two_factor_code: '',
     });
@@ -140,11 +148,12 @@ export default function TwoFactor() {
         return () => clearInterval(timer);
     }, [cooldown]);
 
-    const handleResend = () => {
+    const handleResend = (method) => {
         setResending(true);
-        router.post(route('two_factor.resend'), {}, {
+        router.post(route('two_factor.resend'), { method: method }, {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (page) => {
+                setCurrentMethod(page.props.two_factor_method);
                 setCooldown(180);
                 setResentMessageVisible(true);
                 setTimeout(() => setResentMessageVisible(false), 5000);
@@ -196,7 +205,9 @@ export default function TwoFactor() {
                     <>
                         <KeypadIcon className="h-16 w-16 text-blue-600" />
                         <h2 className="text-2xl font-bold text-slate-800 mt-4 text-center">Enter Security Code</h2>
-                        <p className="text-slate-500 mb-8 text-center text-sm">Please check your email and enter the 6-digit code.</p>
+                        <p className="text-slate-500 mb-8 text-center text-sm">
+                            Please check your {deliveryMethod} and enter the 6-digit code.
+                        </p>
                     </>
                 );
         }
@@ -220,7 +231,7 @@ export default function TwoFactor() {
                 <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
                     <AuthLayout
                         title="Two-Factor Authentication"
-                        description="For your security, a one-time code has been sent to your email. Please enter it below to complete your login."
+                        description={`For your security, a one-time code has been sent to your ${destination}. Please enter it below to complete your login.`}
                     />
 
                     <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center">
@@ -243,7 +254,6 @@ export default function TwoFactor() {
                                     }}
                                 />
                             </div>
-
                             <div className="pt-2">
                                 <PrimaryButton 
                                     status={submissionStatus}
@@ -260,14 +270,29 @@ export default function TwoFactor() {
                                     A new security code has been sent.
                                 </p>
                             )}
-                            <button
-                                type="button"
-                                onClick={handleResend}
-                                disabled={cooldown > 0 || resending}
-                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed transition-colors"
-                            >
-                                {cooldown > 0 ? `Resend in ${cooldown}s` : (resending ? 'Sending...' : 'Resend Security Code')}
-                            </button>
+
+                            <div className="space-y-2">
+                                <p className="text-slate-500">Didn't receive a code?</p>
+                                <div className="flex justify-center items-center gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleResend('sms')}
+                                        disabled={cooldown > 0 || resending}
+                                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+                                    >
+                                        {cooldown > 0 ? `Try again in ${cooldown}s` : 'Resend via SMS'}
+                                    </button>
+                                    <span className="text-slate-300">|</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleResend('email')}
+                                        disabled={cooldown > 0 || resending}
+                                        className="font-medium text-blue-600 hover:text-blue-800 hover:underline disabled:text-slate-400 disabled:no-underline disabled:cursor-not-allowed"
+                                    >
+                                        Resend via Email
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="mt-4 pt-6 border-t border-slate-100 text-center">

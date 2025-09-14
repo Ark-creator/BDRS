@@ -93,8 +93,8 @@ export default function Login({ status, canResetPassword, footerData }) {
                     
                     {/* PAPALUIN KO GAGALAW NITO */}
                     <AuthLayout
-                        title={footerData?.footer_subtitle}
-                        mainTitle={footerData?.footer_title || 'Gapan City, Nueva Ecija'}
+                        title={footerData?.footer_title}
+                        mainTitle={footerData?.footer_subtitle || 'Gapan City, Nueva Ecija'}
                         description="Welcome back! Please log in to your account to access community services and announcements."
                         logoUrl={footerData?.footer_logo_url}
                     />
