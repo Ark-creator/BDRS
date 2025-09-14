@@ -30,6 +30,7 @@ class UserProfile extends Model
         'birthday',
         'gender',
         'civil_status',
+        'place_of_birth',
         'profile_picture_url',
         'valid_id_type',
         'valid_id_front_path',
