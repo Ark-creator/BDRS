@@ -8,6 +8,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\Rule; // <-- Make sure to add this import
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -17,30 +18,28 @@ class ProfileController extends Controller
      * Display the user's profile form.
      */
     public function edit(Request $request): Response
-{
-    // Idagdag ang linyang ito para i-define ang $user at kunin ang kanyang profile
-    $user = $request->user()->load('profile');
+    {
+        $user = $request->user()->load('profile');
 
-    return Inertia::render('Profile/Edit', [
-        'mustVerifyEmail' => $user instanceof MustVerifyEmail,
-        'status' => session('status'),
-        'userProfile' => $user->profile,
-    ]);
-}
+        return Inertia::render('Profile/Edit', [
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
+            'status' => session('status'),
+            'userProfile' => $user->profile,
+        ]);
+    }
 
     /**
      * Update the user's profile information.
      */
     public function update(Request $request)
     {
-        // Idagdag ang validation para sa mga bagong fields
+        // ... your existing update logic ...
         $request->validate([
             'first_name'   => 'required|string|max:255',
             'middle_name'  => 'nullable|string|max:255',
             'last_name'    => 'required|string|max:255',
             'email'        => 'required|email|max:255|unique:users,email,' . auth()->id(),
             'phone_number' => 'nullable|string|max:20',
-            // --- BAGONG VALIDATION RULES ---
             'address'      => 'nullable|string|max:500',
             'birthday'     => 'nullable|date',
             'gender'       => 'nullable|string|in:Male,Female,Other',
@@ -50,14 +49,12 @@ class ProfileController extends Controller
         $user = $request->user();
         $user->email = $request->email;
         $user->save();
-
-        // Idagdag ang mga bagong fields sa pag-update ng profile
+ 
         $user->profile()->update([
             'first_name'   => $request->first_name,
             'middle_name'  => $request->middle_name,
             'last_name'    => $request->last_name,
             'phone_number' => $request->phone_number,
-            // --- BAGONG FIELDS PARA I-SAVE ---
             'address'      => $request->address,
             'birthday'     => $request->birthday,
             'gender'       => $request->gender,
@@ -66,28 +63,53 @@ class ProfileController extends Controller
 
         return back()->with('success', 'Profile updated successfully.');
     }
+
+    // --- ADD THIS NEW METHOD ---
+    /**
+     * Update the user's two-factor authentication settings.
+     */
+    public function updateTwoFactorSettings(Request $request): RedirectResponse
+    {
+        $user = Auth::user();
+
+        $request->validate([
+            'two_factor_enabled' => ['required', 'boolean'],
+            'two_factor_method' => ['required', 'string', Rule::in(['email', 'sms'])],
+        ]);
+
+        // If SMS is chosen, we must verify a phone number exists on their profile.
+        if ($request->two_factor_method === 'sms' && empty($user->profile?->phone_number)) {
+            return back()->withErrors(['two_factor_method' => 'You do not have a phone number on your profile to use SMS authentication.']);
+        }
+
+        // Save the settings to the User model
+        $user->forceFill([
+            'two_factor_enabled' => $request->two_factor_enabled,
+            'two_factor_method' => $request->two_factor_method,
+        ])->save();
+
+        return back()->with('status', 'Two-factor settings updated.');
+    }
+    // --- END OF NEW METHOD ---
+
+
     /**
      * Delete the user's account.
      */
     public function destroy(Request $request): RedirectResponse
-{
-    $request->validate([
-        'password' => ['required', 'current_password'],
-    ]);
+    {
+        $request->validate([
+            'password' => ['required', 'current_password'],
+        ]);
 
-    $user = $request->user();
+        $user = $request->user();
+        Auth::logout();
+        $user->status = 'inactive';
+        $user->save();
 
-    // Log out before modifying the account
-    Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
-    // Instead of deleting, update status
-    $user->status = 'inactive';
-    $user->save();
-
-    $request->session()->invalidate();
-    $request->session()->regenerateToken();
-
-    return Redirect::to('/');
-}
-
+        return Redirect::to('/');
+    }
 }

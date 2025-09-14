@@ -67,7 +67,8 @@ public function store(LoginRequest $request): RedirectResponse
         
         // This is the key: place the user ID in the session, then log out
         $request->session()->put('two_factor_user_id', $user->id);
-        
+                $request->session()->flash('two_factor_method', $user->two_factor_method);
+
         Auth::logout();
         
         // ✅ The redirect should be the final action for the 2FA flow.

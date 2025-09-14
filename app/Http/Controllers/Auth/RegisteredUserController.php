@@ -70,7 +70,9 @@ class RegisteredUserController extends Controller
                 'password' => Hash::make($request->password),
                 'role' => 'resident',
                 'barangay_id' => $barangay->id, // <-- ASSIGN THE FOREIGN KEY
-                'two_factor_enabled' => true
+                'two_factor_enabled' => true,
+                'two_factor_method' => 'email'
+                
             ]);
 
             // Handle file uploads

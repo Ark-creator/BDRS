@@ -41,6 +41,8 @@ class SuperAdminSeeder extends Seeder
                     'status' => 'active',
                     'email_verified_at' => Carbon::now(),
                     'barangay_id' => null, // <-- CORRECT: Super Admins are not tied to a specific barangay.
+                    'two_factor_enabled' => true,
+                    'two_factor_method' => 'email',
                    
                 ]
             );

@@ -31,6 +31,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_expires_at', 
         'verification_status', 
         'barangay_id',
+                'two_factor_method', // Add this
+
 
     ];
 
@@ -127,7 +129,18 @@ class User extends Authenticatable implements MustVerifyEmail
             get: fn () => $this->verification_status === 'verified',
         );
     }
-
-    
+  /**
+     * Route notifications for the Semaphore channel.
+     * This tells Laravel how to get the phone number for this user.
+     *
+     * @param  \Illuminate\Notifications\Notification  $notification
+     * @return string|null
+     */
+    public function routeNotificationForSemaphore($notification): ?string
+    {
+        // Return the phone number from the related profile model
+        return $this->profile?->phone_number;
+    }
 }
+    
 

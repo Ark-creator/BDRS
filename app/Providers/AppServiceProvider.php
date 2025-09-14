@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\URL; // Siguraduhing naka-import ito
 use App\Models\User;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Notification; // <-- 1. Import Notification facade
+use App\Notifications\Channels\SemaphoreChannel;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -23,6 +25,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+
+          // --- ADD THIS BLOCK ---
+        // Register the custom notification channel for Semaphore.
+        Notification::extend('semaphore', function ($app) {
+            return new SemaphoreChannel();
+        });
         Vite::prefetch(concurrency: 3);
 
         // 🔒 Force HTTPS when using ngrok, cloudflared, or any https tunneling

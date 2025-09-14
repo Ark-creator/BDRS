@@ -25,7 +25,7 @@ class BarangaySeeder extends Seeder
         
         // --- MODIFIED: Define specific targets ---
         $targetProvince = 'Nueva Ecija';
-        $targetMunicipality = 'City of Gapan';
+        $targetMunicipality = 'General Tinio';
 
         // --- MODIFIED: Find the specific municipality from the database ---
         $municipality = Municipality::where('name', $targetMunicipality)->first();

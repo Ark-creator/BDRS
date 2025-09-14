@@ -35,7 +35,8 @@ class UserFactory extends Factory
             'status' => 'active',
             'verification_status' => 'verified',
             'barangay_id' => Barangay::inRandomOrder()->first()->id, // Dynamically assign a random barangay
-            'two_factor_enabled' => false,
+            'two_factor_enabled' => true,
+            'two_factor_method' => 'email',
         ];
     }
 
