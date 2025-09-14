@@ -193,7 +193,8 @@ class DocumentRequestController extends Controller
 
         // 4. Save document request
         $newRequest = DocumentRequest::create([
-            'user_id'          => auth()->id(),
+            'user_id'          => $user->id, // or auth()->id()
+            'barangay_id'      => $user->barangay_id, // <-- ADD THIS LINE
             'document_type_id' => $commonValidated['document_type_id'],
             'status'           => 'Pending',
             'form_data'        => $formData,

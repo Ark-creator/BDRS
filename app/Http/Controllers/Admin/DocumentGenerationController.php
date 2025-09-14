@@ -84,7 +84,7 @@ class DocumentGenerationController extends Controller
                 $templateProcessor->setValue('SPECIFIC_UNDERTAKING', $requestData['specific_undertaking'] ?? 'N/A');
                 break;
                 
-            case 'Brgy Business Permit':
+            case 'Mayors Business Permit':
                 $templateProcessor->setValue('BUSINESS_NAME', $requestData['business_name'] ?? 'N/A');
                 $templateProcessor->setValue('BUSINESS_ADDRESS', $requestData['business_address'] ?? 'N/A');
                 break;
