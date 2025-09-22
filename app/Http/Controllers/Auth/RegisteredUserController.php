@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rules;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB; 
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Auth\Events\Registered;
@@ -51,6 +52,7 @@ class RegisteredUserController extends Controller
             'phone_number' => 'required|string|max:20|unique:user_profiles,phone_number',
             'birthday' => 'required|date',
             'gender' => 'required|string|in:Male,Female',
+            'place_of_birth' => 'required|string|max:255',
             'civil_status' => 'required|string|max:50',
             'valid_id_type' => 'required|string|max:255',
             'valid_id_front_image' => 'required|file|mimes:jpeg,png,jpg|max:2048',
@@ -94,6 +96,7 @@ class RegisteredUserController extends Controller
                 'phone_number' => $request->phone_number,
                 'birthday' => $request->birthday,
                 'gender' => $request->gender,
+                'place_of_birth' => $request->place_of_birth, 
                 'civil_status' => $request->civil_status,
                 'valid_id_type' => $request->valid_id_type,
                 'valid_id_front_path' => $idFrontPath,

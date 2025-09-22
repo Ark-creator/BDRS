@@ -25,6 +25,7 @@ class UserProfileFactory extends Factory
             'birthday' => fake()->date(),
             'gender' => fake()->randomElement(['Male', 'Female']),
             'civil_status' => fake()->randomElement(['Single', 'Married', 'Widowed']),
+            'place_of_birth' => 'Gapan City', // ✅ DAPAT MAY VALUE
         ];
     }
 }

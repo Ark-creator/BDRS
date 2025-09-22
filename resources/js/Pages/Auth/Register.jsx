@@ -208,109 +208,127 @@ const Step1_BasicInfo = ({ data, setData, errors }) => {
 
 const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locations, isLoadingLocations }) => {
 
-    const provinces = useMemo(() => (locations ? Object.keys(locations).sort() : []), [locations]);
-    const cities = useMemo(() => (data.province && locations ? Object.keys(locations[data.province]).sort() : []), [data.province, locations]);
-    const barangays = useMemo(() => (
-        data.province && data.city && locations && locations[data.province] && locations[data.province][data.city] 
-        ? locations[data.province][data.city].sort() 
-        : []
-    ), [data.province, data.city, locations]);
-    const handlePhoneChange = (e) => {
-        const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
-        setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
-    };
-    
-    return (
-        <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
+    const provinces = useMemo(() => (locations ? Object.keys(locations).sort() : []), [locations]);
+    const cities = useMemo(() => (data.province && locations ? Object.keys(locations[data.province]).sort() : []), [data.province, locations]);
+    const barangays = useMemo(() => (
+        data.province && data.city && locations && locations[data.province] && locations[data.province][data.city] 
+        ? locations[data.province][data.city].sort() 
+        : []
+    ), [data.province, data.city, locations]);
+    const handlePhoneChange = (e) => {
+        const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
+        setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
+    };
+    
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
 
-            {/* Address Dropdowns */}
-            <div>
-                <label htmlFor="province" className="font-medium text-slate-700 text-sm mb-2 block">Province</label>
-                <CustomSelect id="province" name="province" icon={<MapPinIcon />} value={data.province} onChange={(e) => setData({ ...data, province: e.target.value, city: '', barangay: '' })} required error={errors.province} disabled={true}>
-                    <option value="">{isLoadingLocations ? 'Loading...' : 'Select Province...'}</option>
-                    {provinces.map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                </CustomSelect>
-                <InputError message={errors.province} className="mt-2" />
-            </div>
+            {/* Address Dropdowns */}
+            <div>
+                <label htmlFor="province" className="font-medium text-slate-700 text-sm mb-2 block">Province</label>
+                <CustomSelect id="province" name="province" icon={<MapPinIcon />} value={data.province} onChange={(e) => setData({ ...data, province: e.target.value, city: '', barangay: '' })} required error={errors.province} disabled={true}>
+                    <option value="">{isLoadingLocations ? 'Loading...' : 'Select Province...'}</option>
+                    {provinces.map(prov => <option key={prov} value={prov}>{prov}</option>)}
+                </CustomSelect>
+                <InputError message={errors.province} className="mt-2" />
+            </div>
 
-            <div>
-                <label htmlFor="city" className="font-medium text-slate-700 text-sm mb-2 block">City / Municipality</label>
-                <CustomSelect id="city" name="city" icon={<MapPinIcon />} value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, barangay: '' })} required error={errors.city} disabled={true}>
-                    <option value="">Select City / Municipality...</option>
-                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
-                </CustomSelect>
-                <InputError message={errors.city} className="mt-2" />
-            </div>
+            <div>
+                <label htmlFor="city" className="font-medium text-slate-700 text-sm mb-2 block">City / Municipality</label>
+                <CustomSelect id="city" name="city" icon={<MapPinIcon />} value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, barangay: '' })} required error={errors.city} disabled={true}>
+                    <option value="">Select City / Municipality...</option>
+                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                </CustomSelect>
+                <InputError message={errors.city} className="mt-2" />
+            </div>
 
-            <div>
-                <label htmlFor="barangay" className="font-medium text-slate-700 text-sm mb-2 block">Barangay</label>
-                <CustomSelect id="barangay" name="barangay" icon={<MapPinIcon />} value={data.barangay} onChange={(e) => setData('barangay', e.target.value)} required error={errors.barangay} disabled={!data.city}>
-                    <option value="">Select Barangay...</option>
-                    {barangays.map(brgy => <option key={brgy} value={brgy}>{brgy}</option>)}
-                </CustomSelect>
-                <InputError message={errors.barangay} className="mt-2" />
-            </div>
+            <div>
+                <label htmlFor="barangay" className="font-medium text-slate-700 text-sm mb-2 block">Barangay</label>
+                <CustomSelect id="barangay" name="barangay" icon={<MapPinIcon />} value={data.barangay} onChange={(e) => setData('barangay', e.target.value)} required error={errors.barangay} disabled={!data.city}>
+                    <option value="">Select Barangay...</option>
+                    {barangays.map(brgy => <option key={brgy} value={brgy}>{brgy}</option>)}
+                </CustomSelect>
+                <InputError message={errors.barangay} className="mt-2" />
+            </div>
 
+            <div>
+                <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
+                <CustomTextInput id="street_address" name="street_address" icon={<HomeIcon />} value={data.street_address} onChange={(e) => setData('street_address', e.target.value)} required error={errors.street_address} />
+                <InputError message={errors.street_address} className="mt-2" />
+            </div>
+            
+             <div>
+                <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <PhoneIcon />
+                        <span className="text-slate-500 ml-2">+63</span>
+                    </div>
+                    <input
+                        id="phone_number"
+                        name="phone_number"
+                        type="tel"
+                        value={data.phone_number}
+                        onChange={handlePhoneChange}
+                        placeholder="9XX-XXX-XXXX"
+                        required
+                        className={`w-full pl-24 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ (errors.phone_number || phoneValidation.status === 'invalid') ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' }`}
+                    />
+                    {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
+                </div>
+                {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
+                <InputError message={errors.phone_number} className="mt-2" />
+            </div>
+
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
+                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="text-sm h-12" error={errors.birthday} />
+                    <InputError message={errors.birthday} className="mt-2" />
+                </div>
+                <div>
+                    <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
+                    <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </CustomSelect>
+                     <InputError message={errors.gender} className="mt-2" />
+                </div>
+            </div>
+
+            {/* --- NEW FIELD ADDED HERE --- */}
             <div>
-                <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
-                <CustomTextInput id="street_address" name="street_address" icon={<HomeIcon />} value={data.street_address} onChange={(e) => setData('street_address', e.target.value)} required error={errors.street_address} />
-                <InputError message={errors.street_address} className="mt-2" />
+                <label htmlFor="place_of_birth" className="font-medium text-slate-700 text-sm mb-2 block">Place of Birth</label>
+                <CustomTextInput 
+                    id="place_of_birth" 
+                    name="place_of_birth" 
+                    icon={<MapPinIcon />} 
+                    value={data.place_of_birth} 
+                    onChange={(e) => setData('place_of_birth', e.target.value)} 
+                    required 
+                    error={errors.place_of_birth}
+                    placeholder="City / Municipality, Province"
+                />
+                <InputError message={errors.place_of_birth} className="mt-2" />
             </div>
+            {/* --- END OF NEW FIELD --- */}
             
-             <div>
-                <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
-                <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <PhoneIcon />
-                        <span className="text-slate-500 ml-2">+63</span>
-                    </div>
-                    <input
-                        id="phone_number"
-                        name="phone_number"
-                        type="tel"
-                        value={data.phone_number}
-                        onChange={handlePhoneChange}
-                        placeholder="9XX-XXX-XXXX"
-                        required
-                        className={`w-full pl-24 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ (errors.phone_number || phoneValidation.status === 'invalid') ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' }`}
-                    />
-                    {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
-                </div>
-                {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
-                <InputError message={errors.phone_number} className="mt-2" />
-            </div>
-
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
-                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="text-sm h-12" error={errors.birthday} />
-                    <InputError message={errors.birthday} className="mt-2" />
-                </div>
-                <div>
-                    <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
-                    <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
-                        <option value="">Select...</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </CustomSelect>
-                     <InputError message={errors.gender} className="mt-2" />
-                </div>
-            </div>
-            <div>
-                <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
-                <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
-                    <option value="">Select...</option>
-                    <option value="Single">Single</option>
-                    <option value="Married">Married</option>
-                    <option value="Widowed">Widowed</option>
-                    <option value="Separated">Separated</option>
-                </CustomSelect>
-                <InputError message={errors.civil_status} className="mt-2" />
-            </div>
-        </div>
-    );
+            <div>
+                <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
+                <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
+                    <option value="">Select...</option>
+                    <option value="Single">Single</option>
+      _              <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Separated">Separated</option>
+                </CustomSelect>
+                <InputError message={errors.civil_status} className="mt-2" />
+            </div>
+        </div>
+    );
 };
 
 const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setPasswordVisible, confirmPasswordVisible, setConfirmPasswordVisible, passwordsDoNotMatch, emailValidation }) => (
@@ -486,7 +504,7 @@ export default function Register({ footerData }) {
             setData(prevData => ({
                 ...prevData,
                 province: 'Nueva Ecija',
-                city: 'City of Gapan'
+                city: 'General Tinio'
             }));
         })
         .catch(error => {

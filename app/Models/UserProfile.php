@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class UserProfile extends Model
 {
     use HasFactory;
-
+    protected $appends = ['full_address'];
     /**
      * The attributes that are mass assignable.
      *
@@ -30,6 +30,7 @@ class UserProfile extends Model
         'birthday',
         'gender',
         'civil_status',
+        'place_of_birth',
         'profile_picture_url',
         'valid_id_type',
         'valid_id_front_path',
@@ -76,4 +77,5 @@ class UserProfile extends Model
     {
         return "{$this->street_address}, {$this->barangay}, {$this->city}, {$this->province}";
     }
+    
 }

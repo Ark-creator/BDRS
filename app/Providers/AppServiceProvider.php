@@ -35,9 +35,9 @@ class AppServiceProvider extends ServiceProvider
 
         // 🔒 Force HTTPS when using ngrok, cloudflared, or any https tunneling
         // Ito ang idinagdag/in-edit mo para gumana sa Cloudflare Tunnel
-        if ($this->app->environment('local')) {
-            URL::forceScheme('https');
-        }
+        // if ($this->app->environment('local')) {
+        //     URL::forceScheme('https');
+        // }
 
         // Allow super admins to bypass all checks automatically
         Gate::before(function (User $user, string $ability) {
