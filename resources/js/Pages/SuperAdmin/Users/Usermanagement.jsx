@@ -5,8 +5,8 @@ import { toast } from 'react-toastify';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 // Ensure this file exists at resources/js/components/EditUserModal.jsx (Case Sensitive!)
-import EditUserModal from '@/components/EditUserModal'; 
-import VerificationModal from '@/components/VerificationModal';
+import EditUserModal from '@/Components/EditUserModal'; 
+import VerificationModal from '@/Components/VerificationModal';
 import { CheckCircle, Clock, XCircle, Edit, HelpCircle, Loader2 } from 'lucide-react';
 
 const roleBadgeClasses = {
