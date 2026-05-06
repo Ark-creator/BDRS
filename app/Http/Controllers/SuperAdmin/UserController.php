@@ -99,7 +99,14 @@ class UserController extends Controller
         $validated = $request->validate([
             'verification_status' => ['required', Rule::in(['verified', 'rejected', 'unverified', 'pending_verification'])],
         ]);
-        $user->update($validated);
+
+        $updateData = $validated;
+
+        if ($validated['verification_status'] === 'verified') {
+            $updateData['email_verified_at'] = now();
+        }
+
+        $user->update($updateData);
         return Redirect::back()->with('success', "User verification status has been updated.");
     }
 
