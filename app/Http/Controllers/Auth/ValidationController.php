@@ -28,8 +28,13 @@ class ValidationController extends Controller
             return response()->json(['is_taken' => true]);
         }
 
+        $normalizedPhoneNumber = UserProfile::normalizePhoneNumber($request->phone_number);
+        if (!$normalizedPhoneNumber) {
+            return response()->json(['is_taken' => true]);
+        }
+
         // 2. Check if the phone number exists in the database
-        $isTaken = UserProfile::where('phone_number', $request->phone_number)->exists();
+        $isTaken = UserProfile::where('phone_number', $normalizedPhoneNumber)->exists();
 
         // 3. Return a simple JSON response
         return response()->json([

@@ -57,6 +57,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'two_factor_expires_at' => 'datetime',
         ];
     }
 
@@ -143,4 +144,3 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 }
     
-

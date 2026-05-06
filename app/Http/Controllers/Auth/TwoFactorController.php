@@ -40,7 +40,12 @@ class TwoFactorController extends Controller
 
         $user = User::find($userId);
 
-        if (!$user || $user->two_factor_code !== $request->two_factor_code || $user->two_factor_expires_at < now()) {
+        if (
+            !$user
+            || $user->two_factor_code !== $request->two_factor_code
+            || !$user->two_factor_expires_at
+            || $user->two_factor_expires_at->isPast()
+        ) {
             return back()->withErrors(['two_factor_code' => 'The provided code is invalid or has expired.']);
         }
         

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Support\Facades\Storage;
 
 class UserProfile extends Model
@@ -53,6 +54,35 @@ class UserProfile extends Model
     protected $casts = [
         'birthday' => 'date',
     ];
+
+    public static function normalizePhoneNumber(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value);
+        if ($digits === '') {
+            return null;
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+
+        if (!str_starts_with($digits, '63')) {
+            $digits = '63'.$digits;
+        }
+
+        return '+'.$digits;
+    }
+
+    protected function phoneNumber(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => static::normalizePhoneNumber($value),
+        );
+    }
 
     /**
      * Get the user that owns the profile.
