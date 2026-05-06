@@ -33,9 +33,12 @@ class TwoFactorCode extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-                    ->subject('Your Two-Factor Authentication Code')
-                    ->line('Your two-factor authentication code is: ' . $notifiable->two_factor_code)
-                    ->line('This code is valid for 10 minutes.');
+                    ->subject('Your '.config('app.name').' security code')
+                    ->markdown('mail.two_factor_code', [
+                        'user' => $notifiable,
+                        'code' => $notifiable->two_factor_code,
+                        'expiresAt' => $notifiable->two_factor_expires_at,
+                    ]);
     }
 
     /**
@@ -44,6 +47,6 @@ class TwoFactorCode extends Notification
     public function toSemaphore(object $notifiable): string
     {
         // The message content for the SMS
-        return 'Your two-factor code is: ' . $notifiable->two_factor_code;
+        return sprintf('%s security code: %s', config('app.name'), $notifiable->two_factor_code);
     }
 }

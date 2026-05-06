@@ -51,7 +51,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Gate for Admin dashboard access (admins and super admins)
         Gate::define('be-admin', function (User $user) {
-            return $user->role === 'admin';
+            return in_array($user->role, ['admin', 'super_admin']);
         });
 
         // Gate for resident-level pages (residents and admins; superadmin handled by before)

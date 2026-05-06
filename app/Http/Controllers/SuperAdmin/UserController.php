@@ -88,18 +88,25 @@ class UserController extends Controller
 
     public function updateVerificationStatus(Request $request, User $user)
     {
-        // ADDED: Only admins can verify users.
-        Gate::authorize('be-admin');
-
-        // ADDED: Security check to ensure admin can only verify users in their own barangay.
-        if (auth()->user()->barangay_id !== $user->barangay_id) {
+        // Allow both admins and super admins to verify users
+        Gate::authorize('be-admin'); // This allows admins AND super_admins based on your config
+        
+        // Super admins can verify any user; admins can only verify users in their own barangay
+        if (auth()->user()->role !== 'super_admin' && auth()->user()->barangay_id !== $user->barangay_id) {
             abort(403, 'You can only verify users within your own barangay.');
         }
 
         $validated = $request->validate([
             'verification_status' => ['required', Rule::in(['verified', 'rejected', 'unverified', 'pending_verification'])],
         ]);
-        $user->update($validated);
+
+        $updateData = $validated;
+
+        if ($validated['verification_status'] === 'verified') {
+            $updateData['email_verified_at'] = now();
+        }
+
+        $user->update($updateData);
         return Redirect::back()->with('success', "User verification status has been updated.");
     }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
+use App\Models\UserProfile;
 use Inertia\Inertia;
 use Inertia\Response;
 use App\Models\Barangay;
@@ -42,8 +43,12 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-      public function store(Request $request): RedirectResponse
+       public function store(Request $request): RedirectResponse
     {
+        $request->merge([
+            'phone_number' => UserProfile::normalizePhoneNumber($request->phone_number),
+        ]);
+
         $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
