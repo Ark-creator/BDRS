@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Events\AnnouncementUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage; // Added for file deletion
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use App\Services\ImageCompressionService;
 
@@ -58,15 +59,17 @@ class AnnouncementController extends Controller
 
         $imagePath = $this->compressionService->compress($request->file('image'), 'announcements', 80);
 
-        Announcement::create([
+        $announcement = Announcement::create([
             'tag' => $request->tag,
             'title' => $request->title,
             'description' => $request->description,
             'link' => $request->link,
             'image' => $imagePath,
             'barangay_id' => Auth::user()->barangay_id,
-            'user_id' => Auth::id(), // Get the currently logged-in user's ID
+            'user_id' => Auth::id(),
         ]);
+
+        broadcast(new AnnouncementUpdated($announcement, 'created'))->toOthers();
 
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement created successfully.');
     }
@@ -107,17 +110,23 @@ class AnnouncementController extends Controller
         // This now only includes the 'image' key if a new one was uploaded.
         $announcement->update($updateData);
 
+        broadcast(new AnnouncementUpdated($announcement->fresh(), 'updated'))->toOthers();
+
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement updated successfully.');
     }
 
     public function destroy(Announcement $announcement)
     {
-        // Delete the image file from storage if it exists
+        $announcementId = $announcement->id;
+
         if ($announcement->image) {
             Storage::disk('s3')->delete($announcement->image);
         }
 
         $announcement->delete();
+
+        broadcast(new AnnouncementUpdated($announcement->replicate(), 'deleted'))->toOthers();
+
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement deleted successfully.');
     }
 }

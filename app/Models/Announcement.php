@@ -41,7 +41,7 @@ class Announcement extends Model
     public function getImageUrlAttribute(): ?string
     {
         if ($this->image) {
-            return route('admin.images.proxy', ['path' => $this->image]);
+            return route('images.announcements', ['path' => $this->image]);
         }
         return null;
     }

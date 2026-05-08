@@ -56,3 +56,7 @@ Broadcast::channel('user.{userId}', function ($user, $userId) {
 Broadcast::channel('admin-registrations', function ($user) {
     return $user && ($user->can('be-admin') || $user->can('be-super-admin'));
 });
+
+Broadcast::channel('announcements', function ($user) {
+    return true; // Public channel - anyone can listen
+});

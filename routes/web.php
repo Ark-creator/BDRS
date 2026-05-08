@@ -45,6 +45,12 @@ Route::any('wp-admin/{any?}', HoneypotController::class)
     ->where('any', '.*')
     ->middleware('throttle:honeypot')
     ->name('security.honeypot.wp-admin');
+
+// --- PUBLIC IMAGE ROUTES ---
+Route::get('/images/announcements/{path}', [ImageProxyController::class, 'showPublic'])
+    ->where('path', '.*')
+    ->name('images.announcements');
+
 // --- PUBLIC ROUTES ---
 // Route::get('/', function () {
 //     return Inertia::render('Welcome', [
@@ -139,7 +145,7 @@ Route::middleware(['auth', 'verified', 'can:be-resident', 'throttle:authenticate
 });
 
 Route::middleware(['auth', 'verified', 'can:be-admin', 'throttle:authenticated', 'progressive.throttle:admin'])->prefix('admin')->name('admin.')->group(function () {
-    // Image proxy route
+    // Image proxy route (for authenticated admin-only images)
     Route::get('/images/{path}', [ImageProxyController::class, 'show'])
         ->where('path', '.*')
         ->name('images.proxy');

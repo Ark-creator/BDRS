@@ -105,11 +105,33 @@ function EditModal({ announcement, isOpen, onClose }) {
 export default function Announcement({ auth, announcements: paginatedAnnouncements = { data: [], links: [], total: 0, per_page: 0 } }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+    const [announcementsList, setAnnouncementsList] = useState(paginatedAnnouncements.data);
 
     const [imagePreview, setImagePreview] = useState(null);
     const { data, setData, post, processing, errors, reset, progress } = useForm({
         tag: '', title: '', description: '', link: '', image: null,
     });
+
+    useEffect(() => {
+        if (!window.Echo) return;
+
+        const channel = window.Echo.channel('announcements');
+        
+        channel.listen('.AnnouncementUpdated', (event) => {
+            if (event.action === 'created') {
+                setAnnouncementsList(prev => [event.announcement, ...prev]);
+            } else if (event.action === 'deleted') {
+                setAnnouncementsList(prev => prev.filter(a => a.id !== event.announcement.id));
+            } else if (event.action === 'updated') {
+                setAnnouncementsList(prev => prev.map(a => a.id === event.announcement.id ? event.announcement : a));
+            }
+        });
+
+        return () => {
+            channel.stopListening('.AnnouncementUpdated');
+            window.Echo.leave('announcements');
+        };
+    }, []);
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -156,7 +178,7 @@ export default function Announcement({ auth, announcements: paginatedAnnouncemen
 
     const handleCloseModal = () => setIsEditModalOpen(false);
 
-    const announcements = paginatedAnnouncements.data;
+    const announcements = announcementsList;
 
     return (
         <AuthenticatedLayout user={auth.user}>
