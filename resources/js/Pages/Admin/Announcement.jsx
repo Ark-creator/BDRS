@@ -8,6 +8,12 @@ import 'react-toastify/dist/ReactToastify.css';
 import InputError from "@/Components/InputError";
 import PrimaryButton from "@/Components/PrimaryButton";
 import { Megaphone, Tag, Link2, CalendarDays, User, Edit, Trash2, UploadCloud, Image as ImageIcon, X } from 'lucide-react';
+import {
+    normalizeAnnouncements,
+    prependAnnouncement,
+    removeAnnouncement,
+    updateAnnouncement,
+} from "@/utils/announcementList";
 
 // ====================================================================
 // ===== EDIT MODAL COMPONENT (Nasa loob na ng file na ito) =========
@@ -105,12 +111,18 @@ function EditModal({ announcement, isOpen, onClose }) {
 export default function Announcement({ auth, announcements: paginatedAnnouncements = { data: [], links: [], total: 0, per_page: 0 } }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingAnnouncement, setEditingAnnouncement] = useState(null);
-    const [announcementsList, setAnnouncementsList] = useState(paginatedAnnouncements.data);
+    const [announcementsList, setAnnouncementsList] = useState(() => normalizeAnnouncements(paginatedAnnouncements.data));
+    const currentPage = Number(paginatedAnnouncements.current_page ?? 1);
+    const pageSize = Number(paginatedAnnouncements.per_page ?? paginatedAnnouncements.data?.length ?? 0);
 
     const [imagePreview, setImagePreview] = useState(null);
     const { data, setData, post, processing, errors, reset, progress } = useForm({
         tag: '', title: '', description: '', link: '', image: null,
     });
+
+    useEffect(() => {
+        setAnnouncementsList(normalizeAnnouncements(paginatedAnnouncements.data));
+    }, [paginatedAnnouncements.data]);
 
     useEffect(() => {
         if (!window.Echo) return;
@@ -119,11 +131,13 @@ export default function Announcement({ auth, announcements: paginatedAnnouncemen
         
         channel.listen('.AnnouncementUpdated', (event) => {
             if (event.action === 'created') {
-                setAnnouncementsList(prev => [event.announcement, ...prev]);
+                if (currentPage === 1) {
+                    setAnnouncementsList(prev => prependAnnouncement(prev, event.announcement, pageSize));
+                }
             } else if (event.action === 'deleted') {
-                setAnnouncementsList(prev => prev.filter(a => a.id !== event.announcement.id));
+                setAnnouncementsList(prev => removeAnnouncement(prev, event.announcement.id));
             } else if (event.action === 'updated') {
-                setAnnouncementsList(prev => prev.map(a => a.id === event.announcement.id ? event.announcement : a));
+                setAnnouncementsList(prev => updateAnnouncement(prev, event.announcement));
             }
         });
 
@@ -131,7 +145,7 @@ export default function Announcement({ auth, announcements: paginatedAnnouncemen
             channel.stopListening('.AnnouncementUpdated');
             window.Echo.leave('announcements');
         };
-    }, []);
+    }, [currentPage, pageSize]);
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MegaphoneOff, ArrowRight, ExternalLink, X, ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
 
@@ -76,12 +76,69 @@ const AnnouncementPopover = ({ announcement, onClose }) => {
 };
 
 
-export default function Announcements({ announcements }) {
+export default function Announcements({ announcements = [] }) {
+    const announcementItems = useMemo(() => (
+        Array.isArray(announcements) ? announcements.filter(Boolean) : []
+    ), [announcements]);
+    const hasAnnouncements = announcementItems.length > 0;
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
     const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
 
-    if (!announcements || announcements.length === 0) {
+    useEffect(() => {
+        if (!hasAnnouncements) {
+            setCurrentIndex(0);
+            setSelectedAnnouncement(null);
+            return;
+        }
+
+        if (currentIndex >= announcementItems.length) {
+            setCurrentIndex(announcementItems.length - 1);
+        }
+
+        if (
+            selectedAnnouncement &&
+            !announcementItems.some(announcement => announcement.id === selectedAnnouncement.id)
+        ) {
+            setSelectedAnnouncement(null);
+        }
+    }, [currentIndex, hasAnnouncements, announcementItems, selectedAnnouncement]);
+
+    useEffect(() => {
+        if (!hasAnnouncements) return;
+
+        announcementItems.forEach(announcement => {
+            if (!announcement.image_url) return;
+
+            const img = new Image();
+            img.src = announcement.image_url;
+        });
+    }, [announcementItems, hasAnnouncements]);
+
+    useEffect(() => {
+        if (hasAnnouncements && !isPaused && !selectedAnnouncement) {
+            const timer = setTimeout(() => goToNext(), 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [currentIndex, hasAnnouncements, isPaused, selectedAnnouncement, announcementItems.length]);
+
+    const goToNext = () => {
+        if (!hasAnnouncements) return;
+
+        setCurrentIndex(index => (
+            index >= announcementItems.length - 1 ? 0 : index + 1
+        ));
+    };
+
+    const goToPrevious = () => {
+        if (!hasAnnouncements) return;
+
+        setCurrentIndex(index => (
+            index === 0 ? announcementItems.length - 1 : index - 1
+        ));
+    };
+
+    if (!hasAnnouncements) {
         return (
             <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden ring-1 ring-black/5 min-h-[480px] flex items-center justify-center">
                 <div className="absolute inset-0 flex flex-col lg:flex-row opacity-60 dark:opacity-40">
@@ -97,7 +154,7 @@ export default function Announcements({ announcements }) {
                         <div className="w-5/6 h-4 bg-slate-200 dark:bg-slate-700 rounded"></div>
                     </div>
                 </div>
-                
+
                 <div className="relative z-10 text-center bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm p-8 rounded-xl ring-1 ring-slate-200 dark:ring-slate-700">
                     <MegaphoneOff className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" strokeWidth={1.5} />
                     <h2 className="text-2xl font-bold text-slate-700 dark:text-slate-200">No New Announcements</h2>
@@ -106,33 +163,12 @@ export default function Announcements({ announcements }) {
             </div>
         );
     }
-    
-    useEffect(() => {
-        announcements.forEach(announcement => {
-            const img = new Image();
-            img.src = announcement.image_url; 
-        });
-    }, [announcements]);
 
-    useEffect(() => {
-        if (!isPaused && !selectedAnnouncement) {
-            const timer = setTimeout(() => goToNext(), 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [currentIndex, isPaused, selectedAnnouncement]);
-    
-    const goToNext = () => {
-        const isLastSlide = currentIndex === announcements.length - 1;
-        setCurrentIndex(isLastSlide ? 0 : currentIndex + 1);
-    };
-
-    const goToPrevious = () => {
-        const isFirstSlide = currentIndex === 0;
-        setCurrentIndex(isFirstSlide ? announcements.length - 1 : currentIndex - 1);
-    };
-
-    const currentAnnouncement = announcements[currentIndex];
-    const shouldShowReadMore = currentAnnouncement.link || currentAnnouncement.description.length > 150;
+    const safeCurrentIndex = Math.min(currentIndex, announcementItems.length - 1);
+    const currentAnnouncement = announcementItems[safeCurrentIndex];
+    const shouldShowReadMore = Boolean(
+        currentAnnouncement.link || (currentAnnouncement.description?.length ?? 0) > 150
+    );
     
     return (
         <>
@@ -145,7 +181,7 @@ export default function Announcements({ announcements }) {
                 <div className="relative min-h-[480px] w-full">
                     <AnimatePresence mode="wait">
                         <motion.div
-                            key={currentIndex}
+                            key={currentAnnouncement.id ?? safeCurrentIndex}
                             variants={{ 
                                 hidden: { opacity: 0 }, 
                                 visible: { opacity: 1, transition: { duration: 0.5, ease: 'easeInOut' } }, 
@@ -191,11 +227,11 @@ export default function Announcements({ announcements }) {
                     <ChevronRight className="w-6 h-6 text-slate-800 dark:text-white"/>
                 </button>
                 <div className="absolute bottom-4 left-0 right-0 z-10 flex justify-center gap-2">
-                    {announcements.map((_, slideIndex) => (
+                    {announcementItems.map((_, slideIndex) => (
                         <button
                             key={slideIndex}
                             onClick={() => setCurrentIndex(slideIndex)}
-                            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${currentIndex === slideIndex ? 'bg-blue-600 scale-125' : 'bg-slate-300/80 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-400'}`}
+                            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${safeCurrentIndex === slideIndex ? 'bg-blue-600 scale-125' : 'bg-slate-300/80 dark:bg-slate-600 hover:bg-slate-400 dark:hover:bg-slate-400'}`}
                             aria-label={`Go to slide ${slideIndex + 1}`}
                         />
                     ))}

@@ -17,6 +17,7 @@ class HomeController extends Controller
 
         // 2. Fetch the 5 latest announcements with image URLs
         $announcements = Announcement::latest()
+            ->with('user.profile')
             ->take(5)
             ->get()
             ->map(fn ($announcement) => [

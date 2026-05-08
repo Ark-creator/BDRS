@@ -25,5 +25,28 @@ if (hasInvalidPusherConfig) {
         key: pusherKey,
         cluster: pusherCluster,
         forceTLS: true,
+        authEndpoint: '/broadcasting/auth',
+        authorizer: (channel, options) => {
+            return {
+                authorize: (socketId, callback) => {
+                    axios.post('/broadcasting/auth', {
+                        socket_id: socketId,
+                        channel_name: channel.name,
+                    }, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'),
+                        },
+                        withCredentials: true,
+                    })
+                    .then(response => {
+                        callback(false, response.data);
+                    })
+                    .catch(error => {
+                        callback(true, error);
+                    });
+                },
+            };
+        },
     });
 }

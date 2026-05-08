@@ -8,6 +8,12 @@ import OfficialsWelcome from '@/Components/OfficialsWelcome';
 import FooterWelcome from '@/Components/FooterWelcome';
 import Announcements from '@/Components/Residents/Announcements';
 import TranslateButton from '@/Components/TranslateButton';
+import {
+    normalizeAnnouncements,
+    prependAnnouncement,
+    removeAnnouncement,
+    updateAnnouncement,
+} from '@/utils/announcementList';
 
 const content = {
     // ... (walang pagbabago sa content object mo)
@@ -105,13 +111,14 @@ const StepCard = ({ icon, title, description }) => ( <div className="relative fl
 const FaqItem = ({ question, answer }) => { const [isOpen, setIsOpen] = useState(false); return ( <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.5 }} className={clsx( "mb-4 rounded-xl border transition-all duration-300", isOpen ? "border-blue-500 bg-white dark:bg-slate-800/50" : "border-slate-200 bg-white/50 dark:border-slate-700 dark:bg-slate-800/30 hover:bg-white/80 dark:hover:bg-slate-800/60" )} > <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-start text-left p-6" > <div className="flex items-start gap-4"> <h3 className="text-md font-semibold text-slate-800 dark:text-slate-100">{question}</h3> </div> <motion.div animate={{ rotate: isOpen ? 180 : 0 }} className="ml-4"> <ChevronDown className="h-5 w-5 text-slate-500 flex-shrink-0" /> </motion.div> </button> <AnimatePresence> {isOpen && ( <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden" > <div className="px-6 pb-6 pl-16 text-slate-600 dark:text-slate-400 text-sm"> {answer} </div> </motion.div> )} </AnimatePresence> </motion.div> ); };
 const AuroraBackground = () => ( <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10"> <motion.div className="absolute top-[20%] left-[1%] w-[40rem] h-[40rem] bg-gradient-to-tr from-sky-200 to-blue-500 rounded-full blur-3xl" animate={{ x: [-20, 20, -20], y: [-20, 20, -20], rotate: [0, 5, 0], opacity: [0.15, 0.25, 0.15] }} transition={{ duration: 20, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }} /> </div> );
 
+const ANNOUNCEMENT_LIMIT = 5;
 
 // 1. DAGDAGAN NG `footerData` DITO PARA MATANGGAP ANG PROP GALING SA CONTROLLER
 export default function Welcome({ auth, announcements = [], footerData , officials }) {
     const [scrolled, setScrolled] = useState(false);
     const [language, setLanguage] = useState('en');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [announcementList, setAnnouncementList] = useState(announcements);
+    const [announcementList, setAnnouncementList] = useState(() => normalizeAnnouncements(announcements, ANNOUNCEMENT_LIMIT));
 
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
@@ -137,17 +144,21 @@ export default function Welcome({ auth, announcements = [], footerData , officia
     }, [isMobileMenuOpen]);
 
     useEffect(() => {
+        setAnnouncementList(normalizeAnnouncements(announcements, ANNOUNCEMENT_LIMIT));
+    }, [announcements]);
+
+    useEffect(() => {
         if (!window.Echo) return;
 
         const channel = window.Echo.channel('announcements');
         
         channel.listen('.AnnouncementUpdated', (event) => {
             if (event.action === 'created') {
-                setAnnouncementList(prev => [event.announcement, ...prev]);
+                setAnnouncementList(prev => prependAnnouncement(prev, event.announcement, ANNOUNCEMENT_LIMIT));
             } else if (event.action === 'deleted') {
-                setAnnouncementList(prev => prev.filter(a => a.id !== event.announcement.id));
+                setAnnouncementList(prev => removeAnnouncement(prev, event.announcement.id));
             } else if (event.action === 'updated') {
-                setAnnouncementList(prev => prev.map(a => a.id === event.announcement.id ? event.announcement : a));
+                setAnnouncementList(prev => updateAnnouncement(prev, event.announcement));
             }
         });
 
