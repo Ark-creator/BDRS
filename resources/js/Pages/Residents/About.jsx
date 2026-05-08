@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Facebook, Twitter, Linkedin, Eye, Target, CheckCircle, ShieldCheck, MessageCircle, Smartphone, Rocket, Calendar, Code } from 'lucide-react';
+import { Target, Eye, CheckCircle, ShieldCheck, MessageCircle, Smartphone, Rocket, Calendar, Code } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Footer from '@/Components/Residents/Footer';
+import OfficialsWelcome from '@/Components/OfficialsWelcome';
 
 const FeatureIcon = ({ icon: IconComponent }) => (
     <div className="mb-4 inline-flex items-center justify-center h-16 w-16 rounded-2xl bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300">
@@ -35,8 +36,8 @@ const timelineItemVariants = {
     visible: { opacity: 1, x: 0, transition: { duration: 0.6, ease: "easeOut" } }
 };
 
-
-export default function AboutUs({ auth = { user: { name: 'Guest' } } }) {
+// Added `officials` to the destructured props here
+export default function AboutUs({ auth = { user: { name: 'Guest' } }, officials }) {
 
     return (
         <AuthenticatedLayout>
@@ -137,34 +138,8 @@ export default function AboutUs({ auth = { user: { name: 'Guest' } } }) {
                     </div>
                 </motion.div>
 
-                <motion.div 
-                    className="py-20 sm:py-28"
-                    variants={sectionVariants}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, amount: 0.3 }}
-                >
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                        <h2 className="text-3xl font-bold text-center text-slate-900 dark:text-white sm:text-4xl mb-16">Meet Our Officials</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                            <motion.div className="text-center group" variants={cardVariants}>
-                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/mayorjoy.png" alt="City Mayor" />
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Joy Pascual</h3>
-                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Gapan City Mayor</p>
-                            </motion.div>
-                            <motion.div className="text-center group" variants={cardVariants}>
-                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/congemeng.png" alt="Barangay Captain" />
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Emeng Pascual</h3>
-                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Nueva Ecija 4th <br />District Congressman</p>
-                            </motion.div>
-                            <motion.div className="text-center group" variants={cardVariants}>
-                                <img className="w-40 h-40 rounded-full mx-auto mb-4 object-cover ring-4 ring-white dark:ring-slate-700 shadow-lg transition-transform duration-300 group-hover:scale-105" src="/images/max.png" alt="Barangay Secretary" />
-                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Hon. Max Pascual</h3>
-                                <p className="text-blue-600 dark:text-blue-400 font-semibold">Gapan City Vice Mayor</p>
-                            </motion.div>
-                        </div>
-                    </div>
-                </motion.div>
+                {/* Passed the officials prop here */}
+                <OfficialsWelcome officials={officials} />
                 
                 <motion.div 
                     className="py-20 sm:py-28 bg-slate-100 dark:bg-slate-800/50"
