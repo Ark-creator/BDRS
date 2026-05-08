@@ -119,7 +119,7 @@ class RequestDocumentsController extends Controller
     public function claimByVoucher(Request $request)
     {
         $validated = $request->validate([
-            'voucher_code' => 'required|string',
+            'voucher_code' => ['required', 'string', 'regex:/^VOUCHER-[A-Z0-9]{8}$/'],
         ]);
 
         $documentRequest = DocumentRequest::where('claim_voucher_code', $validated['voucher_code'])->first();
