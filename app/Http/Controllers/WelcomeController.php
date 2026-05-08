@@ -14,6 +14,7 @@ class WelcomeController extends Controller
     public function show(): Response
     {
         $announcements = Announcement::latest()
+            ->with('user.profile')
             ->take(5)
             ->get()
             ->map(fn ($announcement) => [

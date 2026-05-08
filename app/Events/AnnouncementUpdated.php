@@ -20,7 +20,7 @@ class AnnouncementUpdated implements ShouldBroadcastNow
 
     public function __construct(Announcement $announcement, string $action = 'created')
     {
-        $this->announcement = $announcement->load('user');
+        $this->announcement = $announcement->load('user.profile');
         $this->action = $action;
     }
 

@@ -50,6 +50,10 @@ Broadcast::channel('user.{userId}', function ($user, $userId) {
     return (int) $user->id === (int) $userId;
 });
 
+Broadcast::channel('user.{userId}.messages', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
+});
+
 /**
  * Authorize admins to receive new user registration notifications.
  */

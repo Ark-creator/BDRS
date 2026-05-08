@@ -23,7 +23,7 @@ class AnnouncementController extends Controller
     public function index()
     {
         $announcements = Announcement::latest()
-            ->with('user') // Siguraduhing may 'user' relationship ang Announcement model mo
+            ->with('user.profile')
             ->paginate(5) // Gumagamit tayo ng paginate
             ->through(fn ($announcement) => [
                 'id' => $announcement->id,
