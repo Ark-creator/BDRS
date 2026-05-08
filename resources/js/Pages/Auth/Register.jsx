@@ -1,7 +1,21 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
 import axios from 'axios';
-import InputError from '@/Components/InputError';
+
+// --- MOCKS FOR ENVIRONMENT COMPATIBILITY ---
+const Head = ({ title }) => { useEffect(() => { document.title = title; }, [title]); return null; };
+const Link = ({ href, children, className, ...props }) => <a href={href} className={className} {...props}>{children}</a>;
+const InputError = ({ message, className = '', ...props }) => message ? <p {...props} className={'text-sm text-red-600 ' + className}>{message}</p> : null;
+const useForm = (initialValues) => {
+    const [data, setDataState] = useState(initialValues);
+    const [errors, setErrorsState] = useState({});
+    const [processing, setProcessing] = useState(false);
+    const setData = (key, val) => typeof key === 'string' ? setDataState(p => ({ ...p, [key]: val })) : setDataState(p => ({ ...p, ...key }));
+    const post = (url, opts) => { setProcessing(true); setTimeout(() => { setProcessing(false); if (opts?.onSuccess) opts.onSuccess(); console.log('Mock submit to', url, data); }, 1000); };
+    const reset = (...f) => f.length ? setDataState(p => { const n = { ...p }; f.forEach(k => n[k] = initialValues[k]); return n; }) : setDataState(initialValues);
+    const clearErrors = (...f) => f.length ? setErrorsState(p => { const n = { ...p }; f.forEach(k => delete n[k]); return n; }) : setErrorsState({});
+    const setError = (f, v) => setErrorsState(p => ({ ...p, [f]: v }));
+    return { data, setData, post, processing, errors, reset, clearErrors, setError };
+};
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -50,6 +64,7 @@ const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
         </div>
     </div>
 );
+
 // --- CAMERA MODAL COMPONENT ---
 const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
     const videoRef = useRef(null);
@@ -206,100 +221,65 @@ const Step1_BasicInfo = ({ data, setData, errors }) => {
     );
 };
 
-const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locations, isLoadingLocations }) => {
+const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation }) => {
 
-    const provinces = useMemo(() => (locations ? Object.keys(locations).sort() : []), [locations]);
-    const cities = useMemo(() => (data.province && locations ? Object.keys(locations[data.province]).sort() : []), [data.province, locations]);
-    const barangays = useMemo(() => (
-        data.province && data.city && locations && locations[data.province] && locations[data.province][data.city] 
-        ? locations[data.province][data.city].sort() 
-        : []
-    ), [data.province, data.city, locations]);
-    const handlePhoneChange = (e) => {
-        const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
-        setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
-    };
-    
-    return (
-        <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
+    const handlePhoneChange = (e) => {
+        const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
+        setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
+    };
+    
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
 
-            {/* Address Dropdowns */}
-            <div>
-                <label htmlFor="province" className="font-medium text-slate-700 text-sm mb-2 block">Province</label>
-                <CustomSelect id="province" name="province" icon={<MapPinIcon />} value={data.province} onChange={(e) => setData({ ...data, province: e.target.value, city: '', barangay: '' })} required error={errors.province} disabled={true}>
-                    <option value="">{isLoadingLocations ? 'Loading...' : 'Select Province...'}</option>
-                    {provinces.map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                </CustomSelect>
-                <InputError message={errors.province} className="mt-2" />
-            </div>
+            {/* Address Dropdowns for Province, City, and Barangay were removed as they are set to default values automatically behind the scenes */}
 
-            <div>
-                <label htmlFor="city" className="font-medium text-slate-700 text-sm mb-2 block">City / Municipality</label>
-                <CustomSelect id="city" name="city" icon={<MapPinIcon />} value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, barangay: '' })} required error={errors.city} disabled={true}>
-                    <option value="">Select City / Municipality...</option>
-                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
-                </CustomSelect>
-                <InputError message={errors.city} className="mt-2" />
-            </div>
+            <div>
+                <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
+                <CustomTextInput id="street_address" name="street_address" icon={<HomeIcon />} value={data.street_address} onChange={(e) => setData('street_address', e.target.value)} required error={errors.street_address} />
+                <InputError message={errors.street_address} className="mt-2" />
+            </div>
+            
+             <div>
+                <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <PhoneIcon />
+                        <span className="text-slate-500 ml-2">+63</span>
+                    </div>
+                    <input
+                        id="phone_number"
+                        name="phone_number"
+                        type="tel"
+                        value={data.phone_number}
+                        onChange={handlePhoneChange}
+                        placeholder="9XX-XXX-XXXX"
+                        required
+                        className={`w-full pl-24 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ (errors.phone_number || phoneValidation.status === 'invalid') ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' }`}
+                    />
+                    {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
+                </div>
+                {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
+                <InputError message={errors.phone_number} className="mt-2" />
+            </div>
 
-            <div>
-                <label htmlFor="barangay" className="font-medium text-slate-700 text-sm mb-2 block">Barangay</label>
-                <CustomSelect id="barangay" name="barangay" icon={<MapPinIcon />} value={data.barangay} onChange={(e) => setData('barangay', e.target.value)} required error={errors.barangay} disabled={!data.city}>
-                    <option value="">Select Barangay...</option>
-                    {barangays.map(brgy => <option key={brgy} value={brgy}>{brgy}</option>)}
-                </CustomSelect>
-                <InputError message={errors.barangay} className="mt-2" />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
+                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="text-sm h-12" error={errors.birthday} />
+                    <InputError message={errors.birthday} className="mt-2" />
+                </div>
+                <div>
+                    <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
+                    <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </CustomSelect>
+                     <InputError message={errors.gender} className="mt-2" />
+                </div>
+            </div>
 
-            <div>
-                <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
-                <CustomTextInput id="street_address" name="street_address" icon={<HomeIcon />} value={data.street_address} onChange={(e) => setData('street_address', e.target.value)} required error={errors.street_address} />
-                <InputError message={errors.street_address} className="mt-2" />
-            </div>
-            
-             <div>
-                <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
-                <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <PhoneIcon />
-                        <span className="text-slate-500 ml-2">+63</span>
-                    </div>
-                    <input
-                        id="phone_number"
-                        name="phone_number"
-                        type="tel"
-                        value={data.phone_number}
-                        onChange={handlePhoneChange}
-                        placeholder="9XX-XXX-XXXX"
-                        required
-                        className={`w-full pl-24 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ (errors.phone_number || phoneValidation.status === 'invalid') ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' }`}
-                    />
-                    {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
-                </div>
-                {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
-                <InputError message={errors.phone_number} className="mt-2" />
-            </div>
-
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
-                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="text-sm h-12" error={errors.birthday} />
-                    <InputError message={errors.birthday} className="mt-2" />
-                </div>
-                <div>
-                    <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
-                    <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
-                        <option value="">Select...</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </CustomSelect>
-                     <InputError message={errors.gender} className="mt-2" />
-                </div>
-            </div>
-
-            {/* --- NEW FIELD ADDED HERE --- */}
             <div>
                 <label htmlFor="place_of_birth" className="font-medium text-slate-700 text-sm mb-2 block">Place of Birth</label>
                 <CustomTextInput 
@@ -314,21 +294,20 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locatio
                 />
                 <InputError message={errors.place_of_birth} className="mt-2" />
             </div>
-            {/* --- END OF NEW FIELD --- */}
             
-            <div>
-                <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
-                <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
-                    <option value="">Select...</option>
-                    <option value="Single">Single</option>
-      _              <option value="Married">Married</option>
-                    <option value="Widowed">Widowed</option>
-                    <option value="Separated">Separated</option>
-                </CustomSelect>
-                <InputError message={errors.civil_status} className="mt-2" />
-            </div>
-        </div>
-    );
+            <div>
+                <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
+                <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
+                    <option value="">Select...</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Separated">Separated</option>
+                </CustomSelect>
+                <InputError message={errors.civil_status} className="mt-2" />
+            </div>
+        </div>
+    );
 };
 
 const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setPasswordVisible, confirmPasswordVisible, setConfirmPasswordVisible, passwordsDoNotMatch, emailValidation }) => (
@@ -471,7 +450,7 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
 };
 
 // --- MAIN REGISTER COMPONENT ---
-export default function Register({ footerData }) {
+export default function App({ footerData }) {
     const [step, setStep] = useState(1);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
@@ -480,13 +459,12 @@ export default function Register({ footerData }) {
     const [termsViewed, setTermsViewed] = useState(false);
     const formContainerRef = useRef(null);
     const formRef = useRef(null);
-    const [locations, setLocations] = useState(null);
-    const [isLoadingLocations, setIsLoadingLocations] = useState(true);
 
+    // Initialize with default values directly in useForm so we don't need to load the json!
     const { data, setData, post, processing, errors, reset, clearErrors, setError } = useForm({
         first_name: '', last_name: '', middle_name: '', suffix: '',
-        province: '', city: '', barangay: '', street_address: '',
-        phone_number: '', birthday: '', gender: '', civil_status: '',
+        province: 'Nueva Ecija', city: 'City of Gapan', barangay: 'San Lorenzo (Pob.)', 
+        street_address: '', phone_number: '', birthday: '', gender: '', civil_status: '', place_of_birth: '',
         email: '', password: '', password_confirmation: '',
         valid_id_type: '',
         valid_id_front_image: null,
@@ -494,43 +472,20 @@ export default function Register({ footerData }) {
         face_image: null,
     });
 
-    // --- Fetch Location Data ---
-    useEffect(() => {
-    fetch('/ph_locations.json')
-        .then(response => response.json())
-        .then(locationData => {
-            setLocations(locationData);
-            setIsLoadingLocations(false);
-            setData(prevData => ({
-                ...prevData,
-                province: 'Nueva Ecija',
-                city: 'General Tinio'
-            }));
-        })
-        .catch(error => {
-            console.error("Failed to load location data:", error);
-            setIsLoadingLocations(false);
-        });
-}, []);
-
     // --- Validations ---
     const passwordValidation = useMemo(() => getPasswordValidationState(data.password), [data.password]);
     const passwordsDoNotMatch = data.password_confirmation && data.password !== data.password_confirmation;
     const [phoneValidation, setPhoneValidation] = useState({ status: 'idle', message: '' });
     const [emailValidation, setEmailValidation] = useState({ status: 'idle', message: '' });
 
-    const ageValidation = useMemo(() => {
-        return { isValid: true, message: '' };
-    }, [data.birthday]);
-
     const stepFields = {
         1: ['first_name', 'last_name'],
-        2: ['province', 'city', 'barangay', 'street_address', 'phone_number', 'birthday', 'gender', 'civil_status'],
+        // Added 'place_of_birth' and removed province, city, and barangay since they are defaulted
+        2: ['street_address', 'phone_number', 'birthday', 'gender', 'place_of_birth', 'civil_status'],
         3: ['email', 'password', 'password_confirmation'],
         4: ['valid_id_type', 'valid_id_front_image', 'valid_id_back_image', 'face_image', 'terms']
     };
 
-   
     const submit = (e) => {
         e.preventDefault();
         clearErrors();
@@ -552,7 +507,7 @@ export default function Register({ footerData }) {
             phone_number: `+63${data.phone_number}`
         };
 
-        post(route('register'), {
+        post('/register', {
             data: formData,
             forceFormData: true,
             onSuccess: () => {
@@ -636,7 +591,7 @@ export default function Register({ footerData }) {
     const renderStep = () => {
         switch (step) {
             case 1: return <Step1_BasicInfo data={data} setData={setData} errors={errors} />;
-            case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} locations={locations} isLoadingLocations={isLoadingLocations}/>;
+            case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} />;
             case 3: return <Step3_AccountCredentials data={data} setData={setData} errors={errors} passwordVisible={passwordVisible} setPasswordVisible={setPasswordVisible} confirmPasswordVisible={confirmPasswordVisible} setConfirmPasswordVisible={setConfirmPasswordVisible} passwordsDoNotMatch={passwordsDoNotMatch} emailValidation={emailValidation} />;
             case 4: return <Step4_Verification data={data} setData={setData} errors={errors} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} />;
             default: return null;
@@ -701,7 +656,7 @@ export default function Register({ footerData }) {
                             </div>
 
                             <div className="mt-auto pt-16 text-center">
-                                <p className="text-sm text-slate-600">Already have an account?{' '} <Link href={route('login')} className="font-medium text-blue-600 hover:text-blue-500 hover:underline">Sign in here</Link></p>
+                                <p className="text-sm text-slate-600">Already have an account?{' '} <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 hover:underline">Sign in here</Link></p>
                             </div>
                         </div>
                     </div>

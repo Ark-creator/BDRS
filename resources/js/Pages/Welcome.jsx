@@ -5,7 +5,7 @@ import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer
 import { TypeAnimation } from 'react-type-animation';
 import clsx from 'clsx';
 import OfficialsWelcome from '@/Components/OfficialsWelcome';
-import FooterWelcome from '@/Components/FooterWelcome'; // Tama ang path na ito
+import FooterWelcome from '@/Components/FooterWelcome';
 import Announcements from '@/Components/Residents/Announcements';
 import TranslateButton from '@/Components/TranslateButton';
 
@@ -326,7 +326,6 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                     </section>
                 </main>
                 
-                {/* 2. SIGURADUHING MAY `footerData` NA PINAPASA DITO */}
                 <FooterWelcome footerData={footerData} />
             </div>
         </>
