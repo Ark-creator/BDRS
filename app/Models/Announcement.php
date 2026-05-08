@@ -41,9 +41,9 @@ class Announcement extends Model
     public function getImageUrlAttribute(): ?string
     {
         if ($this->image) {
-            return Storage::disk('s3')->url($this->image);
+            return route('admin.images.proxy', ['path' => $this->image]);
         }
-        return null; // Return null if there is no image
+        return null;
     }
 
 

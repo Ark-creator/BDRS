@@ -18,7 +18,8 @@ use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Resident\ContactUsController;
 use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Admin\MessagesCounterController;
-use App\Http\Controllers\Admin\RequestDocumentsController; 
+use App\Http\Controllers\Admin\RequestDocumentsController;
+use App\Http\Controllers\Admin\ImageProxyController; 
 use App\Http\Controllers\Security\HoneypotController;
 
 
@@ -138,6 +139,11 @@ Route::middleware(['auth', 'verified', 'can:be-resident', 'throttle:authenticate
 });
 
 Route::middleware(['auth', 'verified', 'can:be-admin', 'throttle:authenticated', 'progressive.throttle:admin'])->prefix('admin')->name('admin.')->group(function () {
+    // Image proxy route
+    Route::get('/images/{path}', [ImageProxyController::class, 'show'])
+        ->where('path', '.*')
+        ->name('images.proxy');
+
     // routes/web.php (within your admin middleware group)
     Route::post('/history/{archive}/restore', [HistoryController::class, 'restore'])->middleware('throttle:sensitive')->name('history.restore');
 
