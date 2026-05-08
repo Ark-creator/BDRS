@@ -94,6 +94,9 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', 'progressive.th
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/profile-images/{path}', [ImageProxyController::class, 'showProfileImage'])
+        ->where('path', '.*')
+        ->name('images.profile');
 });
 
 // --- RESIDENT ROUTES ---
