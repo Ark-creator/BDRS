@@ -111,6 +111,7 @@ export default function Welcome({ auth, announcements = [], footerData , officia
     const [scrolled, setScrolled] = useState(false);
     const [language, setLanguage] = useState('en');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [announcementList, setAnnouncementList] = useState(announcements);
 
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
@@ -134,6 +135,27 @@ export default function Welcome({ auth, announcements = [], footerData , officia
             document.body.classList.remove('overflow-hidden');
         };
     }, [isMobileMenuOpen]);
+
+    useEffect(() => {
+        if (!window.Echo) return;
+
+        const channel = window.Echo.channel('announcements');
+        
+        channel.listen('.AnnouncementUpdated', (event) => {
+            if (event.action === 'created') {
+                setAnnouncementList(prev => [event.announcement, ...prev]);
+            } else if (event.action === 'deleted') {
+                setAnnouncementList(prev => prev.filter(a => a.id !== event.announcement.id));
+            } else if (event.action === 'updated') {
+                setAnnouncementList(prev => prev.map(a => a.id === event.announcement.id ? event.announcement : a));
+            }
+        });
+
+        return () => {
+            channel.stopListening('.AnnouncementUpdated');
+            window.Echo.leave('announcements');
+        };
+    }, []);
 
     const t = content[language];
 
@@ -246,7 +268,7 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                     </div>
                     <div className="py-16 sm:py-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <Announcements announcements={announcements} />
+                            <Announcements announcements={announcementList} />
                         </div>
                     </div>
                     <section id="how-it-works" className="py-20 sm:py-28 relative bg-white dark:bg-slate-900/70 backdrop-blur-sm">
