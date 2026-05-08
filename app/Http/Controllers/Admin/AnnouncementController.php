@@ -117,7 +117,8 @@ class AnnouncementController extends Controller
 
     public function destroy(Announcement $announcement)
     {
-        $announcementId = $announcement->id;
+        $announcementData = $announcement->replicate();
+        $announcementData->setAttribute('id', $announcement->id);
 
         if ($announcement->image) {
             Storage::disk('s3')->delete($announcement->image);
@@ -125,7 +126,7 @@ class AnnouncementController extends Controller
 
         $announcement->delete();
 
-        broadcast(new AnnouncementUpdated($announcement->replicate(), 'deleted'))->toOthers();
+        broadcast(new AnnouncementUpdated($announcementData, 'deleted'))->toOthers();
 
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement deleted successfully.');
     }
