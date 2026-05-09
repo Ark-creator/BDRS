@@ -100,7 +100,7 @@ class AnnouncementController extends Controller
         if ($request->hasFile('image')) {
             // Delete the old image from storage
             if ($announcement->image) {
-                Storage::disk('s3')->delete($announcement->image);
+                Storage::disk(config('filesystems.public_uploads_disk', 's3'))->delete($announcement->image);
             }
             // Store the new compressed image
             $updateData['image'] = $this->compressionService->compress($request->file('image'), 'announcements', 80);
@@ -121,7 +121,7 @@ class AnnouncementController extends Controller
         $announcementData->setAttribute('id', $announcement->id);
 
         if ($announcement->image) {
-            Storage::disk('s3')->delete($announcement->image);
+            Storage::disk(config('filesystems.public_uploads_disk', 's3'))->delete($announcement->image);
         }
 
         $announcement->delete();

@@ -17,7 +17,7 @@ class ContentSettingsController extends Controller
 
     private function publicDisk(): string
     {
-        return 's3';
+        return config('filesystems.public_uploads_disk', 's3');
     }
 
     private function storedPathFromUrl(?string $url): ?string

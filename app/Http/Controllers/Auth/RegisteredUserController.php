@@ -6,7 +6,6 @@ use App\Models\User;
 use App\Models\UserProfile;
 use Inertia\Inertia;
 use Inertia\Response;
-use App\Models\Barangay;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules;
 use App\Http\Controllers\Controller;
@@ -15,7 +14,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Support\Facades\Storage;
 use App\Models\WelcomeContent;
 use App\Events\NewUserRegistered;
 use App\Services\ImageCompressionService;
@@ -58,7 +56,6 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'province' => 'required|string|max:255',
             'city' => 'required|string|max:255',
-            'barangay' => 'required|string|max:255|exists:barangays,name', // Validate that the barangay name exists in your database
             'street_address' => 'required|string|max:255',
             'phone_number' => 'required|string|max:20|unique:user_profiles,phone_number',
             'birthday' => 'required|date',
@@ -69,22 +66,17 @@ class RegisteredUserController extends Controller
             'valid_id_front_image' => 'required|file|mimes:jpeg,png,jpg|max:10240',
             'valid_id_back_image' => 'required|file|mimes:jpeg,png,jpg|max:10240',
             'face_image' => 'required|file|mimes:jpeg,png,jpg|max:10240',
+            'terms' => 'accepted',
         ]);
 
         $user = DB::transaction(function () use ($request) {
-            // STEP 1: Find the Barangay model from the name provided in the form.
-            // We need this to get the foreign key ID.
-            $barangay = Barangay::where('name', $request->barangay)->firstOrFail();
-
-            // STEP 2: Create the User, assigning the barangay_id for system logic.
-            // This is the "keycard" for data scoping.
             $user = User::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'role' => 'resident',
-                'barangay_id' => $barangay->id, // <-- ASSIGN THE FOREIGN KEY
                 'two_factor_enabled' => true,
-                'two_factor_method' => 'email'
+                'two_factor_method' => 'email',
+                'email_verified_at' => now(),
                 
             ]);
 
@@ -93,8 +85,6 @@ class RegisteredUserController extends Controller
             $idBackPath = $this->compressionService->compress($request->file('valid_id_back_image'), 'id_images');
             $faceImagePath = $this->compressionService->compress($request->file('face_image'), 'face_images');
 
-            // STEP 3: Create the User Profile with the full text address for display.
-            // This is the "business card" with descriptive info.
             $user->profile()->create([
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
@@ -102,7 +92,7 @@ class RegisteredUserController extends Controller
                 'suffix' => $request->suffix,
                 'province' => $request->province,
                 'city' => $request->city,
-                'barangay' => $request->barangay, // <-- SAVE THE NAME
+                'barangay' => '',
                 'street_address' => $request->street_address,
                 'phone_number' => $request->phone_number,
                 'birthday' => $request->birthday,
@@ -121,6 +111,9 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
         event(new NewUserRegistered($user));
 
-        return redirect(route('verification.notice'));
+        Auth::login($user);
+        $request->session()->regenerate();
+
+        return redirect()->route('residents.home');
     }
 }
