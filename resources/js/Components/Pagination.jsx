@@ -2,6 +2,23 @@ import React from 'react';
 import { Link } from '@inertiajs/react';
 import clsx from 'clsx';
 
+const normalizePaginationHref = (url) => {
+    if (!url) return '#';
+    if (typeof window === 'undefined') return url;
+
+    try {
+        const parsedUrl = new URL(url, window.location.origin);
+
+        if (parsedUrl.host === window.location.host) {
+            return `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+        }
+    } catch {
+        return url;
+    }
+
+    return url;
+};
+
 export default function Pagination({ links = [], from, to, total }) {
     if (links.length <= 3) return null;
 
@@ -18,7 +35,7 @@ export default function Pagination({ links = [], from, to, total }) {
                     return (
                         <Link
                             key={index}
-                            href={link.url || '#'}
+                            href={normalizePaginationHref(link.url)}
                             preserveScroll
                             className={clsx(
                                 'px-3 py-2 text-sm rounded-md leading-4 transition-colors',
