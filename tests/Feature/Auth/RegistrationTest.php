@@ -2,8 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
-use App\Models\Barangay;
-use App\Models\Municipality;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -22,9 +21,8 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
-        Storage::fake('public');
-
-        $barangay = $this->createBarangay();
+        $privateDisk = config('filesystems.private_uploads_disk', 's3-private');
+        Storage::fake($privateDisk);
 
         $response = $this->post('/register', [
             'first_name' => 'Test',
@@ -36,7 +34,6 @@ class RegistrationTest extends TestCase
             'password_confirmation' => 'password',
             'province' => 'Nueva Ecija',
             'city' => 'City of Gapan',
-            'barangay' => $barangay->name,
             'street_address' => '123 Test Street',
             'phone_number' => '09123456789',
             'birthday' => '2000-01-01',
@@ -47,28 +44,32 @@ class RegistrationTest extends TestCase
             'valid_id_front_image' => UploadedFile::fake()->image('front.jpg'),
             'valid_id_back_image' => UploadedFile::fake()->image('back.jpg'),
             'face_image' => UploadedFile::fake()->image('face.jpg'),
+            'terms' => '1',
         ]);
 
-        $this->assertGuest();
-        $response->assertRedirect(route('verification.notice', absolute: false));
+        $user = User::where('email', 'test@example.com')->firstOrFail();
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertTrue($user->hasVerifiedEmail());
+        $response->assertRedirect(route('residents.home', absolute: false));
+        $this->get(route('residents.home'))->assertOk();
         $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
         $this->assertDatabaseHas('user_profiles', [
             'first_name' => 'Test',
             'last_name' => 'User',
-            'barangay' => $barangay->name,
-        ]);
-    }
-
-    private function createBarangay(): Barangay
-    {
-        $municipality = Municipality::create([
-            'name' => 'Test Municipality',
-            'province' => 'Test Province',
+            'barangay' => '',
         ]);
 
-        return Barangay::create([
-            'municipality_id' => $municipality->id,
-            'name' => 'Test Barangay',
-        ]);
+        $profile = $user->profile()->firstOrFail();
+
+        $this->assertNull($user->barangay_id);
+        $this->assertStringStartsWith('id_images/', $profile->valid_id_front_path);
+        $this->assertStringStartsWith('id_images/', $profile->valid_id_back_path);
+        $this->assertStringStartsWith('face_images/', $profile->face_image_path);
+
+        Storage::disk($privateDisk)->assertExists($profile->valid_id_front_path);
+        Storage::disk($privateDisk)->assertExists($profile->valid_id_back_path);
+        Storage::disk($privateDisk)->assertExists($profile->face_image_path);
     }
+
 }

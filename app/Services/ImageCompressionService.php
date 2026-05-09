@@ -2,12 +2,19 @@
 
 namespace App\Services;
 
+use RuntimeException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ImageCompressionService
 {
+    private const PRIVATE_DIRECTORIES = [
+        'id_images',
+        'face_images',
+        'receipts',
+    ];
+
     public function compress(UploadedFile $file, string $directory, int $quality = 75, int $maxWidth = 1920): string
     {
         $imageData = $this->processImage($file, $maxWidth, $quality);
@@ -15,14 +22,24 @@ class ImageCompressionService
         $extension = 'jpg';
         $filename = $this->generateFilename($extension);
         $path = "{$directory}/{$filename}";
+        $diskName = $this->diskForDirectory($directory);
 
-        Storage::disk('s3')->put($path, $imageData);
+        $stored = Storage::disk($diskName)->put(
+            $path,
+            $imageData,
+            ['visibility' => $this->visibilityForDirectory($directory)]
+        );
+
+        if (!$stored) {
+            throw new RuntimeException("Unable to store uploaded image on disk [{$diskName}].");
+        }
 
         Log::info('Image compressed and uploaded', [
             'original_size' => $file->getSize(),
             'compressed_size' => strlen($imageData),
             'directory' => $directory,
             'filename' => $filename,
+            'disk' => $diskName,
         ]);
 
         return $path;
@@ -93,5 +110,24 @@ class ImageCompressionService
             bin2hex(random_bytes(4)),
             $extension
         );
+    }
+
+    private function diskForDirectory(string $directory): string
+    {
+        return in_array($this->rootDirectory($directory), self::PRIVATE_DIRECTORIES, true)
+            ? config('filesystems.private_uploads_disk', 's3-private')
+            : config('filesystems.public_uploads_disk', 's3');
+    }
+
+    private function visibilityForDirectory(string $directory): string
+    {
+        return in_array($this->rootDirectory($directory), self::PRIVATE_DIRECTORIES, true)
+            ? 'private'
+            : 'public';
+    }
+
+    private function rootDirectory(string $directory): string
+    {
+        return explode('/', trim($directory, '/'))[0] ?? $directory;
     }
 }

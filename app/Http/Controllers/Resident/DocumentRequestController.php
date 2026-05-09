@@ -202,7 +202,7 @@ class DocumentRequestController extends Controller
             $fileName = 'signature_' . auth()->id() . '_' . uniqid() . '.png';
             $signaturePath = 'private/signatures/' . $fileName;
 
-            Storage::disk('s3-private')->put($signaturePath, $imageData);
+            Storage::disk(config('filesystems.private_uploads_disk', 's3-private'))->put($signaturePath, $imageData);
             $formData['signature_path'] = $signaturePath;
         }
 

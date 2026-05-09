@@ -33,7 +33,7 @@ class ImageProxyController extends Controller
             abort(403, 'Access denied.');
         }
 
-        $disk = Storage::disk('s3');
+        $disk = Storage::disk(config('filesystems.private_uploads_disk', 's3-private'));
 
         if (!$disk->exists($path)) {
             abort(404, 'Image not found.');
@@ -46,7 +46,7 @@ class ImageProxyController extends Controller
 
     public function show(string $path)
     {
-        $disk = Storage::disk('s3');
+        $disk = Storage::disk(config('filesystems.public_uploads_disk', 's3'));
 
         if (!$disk->exists($path)) {
             abort(404, 'Image not found.');
@@ -61,7 +61,7 @@ class ImageProxyController extends Controller
             abort(403, 'Access denied.');
         }
 
-        $disk = Storage::disk('s3');
+        $disk = Storage::disk(config('filesystems.public_uploads_disk', 's3'));
 
         if (!$disk->exists($path)) {
             abort(404, 'Image not found.');

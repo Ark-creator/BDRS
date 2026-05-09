@@ -1,21 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import InputError from '@/Components/InputError';
 import axios from 'axios';
-
-// --- MOCKS FOR ENVIRONMENT COMPATIBILITY ---
-const Head = ({ title }) => { useEffect(() => { document.title = title; }, [title]); return null; };
-const Link = ({ href, children, className, ...props }) => <a href={href} className={className} {...props}>{children}</a>;
-const InputError = ({ message, className = '', ...props }) => message ? <p {...props} className={'text-sm text-red-600 ' + className}>{message}</p> : null;
-const useForm = (initialValues) => {
-    const [data, setDataState] = useState(initialValues);
-    const [errors, setErrorsState] = useState({});
-    const [processing, setProcessing] = useState(false);
-    const setData = (key, val) => typeof key === 'string' ? setDataState(p => ({ ...p, [key]: val })) : setDataState(p => ({ ...p, ...key }));
-    const post = (url, opts) => { setProcessing(true); setTimeout(() => { setProcessing(false); if (opts?.onSuccess) opts.onSuccess(); console.log('Mock submit to', url, data); }, 1000); };
-    const reset = (...f) => f.length ? setDataState(p => { const n = { ...p }; f.forEach(k => n[k] = initialValues[k]); return n; }) : setDataState(initialValues);
-    const clearErrors = (...f) => f.length ? setErrorsState(p => { const n = { ...p }; f.forEach(k => delete n[k]); return n; }) : setErrorsState({});
-    const setError = (f, v) => setErrorsState(p => ({ ...p, [f]: v }));
-    return { data, setData, post, processing, errors, reset, clearErrors, setError };
-};
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -232,7 +218,7 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation }) => {
         <div className="space-y-4">
             <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
 
-            {/* Address Dropdowns for Province, City, and Barangay were removed as they are set to default values automatically behind the scenes */}
+            {/* Province and city are set automatically behind the scenes. */}
 
             <div>
                 <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
@@ -353,7 +339,7 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
     </div>
 );
 
-const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, setAgreeToTerms, setIsTermsModalOpen }) => {
+const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, agreeToTerms, setAgreeToTerms, setIsTermsModalOpen }) => {
     const [idFrontPreview, setIdFrontPreview] = useState(null);
     const [idBackPreview, setIdBackPreview] = useState(null);
     const [faceImagePreview, setFaceImagePreview] = useState(null);
@@ -363,20 +349,23 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
 
     const handleCapture = (file) => {
         const previewUrl = URL.createObjectURL(file);
-        if (errors.images) delete errors.images;
+        clearErrors('images');
 
         switch (cameraTarget) {
             case 'id_front':
                 setIdFrontPreview(previewUrl);
                 setData('valid_id_front_image', file);
+                clearErrors('valid_id_front_image');
                 break;
             case 'id_back':
                 setIdBackPreview(previewUrl);
                 setData('valid_id_back_image', file);
+                clearErrors('valid_id_back_image');
                 break;
             case 'face':
                 setFaceImagePreview(previewUrl);
                 setData('face_image', file);
+                clearErrors('face_image');
                 break;
             default:
                 break;
@@ -461,9 +450,9 @@ export default function App({ footerData }) {
     const formRef = useRef(null);
 
     // Initialize with default values directly in useForm so we don't need to load the json!
-    const { data, setData, post, processing, errors, reset, clearErrors, setError } = useForm({
+    const { data, setData, transform, post, processing, errors, reset, clearErrors, setError } = useForm({
         first_name: '', last_name: '', middle_name: '', suffix: '',
-        province: 'Nueva Ecija', city: 'City of Gapan', barangay: 'San Lorenzo (Pob.)', 
+        province: 'Nueva Ecija', city: 'City of Gapan',
         street_address: '', phone_number: '', birthday: '', gender: '', civil_status: '', place_of_birth: '',
         email: '', password: '', password_confirmation: '',
         valid_id_type: '',
@@ -480,7 +469,7 @@ export default function App({ footerData }) {
 
     const stepFields = {
         1: ['first_name', 'last_name'],
-        // Added 'place_of_birth' and removed province, city, and barangay since they are defaulted
+        // Added 'place_of_birth' and removed province/city since they are defaulted
         2: ['street_address', 'phone_number', 'birthday', 'gender', 'place_of_birth', 'civil_status'],
         3: ['email', 'password', 'password_confirmation'],
         4: ['valid_id_type', 'valid_id_front_image', 'valid_id_back_image', 'face_image', 'terms']
@@ -502,13 +491,13 @@ export default function App({ footerData }) {
             return;
         }
 
-        const formData = {
-            ...data,
-            phone_number: `+63${data.phone_number}`
-        };
+        transform((values) => ({
+            ...values,
+            phone_number: `+63${values.phone_number}`,
+            terms: agreeToTerms ? '1' : '0',
+        }));
 
-        post('/register', {
-            data: formData,
+        post(route('register'), {
             forceFormData: true,
             onSuccess: () => {
                 reset('password', 'password_confirmation');
@@ -593,7 +582,7 @@ export default function App({ footerData }) {
             case 1: return <Step1_BasicInfo data={data} setData={setData} errors={errors} />;
             case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} />;
             case 3: return <Step3_AccountCredentials data={data} setData={setData} errors={errors} passwordVisible={passwordVisible} setPasswordVisible={setPasswordVisible} confirmPasswordVisible={confirmPasswordVisible} setConfirmPasswordVisible={setConfirmPasswordVisible} passwordsDoNotMatch={passwordsDoNotMatch} emailValidation={emailValidation} />;
-            case 4: return <Step4_Verification data={data} setData={setData} errors={errors} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} />;
+            case 4: return <Step4_Verification data={data} setData={setData} errors={errors} clearErrors={clearErrors} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} />;
             default: return null;
         }
     };
