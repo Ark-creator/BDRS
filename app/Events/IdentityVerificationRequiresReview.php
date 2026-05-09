@@ -1,0 +1,14 @@
+<?php
+
+namespace App\Events;
+
+use App\Models\Verification;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class IdentityVerificationRequiresReview
+{
+    use Dispatchable, SerializesModels;
+
+    public function __construct(public Verification $verification) {}
+}

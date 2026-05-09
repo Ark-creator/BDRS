@@ -98,6 +98,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(DocumentRequest::class);
     }
 
+    public function verifications(): HasMany
+    {
+        return $this->hasMany(Verification::class);
+    }
+
     public function barangay(): BelongsTo
 {
     return $this->belongsTo(Barangay::class);

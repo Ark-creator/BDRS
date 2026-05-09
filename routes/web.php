@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\DocumentsListController;
 use App\Http\Controllers\Admin\MessagesCounterController;
 use App\Http\Controllers\Admin\RequestDocumentsController;
 use App\Http\Controllers\Admin\ImageProxyController; 
+use App\Http\Controllers\IdentityVerificationImageController;
+use App\Http\Controllers\Admin\IdentityVerificationController as AdminIdentityVerificationController;
 use App\Http\Controllers\Security\HoneypotController;
 
 
@@ -97,6 +99,11 @@ Route::middleware(['auth', 'verified', 'throttle:authenticated', 'progressive.th
     Route::get('/profile-images/{path}', [ImageProxyController::class, 'showProfileImage'])
         ->where('path', '.*')
         ->name('images.profile');
+
+    Route::get('/verification-images/{verification:uuid}/{type}', IdentityVerificationImageController::class)
+        ->whereIn('type', ['id', 'selfie'])
+        ->middleware(['signed', 'verification.access'])
+        ->name('verification.images.show');
 });
 
 // --- RESIDENT ROUTES ---
@@ -201,6 +208,12 @@ Route::post('/requests/claim-by-voucher', [RequestDocumentsController::class, 'c
     Route::get('/security/traffic', SecurityTrafficController::class)
         ->middleware('throttle:traffic-dashboard')
         ->name('security.traffic');
+
+    Route::get('/verifications', [AdminIdentityVerificationController::class, 'index'])
+        ->name('verifications.index');
+    Route::post('/verifications/{verification:uuid}/review', [AdminIdentityVerificationController::class, 'review'])
+        ->middleware('throttle:sensitive')
+        ->name('verifications.review');
 
     Route::get('/requests/{documentRequest}/receipt', [RequestDocumentsController::class, 'showReceipt'])
          ->name('requests.receipt');

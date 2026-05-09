@@ -16,7 +16,7 @@ import {
     LayoutDashboard, Megaphone, FileText, FolderGit2, History,
     MessageSquareMore, CreditCard, PanelLeftClose, PanelLeftOpen, ChevronDown,
     BellRing, Menu, X, ArrowLeft, Users,
-    HelpCircle, LogOut, Settings
+    HelpCircle, LogOut, Settings, ShieldCheck
 } from 'lucide-react';
 
 // --- Components ---
@@ -287,6 +287,7 @@ export default function AuthenticatedLayout({ header, children }) {
         links: [
             { name: 'Documents', href: route('admin.documents'), active: route().current('admin.documents'), icon: <FileText size={18} /> },
             { name: 'Requests', href: route('admin.request'), active: route().current('admin.request'), icon: <FolderGit2 size={18} /> },
+            { name: 'Verifications', href: route('admin.verifications.index'), active: route().current('admin.verifications.*'), icon: <ShieldCheck size={18} /> },
             ...(isSuperAdmin ? [{ name: 'Users', href: route("superadmin.users.index"), active: route().current("superadmin.users.index"), icon: <Users size={18} /> }] : []),
             { name: 'Messages', href: route('admin.messages'), active: route().current('admin.messages'), icon: <MessageSquareMore size={18} />, badge: adminUnreadCount },
         ]

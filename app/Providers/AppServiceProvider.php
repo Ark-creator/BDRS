@@ -4,8 +4,16 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL; // Siguraduhing naka-import ito
 use App\Models\User;
+use App\Models\Verification;
+use App\Policies\VerificationPolicy;
+use App\Events\IdentityVerificationCompleted;
+use App\Events\IdentityVerificationRequiresReview;
+use App\Events\IdentityVerificationReviewed;
+use App\Events\IdentityVerificationSubmitted;
+use App\Listeners\RecordIdentityVerificationAudit;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Http\Request;
@@ -36,6 +44,12 @@ class AppServiceProvider extends ServiceProvider
             return new SemaphoreChannel();
         });
         Vite::prefetch(concurrency: 3);
+        Gate::policy(Verification::class, VerificationPolicy::class);
+
+        Event::listen(IdentityVerificationSubmitted::class, RecordIdentityVerificationAudit::class);
+        Event::listen(IdentityVerificationCompleted::class, RecordIdentityVerificationAudit::class);
+        Event::listen(IdentityVerificationRequiresReview::class, RecordIdentityVerificationAudit::class);
+        Event::listen(IdentityVerificationReviewed::class, RecordIdentityVerificationAudit::class);
 
         // Force generated URLs to HTTPS whenever the deployed app URL uses HTTPS.
         if ($this->app->environment('production') || str_starts_with((string) config('app.url'), 'https://')) {
