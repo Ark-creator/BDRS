@@ -4,6 +4,7 @@ from app.services.face import compare_faces
 from app.services.fraud import analyze_fraud
 from app.services.liveness import check_liveness
 from app.services.ocr import extract_ocr
+from app.services.selfie import validate_selfie
 
 app = FastAPI(title="BDRS Identity AI Service", version="1.0.0")
 
@@ -14,8 +15,12 @@ async def health() -> dict:
 
 
 @app.post("/ocr/extract")
-async def ocr_extract(image: UploadFile = File(...)) -> dict:
-    return extract_ocr(await image.read(), image.filename or "id-image")
+async def ocr_extract(
+    image: UploadFile = File(...),
+    document_type: str | None = Form(default=None),
+    document_side: str = Form(default="front"),
+) -> dict:
+    return extract_ocr(await image.read(), image.filename or "id-image", document_type, document_side)
 
 
 @app.post("/face/compare")
@@ -34,6 +39,11 @@ async def face_compare(
 @app.post("/liveness/check")
 async def liveness_check(selfie_image: UploadFile = File(...)) -> dict:
     return check_liveness(await selfie_image.read(), selfie_image.filename or "selfie-image")
+
+
+@app.post("/selfie/validate")
+async def selfie_validate(image: UploadFile = File(...)) -> dict:
+    return validate_selfie(await image.read(), image.filename or "selfie-image")
 
 
 @app.post("/fraud/analyze")

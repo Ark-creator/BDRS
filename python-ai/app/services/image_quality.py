@@ -36,13 +36,14 @@ def hash_distance(left: str, right: str) -> int:
 
 def quality_metrics(contents: bytes) -> dict[str, Any]:
     image = open_rgb_image(contents)
-    grayscale = np.asarray(image.convert("L"), dtype=np.float32)
+    grayscale_uint8 = np.asarray(image.convert("L"), dtype=np.uint8)
+    grayscale = grayscale_uint8.astype(np.float32)
     width, height = image.size
 
     brightness = float(grayscale.mean())
     contrast = float(grayscale.std())
     if cv2 is not None:
-        sharpness = float(cv2.Laplacian(grayscale, cv2.CV_64F).var())
+        sharpness = float(cv2.Laplacian(grayscale_uint8, cv2.CV_64F).var())
     else:
         sharpness = contrast * 10
 
@@ -68,6 +69,61 @@ def quality_metrics(contents: bytes) -> dict[str, Any]:
         "sha256": sha256(contents).hexdigest(),
         "average_hash": average_hash(image),
     }
+
+
+def document_geometry_metrics(contents: bytes) -> dict[str, Any]:
+    image = open_rgb_image(contents)
+    width, height = image.size
+    image_area = float(width * height)
+
+    empty = {
+        "boundary_detected": False,
+        "boundary_score": 0.0,
+        "document_area_ratio": 0.0,
+        "document_aspect_ratio": None,
+        "cropped_risk": "unknown",
+    }
+
+    if cv2 is None or image_area <= 0:
+        return empty
+
+    gray = np.asarray(image.convert("L"), dtype=np.uint8)
+    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+    edges = cv2.Canny(blurred, 50, 150)
+    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    best: dict[str, Any] | None = None
+    for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:12]:
+        area = float(cv2.contourArea(contour))
+        if area < image_area * 0.08:
+            continue
+
+        perimeter = cv2.arcLength(contour, True)
+        approximation = cv2.approxPolyDP(contour, 0.03 * perimeter, True)
+        x, y, box_width, box_height = cv2.boundingRect(approximation)
+        if box_width <= 0 or box_height <= 0:
+            continue
+
+        aspect_ratio = box_width / float(box_height)
+        rectangularity = area / float(box_width * box_height)
+        area_ratio = area / image_area
+        looks_like_card = 1.20 <= aspect_ratio <= 2.35 or 0.42 <= aspect_ratio <= 0.85
+        has_card_shape = looks_like_card and rectangularity >= 0.45 and len(approximation) <= 8
+        touches_edge = x <= 4 or y <= 4 or (x + box_width) >= width - 4 or (y + box_height) >= height - 4
+
+        score = min(100.0, (area_ratio * 120.0) + (rectangularity * 35.0) + (20.0 if has_card_shape else 0.0))
+        candidate = {
+            "boundary_detected": bool(has_card_shape and area_ratio >= 0.10),
+            "boundary_score": round(score, 2),
+            "document_area_ratio": round(area_ratio, 3),
+            "document_aspect_ratio": round(aspect_ratio, 3),
+            "cropped_risk": "medium" if touches_edge else "low",
+        }
+
+        if best is None or candidate["boundary_score"] > best["boundary_score"]:
+            best = candidate
+
+    return best or empty
 
 
 def issue_for_quality(metrics: dict[str, Any], prefix: str) -> list[str]:

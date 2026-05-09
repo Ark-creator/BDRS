@@ -3,6 +3,7 @@
 namespace App\Services\IdentityVerification;
 
 use App\Models\Verification;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,35 @@ class AiIdentityVerificationClient
     {
         return $this->postMultipart('/ocr/extract', [
             'image' => $verification->id_image_path,
+        ], [
+            'document_type' => $verification->document_type,
+            'document_side' => 'front',
         ]);
+    }
+
+    public function extractOcrFromUpload(UploadedFile $file, ?string $documentType = null, ?string $documentSide = null): array
+    {
+        return $this->postMultipartUploads('/ocr/extract', [
+            'image' => $file,
+        ], array_filter([
+            'document_type' => $documentType,
+            'document_side' => $documentSide,
+        ]), (int) config('identity_verification.ai.precheck_timeout_seconds', 20), 0);
+    }
+
+    public function validateSelfieFromUpload(UploadedFile $file): array
+    {
+        return $this->postMultipartUploads('/selfie/validate', [
+            'image' => $file,
+        ], [], (int) config('identity_verification.ai.precheck_timeout_seconds', 20), 0);
+    }
+
+    public function health(): array
+    {
+        $response = $this->request(5, 0)->get($this->baseUrl().'/health');
+        $response->throw();
+
+        return $response->json() ?: [];
     }
 
     public function compareFaces(Verification $verification): array
@@ -43,16 +72,12 @@ class AiIdentityVerificationClient
         ]);
     }
 
-    private function postMultipart(string $endpoint, array $files, array $payload = []): array
+    private function postMultipart(string $endpoint, array $files, array $payload = [], ?int $timeoutSeconds = null, ?int $retryTimes = null): array
     {
         $this->ensureCircuitIsClosed();
 
         $disk = Storage::disk((string) config('identity_verification.storage.disk', 's3-private'));
-        $request = Http::timeout((int) config('identity_verification.ai.timeout_seconds', 30))
-            ->retry(
-                (int) config('identity_verification.ai.retry_times', 2),
-                (int) config('identity_verification.ai.retry_sleep_ms', 500)
-            );
+        $request = $this->request($timeoutSeconds, $retryTimes);
 
         foreach ($files as $field => $path) {
             if (!$path || !$disk->exists($path)) {
@@ -72,6 +97,43 @@ class AiIdentityVerificationClient
         }
 
         return $response->json() ?: [];
+    }
+
+    private function postMultipartUploads(string $endpoint, array $files, array $payload = [], ?int $timeoutSeconds = null, ?int $retryTimes = null): array
+    {
+        $this->ensureCircuitIsClosed();
+
+        $request = $this->request($timeoutSeconds, $retryTimes);
+
+        foreach ($files as $field => $file) {
+            $path = $file->getRealPath();
+            $contents = $path ? file_get_contents($path) : false;
+            if ($contents === false) {
+                throw new \RuntimeException("Verification image [{$field}] is unreadable.");
+            }
+
+            $request = $request->attach($field, $contents, $file->getClientOriginalName() ?: "{$field}.jpg");
+        }
+
+        try {
+            $response = $request->post($this->baseUrl().$endpoint, $payload);
+            $response->throw();
+            $this->recordSuccess();
+        } catch (Throwable $exception) {
+            $this->recordFailure();
+            throw $exception;
+        }
+
+        return $response->json() ?: [];
+    }
+
+    private function request(?int $timeoutSeconds = null, ?int $retryTimes = null): \Illuminate\Http\Client\PendingRequest
+    {
+        return Http::timeout($timeoutSeconds ?? (int) config('identity_verification.ai.timeout_seconds', 30))
+            ->retry(
+                $retryTimes ?? (int) config('identity_verification.ai.retry_times', 2),
+                (int) config('identity_verification.ai.retry_sleep_ms', 500)
+            );
     }
 
     private function baseUrl(): string

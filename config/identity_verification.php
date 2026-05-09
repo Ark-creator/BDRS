@@ -29,6 +29,11 @@ return [
     'document_types' => [
         'driver_license',
         'national_id',
+        'umid',
+        'philhealth_id',
+        'postal_id',
+        'voter_id',
+        'prc_id',
         'school_id',
         'passport',
         'government_id',
@@ -40,8 +45,9 @@ return [
     ],
 
     'ai' => [
-        'base_url' => env('IDENTITY_AI_BASE_URL', 'http://python-ai:8000'),
+        'base_url' => env('IDENTITY_AI_BASE_URL', 'http://python-ai:8067'),
         'timeout_seconds' => (int) env('IDENTITY_AI_TIMEOUT_SECONDS', 30),
+        'precheck_timeout_seconds' => (int) env('IDENTITY_AI_PRECHECK_TIMEOUT_SECONDS', 20),
         'retry_times' => (int) env('IDENTITY_AI_RETRY_TIMES', 2),
         'retry_sleep_ms' => (int) env('IDENTITY_AI_RETRY_SLEEP_MS', 500),
         'circuit_failure_threshold' => (int) env('IDENTITY_AI_CIRCUIT_FAILURE_THRESHOLD', 3),

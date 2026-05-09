@@ -39,6 +39,7 @@ class OCRProcessingJob implements ShouldQueue
 
         $verification->forceFill([
             'extracted_data' => $result['fields'] ?? $result,
+            'document_validation' => $result['document_validation'] ?? null,
             'ocr_confidence' => round((float) data_get($result, 'confidence', data_get($result, 'ocr_confidence', 0)), 2),
             'id_expires_at' => $expirationDate,
             'scores' => $scores,
@@ -47,6 +48,7 @@ class OCRProcessingJob implements ShouldQueue
         $repository->recordLog($verification, 'ocr_processed', 'ID OCR extraction completed.', null, 'info', [
             'confidence' => $verification->ocr_confidence,
             'id_expires_at' => $expirationDate?->toDateString(),
+            'document_validation' => $verification->document_validation,
         ]);
     }
 

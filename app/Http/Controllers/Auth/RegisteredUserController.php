@@ -17,10 +17,13 @@ use Illuminate\Auth\Events\Registered;
 use App\Models\WelcomeContent;
 use App\Events\NewUserRegistered;
 use App\Services\ImageCompressionService;
+use App\Services\IdentityVerification\IdDocumentPrecheckService;
+use Illuminate\Validation\ValidationException;
 class RegisteredUserController extends Controller
 {
     public function __construct(
-        private ImageCompressionService $compressionService
+        private ImageCompressionService $compressionService,
+        private IdDocumentPrecheckService $idDocumentPrecheck
     ) {}
 
     /**
@@ -63,11 +66,13 @@ class RegisteredUserController extends Controller
             'place_of_birth' => 'required|string|max:255',
             'civil_status' => 'required|string|max:50',
             'valid_id_type' => 'required|string|max:255',
-            'valid_id_front_image' => 'required|file|mimes:jpeg,png,jpg|max:10240',
-            'valid_id_back_image' => 'required|file|mimes:jpeg,png,jpg|max:10240',
-            'face_image' => 'required|file|mimes:jpeg,png,jpg|max:10240',
+            'valid_id_front_image' => 'required|file|mimes:jpeg,png,jpg,webp|max:10240',
+            'valid_id_back_image' => 'required|file|mimes:jpeg,png,jpg,webp|max:10240',
+            'face_image' => 'required|file|mimes:jpeg,png,jpg,webp|max:10240',
             'terms' => 'accepted',
         ]);
+
+        $this->assertRegistrationImagesAreValid($request);
 
         $user = DB::transaction(function () use ($request) {
             $user = User::create([
@@ -115,5 +120,36 @@ class RegisteredUserController extends Controller
         $request->session()->regenerate();
 
         return redirect()->route('residents.home');
+    }
+
+    private function assertRegistrationImagesAreValid(Request $request): void
+    {
+        $checks = [
+            'valid_id_front_image' => $this->idDocumentPrecheck->check(
+                $request->file('valid_id_front_image'),
+                $request->valid_id_type,
+                'front_id'
+            ),
+            'valid_id_back_image' => $this->idDocumentPrecheck->check(
+                $request->file('valid_id_back_image'),
+                $request->valid_id_type,
+                'back_id'
+            ),
+            'face_image' => $this->idDocumentPrecheck->check(
+                $request->file('face_image'),
+                $request->valid_id_type,
+                'selfie'
+            ),
+        ];
+
+        foreach ($checks as $field => $result) {
+            if (($result['status'] ?? null) === 'valid' && ($result['is_valid'] ?? false) === true) {
+                continue;
+            }
+
+            throw ValidationException::withMessages([
+                $field => $result['message'] ?? 'This uploaded image could not be validated. Please retake it.',
+            ]);
+        }
     }
 }

@@ -42,6 +42,10 @@ class VerificationScoreService
             return Verification::STATUS_REJECTED;
         }
 
+        if ($this->documentValidationFailed($verification)) {
+            return Verification::STATUS_REJECTED;
+        }
+
         $passesHardRules = $face >= (float) config('identity_verification.thresholds.face_match_min')
             && $ocr >= (float) config('identity_verification.thresholds.ocr_confidence_min')
             && $liveness >= (float) config('identity_verification.thresholds.liveness_min')
@@ -64,6 +68,10 @@ class VerificationScoreService
             return 'The submitted ID is expired.';
         }
 
+        if ($reason = $this->documentValidationRejectionReason($verification)) {
+            return $reason;
+        }
+
         if ($face < (float) config('identity_verification.thresholds.face_match_min')) {
             return 'The selfie face does not sufficiently match the ID face.';
         }
@@ -81,5 +89,45 @@ class VerificationScoreService
         }
 
         return 'The verification did not meet the minimum confidence threshold.';
+    }
+
+    private function documentValidationFailed(Verification $verification): bool
+    {
+        $validation = $this->documentValidation($verification);
+
+        return Arr::get($validation, 'is_identity_document') === false
+            || Arr::get($validation, 'is_supported_document') === false
+            || Arr::get($validation, 'matches_expected_type') === false;
+    }
+
+    private function documentValidationRejectionReason(Verification $verification): ?string
+    {
+        $validation = $this->documentValidation($verification);
+        $issues = Arr::get($validation, 'issues', []);
+
+        if (in_array('id_no_readable_text', $issues, true)) {
+            return 'The ID text could not be read well enough to validate the document.';
+        }
+
+        if (Arr::get($validation, 'is_identity_document') === false) {
+            return 'The submitted image does not look like an identity document.';
+        }
+
+        if (Arr::get($validation, 'is_supported_document') === false) {
+            return 'The submitted ID type is not supported for automatic verification.';
+        }
+
+        if (Arr::get($validation, 'matches_expected_type') === false) {
+            return 'The submitted ID does not match the selected document type.';
+        }
+
+        return null;
+    }
+
+    private function documentValidation(Verification $verification): array
+    {
+        return $verification->document_validation
+            ?? Arr::get($verification->scores ?? [], 'ocr.document_validation', [])
+            ?? [];
     }
 }

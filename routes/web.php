@@ -81,6 +81,12 @@ Route::post('/validate-phone', [ValidationController::class, 'checkPhone'])
 Route::post('/validate-email', [ValidationController::class, 'checkEmail'])
     ->middleware('throttle:sensitive')
     ->name('validation.email');
+Route::post('/validate-id-image', [ValidationController::class, 'checkIdImage'])
+    ->middleware('throttle:sensitive')
+    ->name('validation.id-image');
+Route::get('/validate-identity-ai-health', [ValidationController::class, 'checkIdentityAiHealth'])
+    ->middleware('throttle:sensitive')
+    ->name('validation.identity-ai-health');
 
 
 // ... other routes like Route::post('/register', ...)
