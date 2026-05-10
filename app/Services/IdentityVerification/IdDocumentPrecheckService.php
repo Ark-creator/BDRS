@@ -254,6 +254,14 @@ class IdDocumentPrecheckService
             'id_low_quality',
             'id_blurry',
             'id_bad_lighting',
+            'id_low_light',
+            'id_glare_detected',
+            'id_screen_capture_suspected',
+            'id_tamper_suspected',
+            'id_recapture_suspected',
+            'id_edges_incomplete',
+            'id_document_too_small',
+            'id_off_center',
         ]));
     }
 
@@ -300,8 +308,24 @@ class IdDocumentPrecheckService
             return "The whole {$this->roleLabel($imageRole)} is not clearly inside the frame. Please retake the photo.";
         }
 
+        if (array_intersect($issues, ['id_screen_capture_suspected', 'id_recapture_suspected'])) {
+            return "The {$this->roleLabel($imageRole)} looks like a screen capture. Please use a live camera photo.";
+        }
+
+        if (array_intersect($issues, ['id_tamper_suspected'])) {
+            return "The {$this->roleLabel($imageRole)} may be edited or tampered with. Please retake a clean photo.";
+        }
+
         if (array_intersect($issues, ['id_low_resolution', 'id_low_quality', 'id_blurry', 'id_bad_lighting'])) {
             return "The {$this->roleLabel($imageRole)} photo is blurry, dark, or low quality. Please retake it.";
+        }
+
+        if (array_intersect($issues, ['id_glare_detected', 'id_low_light'])) {
+            return "The {$this->roleLabel($imageRole)} has glare or low lighting. Please retake in even light.";
+        }
+
+        if (array_intersect($issues, ['id_edges_incomplete', 'id_document_too_small', 'id_off_center'])) {
+            return "Please align the full {$this->roleLabel($imageRole)} inside the frame and retake the photo.";
         }
 
         if ($confidence < $minimumConfidence) {
@@ -325,12 +349,32 @@ class IdDocumentPrecheckService
             return 'The selfie must be a face photo, not an ID photo. Please retake it.';
         }
 
+        if (in_array('selfie_looks_like_id_document', $issues, true)) {
+            return 'The selfie looks like an ID card photo. Please capture your face instead.';
+        }
+
         if (array_intersect($issues, ['selfie_low_resolution', 'selfie_low_quality', 'selfie_blurry', 'selfie_bad_lighting'])) {
             return 'The selfie is blurry, dark, or low quality. Please retake a clearer face photo.';
         }
 
+        if (array_intersect($issues, ['selfie_glare_detected', 'selfie_low_light'])) {
+            return 'The selfie has glare or low lighting. Please retake in brighter light.';
+        }
+
         if (array_intersect($issues, ['selfie_face_too_small', 'selfie_face_too_close'])) {
             return 'Position your face clearly in the frame and retake the selfie.';
+        }
+
+        if (array_intersect($issues, ['selfie_face_cutoff', 'selfie_face_off_center'])) {
+            return 'Make sure your whole face is centered in the frame and retake the selfie.';
+        }
+
+        if (array_intersect($issues, ['selfie_screen_capture_suspected', 'selfie_recapture_suspected'])) {
+            return 'The selfie looks like a screen capture. Please use a live camera photo.';
+        }
+
+        if (array_intersect($issues, ['selfie_tamper_suspected'])) {
+            return 'The selfie appears edited. Please retake a clean photo.';
         }
 
         if (in_array('selfie_liveness_failed', $issues, true) || $score < $minimumScore) {

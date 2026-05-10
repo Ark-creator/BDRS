@@ -268,15 +268,30 @@ def extract_ocr(
 
     fields = _extract_fields(raw_text)
     validation = _validate_document(raw_text, expected_document_type, engine_issue, document_side)
-    confidence = _confidence(metrics, line_confidences, validation, engine_issue)
+    confidence = _confidence(metrics, geometry, line_confidences, validation, engine_issue)
 
     issues = issue_for_quality(metrics, "id")
     if not geometry["boundary_detected"] and document_side in {"front", "back"}:
         issues.append("id_document_boundary_not_found")
     if geometry["cropped_risk"] == "medium":
         issues.append("id_possible_crop")
+    if geometry.get("edge_completeness", 1) < 0.35:
+        issues.append("id_edges_incomplete")
+    if geometry.get("center_offset_x") is not None and (
+        geometry.get("center_offset_x", 0) > 0.24 or geometry.get("center_offset_y", 0) > 0.24
+    ):
+        issues.append("id_off_center")
+    if geometry.get("document_area_ratio", 0) < 0.16:
+        issues.append("id_document_too_small")
     if engine_issue:
         issues.append(engine_issue)
+    capture_risk = metrics.get("capture_risk", {})
+    if capture_risk.get("screen_capture_risk") in {"medium", "high"}:
+        issues.append("id_screen_capture_suspected")
+    if capture_risk.get("tamper_risk") == "high":
+        issues.append("id_tamper_suspected")
+    if capture_risk.get("recapture_risk") == "high":
+        issues.append("id_recapture_suspected")
     issues.extend(validation["issues"])
 
     return {
@@ -288,6 +303,7 @@ def extract_ocr(
         "raw_text": raw_text,
         "quality": metrics,
         "document_geometry": geometry,
+        "capture_risk": capture_risk,
         "document_side": document_side,
         "issues": sorted(set(issues)),
         "metadata": {
@@ -603,6 +619,7 @@ def _document_type_matches(expected: str, detected: str | None) -> bool:
 
 def _confidence(
     metrics: dict[str, Any],
+    geometry: dict[str, Any],
     line_confidences: list[float],
     validation: dict[str, Any],
     engine_issue: str | None,
@@ -611,7 +628,25 @@ def _confidence(
         return round(max(10.0, min(35.0, metrics["quality_score"] * 0.45)), 2)
 
     ocr_score = mean(line_confidences) if line_confidences else 20.0
-    confidence = (ocr_score * 0.60) + (metrics["quality_score"] * 0.20) + (validation["score"] * 0.20)
+    confidence = (ocr_score * 0.58) + (metrics["quality_score"] * 0.20) + (validation["score"] * 0.22)
+    risk_penalty = 0.0
+    if metrics.get("glare_ratio", 0) > 0.06:
+        risk_penalty += 8.0
+    if metrics.get("shadow_ratio", 0) > 0.20:
+        risk_penalty += 10.0
+    if metrics.get("edge_density", 0) < 0.015:
+        risk_penalty += 6.0
+    if geometry.get("edge_completeness", 1) < 0.35:
+        risk_penalty += 8.0
+    if geometry.get("center_offset_x") is not None and (
+        geometry.get("center_offset_x", 0) > 0.24 or geometry.get("center_offset_y", 0) > 0.24
+    ):
+        risk_penalty += 6.0
+    if metrics.get("capture_risk", {}).get("screen_capture_risk") == "high":
+        risk_penalty += 10.0
+    if metrics.get("capture_risk", {}).get("tamper_risk") == "high":
+        risk_penalty += 12.0
+    confidence = max(0.0, confidence - risk_penalty)
 
     if validation["is_identity_document"] is False:
         confidence = min(confidence, 35.0)
