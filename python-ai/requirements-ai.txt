@@ -1,0 +1,7 @@
+setuptools>=82.0.1
+paddlepaddle==2.6.2
+paddleocr==2.9.1
+deepface==0.0.93
+insightface==0.7.3
+retina-face==0.0.17
+torch==2.5.1
