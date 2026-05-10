@@ -1,0 +1,25 @@
+{
+  "version": "v2",
+  "runtime": "browser-wasm",
+  "status": "production",
+  "description": "Worker-backed identity validator with forensic image quality, document geometry, liveness-oriented selfie consistency, and local Tesseract WASM OCR.",
+  "tesseract_base": "/vendor/tesseract",
+  "assets": {
+    "worker": "/vendor/tesseract/worker.min.js",
+    "core_js": "/vendor/tesseract/core/tesseract-core.wasm.js",
+    "core_wasm": "/vendor/tesseract/core/tesseract-core.wasm",
+    "language": "/vendor/tesseract/lang/eng.traineddata.gz"
+  },
+  "features": [
+    "ocr",
+    "worker-quality-analysis",
+    "document-boundary-detection",
+    "edge-completeness",
+    "blur-low-light-glare",
+    "screenshot-recapture-risk",
+    "tamper-risk",
+    "browser-face-detector",
+    "selfie-alignment",
+    "passive-liveness-consistency"
+  ]
+}

@@ -273,8 +273,12 @@ def extract_ocr(
     issues = issue_for_quality(metrics, "id")
     if not geometry["boundary_detected"] and document_side in {"front", "back"}:
         issues.append("id_document_boundary_not_found")
-    if geometry["cropped_risk"] == "medium":
+    if geometry["cropped_risk"] == "high":
+        issues.append("id_cropped_or_cut_off")
+    elif geometry["cropped_risk"] == "medium":
         issues.append("id_possible_crop")
+    if geometry.get("boundary_detected") and geometry.get("edge_completeness", 1) < 0.35:
+        issues.append("id_edges_incomplete")
     if engine_issue:
         issues.append(engine_issue)
     issues.extend(validation["issues"])
@@ -612,6 +616,9 @@ def _confidence(
 
     ocr_score = mean(line_confidences) if line_confidences else 20.0
     confidence = (ocr_score * 0.60) + (metrics["quality_score"] * 0.20) + (validation["score"] * 0.20)
+    confidence -= metrics.get("screen_capture_risk", 0) * 0.08
+    confidence -= metrics.get("recapture_risk", 0) * 0.06
+    confidence -= metrics.get("tamper_risk", 0) * 0.10
 
     if validation["is_identity_document"] is False:
         confidence = min(confidence, 35.0)

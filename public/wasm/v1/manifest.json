@@ -1,0 +1,18 @@
+{
+  "version": "v1",
+  "runtime": "browser-wasm",
+  "status": "rollback",
+  "description": "Legacy browser-side identity validator using local Tesseract WASM OCR and in-page quality heuristics.",
+  "tesseract_base": "/vendor/tesseract",
+  "assets": {
+    "worker": "/vendor/tesseract/worker.min.js",
+    "core_js": "/vendor/tesseract/core/tesseract-core.wasm.js",
+    "core_wasm": "/vendor/tesseract/core/tesseract-core.wasm",
+    "language": "/vendor/tesseract/lang/eng.traineddata.gz"
+  },
+  "features": [
+    "ocr",
+    "basic-quality",
+    "browser-face-detector"
+  ]
+}

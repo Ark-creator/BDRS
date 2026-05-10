@@ -45,7 +45,7 @@ return [
     ],
 
     'registration' => [
-        'server_precheck_enabled' => (bool) env('IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED', false),
+        'server_precheck_enabled' => (bool) env('IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED', true),
     ],
 
     'ai' => [

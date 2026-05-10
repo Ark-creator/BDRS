@@ -254,6 +254,12 @@ class IdDocumentPrecheckService
             'id_low_quality',
             'id_blurry',
             'id_bad_lighting',
+            'id_low_light_detected',
+            'id_glare_detected',
+            'id_cropped_or_cut_off',
+            'id_screen_capture_detected',
+            'id_recaptured_image_detected',
+            'id_tamper_signals_detected',
         ]));
     }
 
@@ -300,7 +306,27 @@ class IdDocumentPrecheckService
             return "The whole {$this->roleLabel($imageRole)} is not clearly inside the frame. Please retake the photo.";
         }
 
-        if (array_intersect($issues, ['id_low_resolution', 'id_low_quality', 'id_blurry', 'id_bad_lighting'])) {
+        if (in_array('id_cropped_or_cut_off', $issues, true) || in_array('id_edges_incomplete', $issues, true)) {
+            return "The whole {$this->roleLabel($imageRole)} must be visible with all edges inside the frame.";
+        }
+
+        if (in_array('id_glare_detected', $issues, true) || in_array('id_light_reflection_detected', $issues, true)) {
+            return "Glare is covering the {$this->roleLabel($imageRole)}. Tilt the card and retake the photo.";
+        }
+
+        if (in_array('id_screen_capture_detected', $issues, true)) {
+            return 'Screenshots are not accepted. Capture the physical ID directly with the camera.';
+        }
+
+        if (in_array('id_recaptured_image_detected', $issues, true)) {
+            return 'This looks like a re-captured image. Capture the original physical ID directly.';
+        }
+
+        if (in_array('id_tamper_signals_detected', $issues, true)) {
+            return 'This ID image shows possible editing or tampering. Please retake the original physical ID.';
+        }
+
+        if (array_intersect($issues, ['id_low_resolution', 'id_low_quality', 'id_blurry', 'id_bad_lighting', 'id_low_light_detected'])) {
             return "The {$this->roleLabel($imageRole)} photo is blurry, dark, or low quality. Please retake it.";
         }
 
@@ -325,12 +351,24 @@ class IdDocumentPrecheckService
             return 'The selfie must be a face photo, not an ID photo. Please retake it.';
         }
 
-        if (array_intersect($issues, ['selfie_low_resolution', 'selfie_low_quality', 'selfie_blurry', 'selfie_bad_lighting'])) {
+        if (in_array('selfie_document_like_image', $issues, true)) {
+            return 'The selfie must show your live face, not an ID document. Please retake it.';
+        }
+
+        if (array_intersect($issues, ['selfie_low_resolution', 'selfie_low_quality', 'selfie_blurry', 'selfie_bad_lighting', 'selfie_low_light_detected'])) {
             return 'The selfie is blurry, dark, or low quality. Please retake a clearer face photo.';
         }
 
         if (array_intersect($issues, ['selfie_face_too_small', 'selfie_face_too_close'])) {
             return 'Position your face clearly in the frame and retake the selfie.';
+        }
+
+        if (in_array('selfie_partial_face_visibility', $issues, true)) {
+            return 'Your full face must be visible. Please retake the selfie.';
+        }
+
+        if (array_intersect($issues, ['selfie_screen_capture_detected', 'selfie_recaptured_image_detected'])) {
+            return 'The selfie must be captured live, not from another screen or printed photo.';
         }
 
         if (in_array('selfie_liveness_failed', $issues, true) || $score < $minimumScore) {

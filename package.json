@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite "
+        "dev": "vite ",
+        "build:identity-wasm": "node scripts/build-identity-wasm.mjs"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
