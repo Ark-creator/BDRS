@@ -16,3 +16,13 @@ Endpoints:
 - `GET /health`
 
 `/ocr/extract` accepts `document_type` and `document_side` form fields so registration can validate the front and back of the selected ID independently. `/selfie/validate` checks face count, image quality, passive liveness signals, and rejects images that look like ID documents instead of a live face photo.
+
+## Validation Modules
+- `image_quality.py`: core preprocessing, lighting/blur/glare checks, edge density, and capture risk scoring.
+- `face_detection.py`: shared Haar-based face detection helpers.
+- `ocr.py`: document validation, OCR scoring, and geometry checks.
+- `selfie.py`: selfie framing, face positioning, and liveness consistency checks.
+- `fraud.py`: tamper/screenshot/recapture heuristics and duplicate detection.
+
+## Browser-side WASM
+The Laravel registration flow uses a browser-side WASM validator (Tesseract + Web Worker scoring). Server-side checks remain optional and can be enabled with `IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED=true`.

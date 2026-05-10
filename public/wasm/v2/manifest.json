@@ -1,0 +1,13 @@
+{
+  "version": "v2",
+  "engine": "tesseract.js",
+  "base_path": "/wasm/v2/tesseract",
+  "assets": [
+    "/wasm/v2/tesseract/worker.min.js",
+    "/wasm/v2/tesseract/core/tesseract-core.wasm.js",
+    "/wasm/v2/tesseract/core/tesseract-core.wasm",
+    "/wasm/v2/tesseract/lang/eng.traineddata.gz"
+  ],
+  "analysis": "worker-based quality + capture risk scoring",
+  "notes": "Production camera overlays + hardened precheck"
+}

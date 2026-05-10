@@ -1,0 +1,12 @@
+{
+  "version": "v1",
+  "engine": "tesseract.js",
+  "base_path": "/vendor/tesseract",
+  "assets": [
+    "/vendor/tesseract/worker.min.js",
+    "/vendor/tesseract/core/tesseract-core.wasm.js",
+    "/vendor/tesseract/core/tesseract-core.wasm",
+    "/vendor/tesseract/lang/eng.traineddata.gz"
+  ],
+  "notes": "Legacy browser OCR + heuristic validation"
+}

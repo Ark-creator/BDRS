@@ -2,7 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import axios from 'axios';
-import { getWasmIdentityHealth, validateRegistrationImageWasm } from '@/Services/identityWasmValidator';
+import CameraModal from '@/Components/IdentityVerification/CameraModal';
+import { validateRegistrationImageWasm } from '@/Services/identityWasmValidatorV2';
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -51,67 +52,6 @@ const IdPrecheckMessage = ({ validation }) => {
         </div>
     );
 };
-const formatBytes = (bytes) => {
-    if (!bytes && bytes !== 0) return 'n/a';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-};
-const imageSummary = (file) => file ? `${file.type || 'image'} / ${formatBytes(file.size)}` : 'not captured';
-const ValidationDebugDetails = ({ label, file, validation }) => {
-    const diagnostics = validation?.diagnostics || {};
-    const upload = validation?.upload_diagnostics || {};
-    const dimensions = upload.dimensions || diagnostics.quality || {};
-    const issues = validation?.issues || diagnostics.issues || [];
-    return (
-        <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-700">
-            <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-slate-800">{label}</span>
-                <span className={`rounded px-2 py-0.5 font-medium ${validation?.status === 'valid' ? 'bg-green-50 text-green-700' : validation?.status === 'invalid' ? 'bg-red-50 text-red-700' : validation?.status === 'checking' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>{validation?.status || 'idle'}</span>
-            </div>
-            <div className="mt-2 grid grid-cols-1 gap-1">
-                <div>File: {imageSummary(file)}</div>
-                {(dimensions.width || dimensions.height) && <div>Size: {dimensions.width}x{dimensions.height}</div>}
-                {(validation?.confidence || validation?.score) && <div>Score: {validation.confidence || validation.score}</div>}
-                {diagnostics.mode && <div>Mode: {diagnostics.mode}</div>}
-                {diagnostics.engine && <div>Engine: {diagnostics.engine}</div>}
-                {diagnostics.endpoint && <div>Endpoint: {diagnostics.endpoint}</div>}
-                {diagnostics.document_type && <div>Expected: {diagnostics.document_type}</div>}
-                {diagnostics.detected_document_type && <div>Detected: {diagnostics.detected_document_type}</div>}
-                {diagnostics.ocr?.confidence !== undefined && <div>OCR confidence: {diagnostics.ocr.confidence}</div>}
-                {diagnostics.ocr?.preview && <div>OCR: {diagnostics.ocr.preview}</div>}
-                {issues.length > 0 && <div>Issues: {issues.join(', ')}</div>}
-                {validation?.message && <div>Message: {validation.message}</div>}
-                {diagnostics.error && <div className="text-red-700">Error: {diagnostics.error}</div>}
-            </div>
-        </div>
-    );
-};
-const CameraDiagnosticsPanel = ({ isOpen, aiHealth, onRunHealthCheck, data, idFrontValidation, idBackValidation, selfieValidation }) => {
-    if (!isOpen) return null;
-    return (
-        <div className="space-y-3 rounded-lg border border-slate-300 bg-slate-50 p-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                    <p className="text-sm font-semibold text-slate-800">Camera Diagnostics</p>
-                    <p className="text-xs text-slate-500">Selected ID: {data.valid_id_type || 'none'}</p>
-                </div>
-                <SecondaryButton type="button" onClick={onRunHealthCheck} className="!w-auto !py-1.5 !px-3 !text-xs">Check WASM</SecondaryButton>
-            </div>
-            {aiHealth && (
-                <div className={`rounded-md border px-3 py-2 text-xs ${aiHealth.status === 'ok' ? 'border-green-200 bg-green-50 text-green-700' : aiHealth.status === 'checking' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
-                    <div>{aiHealth.message}</div>
-                    {aiHealth.diagnostics?.mode && <div>Mode: {aiHealth.diagnostics.mode}</div>}
-                    {aiHealth.diagnostics?.api_calls && <div>API calls: {aiHealth.diagnostics.api_calls}</div>}
-                    {aiHealth.diagnostics?.error && <div>Error: {aiHealth.diagnostics.error}</div>}
-                </div>
-            )}
-            <ValidationDebugDetails label="Front ID" file={data.valid_id_front_image} validation={idFrontValidation} />
-            <ValidationDebugDetails label="Back ID" file={data.valid_id_back_image} validation={idBackValidation} />
-            <ValidationDebugDetails label="Selfie" file={data.face_image} validation={selfieValidation} />
-        </div>
-    );
-};
 const CameraIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
 const IdCardIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v1m-4 0h4m-9 4h2m-2 4h4m6-4v4m-2-2h4"></path></svg>;
 
@@ -135,152 +75,6 @@ const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
         </div>
     </div>
 );
-
-// --- CAMERA MODAL COMPONENT ---
-const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTarget, debugMode = false, idealVideoWidth = 1280, idealVideoHeight = 720, maxCaptureWidth = 1000, maxCaptureHeight = 1000 }) => {
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-    const [stream, setStream] = useState(null);
-    const [error, setError] = useState(null);
-    const [videoInfo, setVideoInfo] = useState(null);
-
-    const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-    };
-
-    const refreshVideoInfo = () => {
-        const video = videoRef.current;
-        const track = stream?.getVideoTracks?.()[0];
-        const settings = track?.getSettings?.() || {};
-        if (!video) return;
-
-        setVideoInfo({
-            width: video.videoWidth || settings.width,
-            height: video.videoHeight || settings.height,
-            deviceWidth: settings.width,
-            deviceHeight: settings.height,
-            facingMode: settings.facingMode || facingMode,
-        });
-    };
-
-    useEffect(() => {
-        if (isOpen) {
-            setError(null);
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: facingMode,
-                    width: { ideal: idealVideoWidth },
-                    height: { ideal: idealVideoHeight }
-                }
-            })
-            .then(mediaStream => {
-                setStream(mediaStream);
-                if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
-                }
-            })
-            .catch(err => {
-                console.error("Camera Error:", err);
-                setError(`Could not access the camera. Please ensure you have granted permission in your browser. Error: ${err.name}`);
-                stopCamera();
-            });
-        } else {
-            stopCamera();
-        }
-
-        return () => {
-            stopCamera();
-        };
-    }, [isOpen, facingMode, idealVideoWidth, idealVideoHeight]);
-
-    const handleCapture = () => {
-        if (videoRef.current && canvasRef.current) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            const context = canvas.getContext('2d');
-            if (facingMode === 'user') {
-                context.translate(video.videoWidth, 0);
-                context.scale(-1, 1);
-            }
-            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-
-            const maxWidth = maxCaptureWidth;
-            const maxHeight = maxCaptureHeight;
-            let newWidth = canvas.width;
-            let newHeight = canvas.height;
-
-            if (newWidth > maxWidth || newHeight > maxHeight) {
-                const ratio = Math.min(maxWidth / newWidth, maxHeight / newHeight);
-                newWidth *= ratio;
-                newHeight *= ratio;
-            }
-
-            const resizedCanvas = document.createElement('canvas');
-            resizedCanvas.width = newWidth;
-            resizedCanvas.height = newHeight;
-            const resizedContext = resizedCanvas.getContext('2d');
-            resizedContext.imageSmoothingEnabled = true;
-            resizedContext.imageSmoothingQuality = 'high';
-            resizedContext.drawImage(canvas, 0, 0, newWidth, newHeight);
-
-            resizedCanvas.toBlob(blob => {
-                const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, { type: 'image/jpeg' });
-                onCapture(file);
-                onClose();
-            }, 'image/jpeg', 0.92);
-        }
-    };
-
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-200"><CloseIcon /></button>
-                </div>
-                <div className="p-4 flex-grow relative overflow-hidden">
-                    {error ? (
-                        <div className="w-full h-full flex items-center justify-center text-center text-red-600 bg-red-50 rounded-md p-4">{error}</div>
-                    ) : (
-                        <video
-                            ref={videoRef}
-                            autoPlay
-                            playsInline
-                            onLoadedMetadata={refreshVideoInfo}
-                            onPlaying={refreshVideoInfo}
-                            className={`w-full h-full object-contain rounded-md ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-                        ></video>
-                    )}
-                    {debugMode && !error && (
-                        <>
-                            <div className={`pointer-events-none absolute left-1/2 top-1/2 ${captureTarget === 'face' ? 'h-[58%] w-[46%] rounded-full' : 'h-[48%] w-[78%] rounded-md'} -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-emerald-400 shadow-[0_0_0_9999px_rgba(15,23,42,0.20)]`}></div>
-                            <div className="absolute left-6 top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white">
-                                <div>{captureTarget === 'face' ? 'Face calibration' : 'ID calibration'}</div>
-                                <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'}</div>
-                                <div>{videoInfo?.facingMode || facingMode}</div>
-                            </div>
-                        </>
-                    )}
-                    <canvas ref={canvasRef} className="hidden"></canvas>
-                </div>
-                <div className="p-4 border-t bg-slate-50 flex gap-4">
-                    <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
-                    <PrimaryButton onClick={handleCapture} disabled={!stream || !!error} className="w-full">
-                        <CameraIcon/> Capture Photo
-                    </PrimaryButton>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 // --- STEP COMPONENTS ---
 const Step1_BasicInfo = ({ data, setData, errors }) => {
@@ -456,8 +250,6 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
     const [idFrontPreview, setIdFrontPreview] = useState(null);
     const [idBackPreview, setIdBackPreview] = useState(null);
     const [faceImagePreview, setFaceImagePreview] = useState(null);
-    const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
-    const [aiHealth, setAiHealth] = useState(null);
 
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [cameraTarget, setCameraTarget] = useState(null);
@@ -492,16 +284,6 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
         "PhilHealth ID", "Postal ID", "Voter's ID", "PRC ID",
     ];
     const isIdCapture = cameraTarget === 'id_front' || cameraTarget === 'id_back';
-    const runHealthCheck = () => {
-        setAiHealth({ status: 'checking', message: 'Checking local WASM validator...' });
-        getWasmIdentityHealth()
-            .then((result) => setAiHealth(result))
-            .catch((error) => setAiHealth({
-                status: 'unavailable',
-                message: 'Local WASM validator is not ready.',
-                diagnostics: { mode: 'browser_wasm', error: error.message },
-            }));
-    };
 
     return (
         <>
@@ -512,7 +294,6 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                 facingMode={cameraTarget === 'face' ? 'user' : 'environment'}
                 title={`Take Picture of ${cameraTarget?.replace('_', ' ')?.replace('id', 'ID') || ''}`}
                 captureTarget={cameraTarget}
-                debugMode={diagnosticsOpen}
                 idealVideoWidth={isIdCapture ? 1920 : 1280}
                 idealVideoHeight={isIdCapture ? 1080 : 720}
                 maxCaptureWidth={isIdCapture ? 1600 : 1000}
@@ -521,20 +302,7 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
             <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3 border-b pb-2">
                     <h3 className="text-lg font-semibold text-slate-700">Identity Verification</h3>
-                    <SecondaryButton type="button" onClick={() => setDiagnosticsOpen((value) => !value)} className="!w-auto !py-1.5 !px-3 !text-xs">
-                        {diagnosticsOpen ? 'Hide Diagnostics' : 'Diagnostics'}
-                    </SecondaryButton>
                 </div>
-
-                <CameraDiagnosticsPanel
-                    isOpen={diagnosticsOpen}
-                    aiHealth={aiHealth}
-                    onRunHealthCheck={runHealthCheck}
-                    data={data}
-                    idFrontValidation={idFrontValidation}
-                    idBackValidation={idBackValidation}
-                    selfieValidation={selfieValidation}
-                />
 
                 <InputError message={errors.images} className="mt-2" />
 
