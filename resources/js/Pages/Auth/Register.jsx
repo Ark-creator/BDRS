@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
+import CameraGuideOverlay from '@/Components/Identity/CameraGuideOverlay';
 import axios from 'axios';
 import { getWasmIdentityHealth, validateRegistrationImageWasm } from '@/Services/identityWasmValidator';
+import { captureFrame, startCamera, stopCamera } from '@/Services/identity/cameraStream';
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -30,6 +32,8 @@ const PasswordStrengthIndicator = ({ password }) => { const { strength, checks }
 const ValidationIndicator = ({ status }) => { const iconContainer = "absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"; if (status === 'checking') { return ( <div className={iconContainer}> <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> </div> ); } if (status === 'valid') { return ( <div className={iconContainer}> <CheckIcon /> </div> ); } if (status === 'invalid') { return ( <div className={iconContainer}> <CrossIcon /> </div> ); } return null; };
 const IdPrecheckMessage = ({ validation }) => {
     if (!validation || validation.status === 'idle') return null;
+    const confidence = validation?.confidence ?? validation?.score;
+    const confidenceLabel = Number.isFinite(confidence) ? ` (${Math.round(confidence)}%)` : '';
     const styles = {
         checking: 'border-blue-200 bg-blue-50 text-blue-700',
         valid: 'border-green-200 bg-green-50 text-green-700',
@@ -47,7 +51,7 @@ const IdPrecheckMessage = ({ validation }) => {
             ) : (
                 <CrossIcon />
             )}
-            <span>{validation.message}</span>
+            <span>{validation.message}{confidenceLabel}</span>
         </div>
     );
 };
@@ -139,17 +143,9 @@ const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
 // --- CAMERA MODAL COMPONENT ---
 const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTarget, debugMode = false, idealVideoWidth = 1280, idealVideoHeight = 720, maxCaptureWidth = 1000, maxCaptureHeight = 1000 }) => {
     const videoRef = useRef(null);
-    const canvasRef = useRef(null);
     const [stream, setStream] = useState(null);
     const [error, setError] = useState(null);
     const [videoInfo, setVideoInfo] = useState(null);
-
-    const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
-    };
 
     const refreshVideoInfo = () => {
         const video = videoRef.current;
@@ -167,73 +163,54 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
     };
 
     useEffect(() => {
-        if (isOpen) {
-            setError(null);
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: facingMode,
-                    width: { ideal: idealVideoWidth },
-                    height: { ideal: idealVideoHeight }
+        let active = true;
+
+        if (!isOpen) {
+            stopCamera(stream);
+            setStream(null);
+            return () => {};
+        }
+
+        setError(null);
+        startCamera({ facingMode, idealWidth: idealVideoWidth, idealHeight: idealVideoHeight })
+            .then((mediaStream) => {
+                if (!active) {
+                    stopCamera(mediaStream);
+                    return;
                 }
-            })
-            .then(mediaStream => {
                 setStream(mediaStream);
                 if (videoRef.current) {
                     videoRef.current.srcObject = mediaStream;
                 }
             })
-            .catch(err => {
-                console.error("Camera Error:", err);
+            .catch((err) => {
+                console.error('Camera Error:', err);
                 setError(`Could not access the camera. Please ensure you have granted permission in your browser. Error: ${err.name}`);
-                stopCamera();
+                stopCamera(stream);
+                setStream(null);
             });
-        } else {
-            stopCamera();
-        }
 
         return () => {
-            stopCamera();
+            active = false;
+            stopCamera(stream);
+            setStream(null);
         };
     }, [isOpen, facingMode, idealVideoWidth, idealVideoHeight]);
 
-    const handleCapture = () => {
-        if (videoRef.current && canvasRef.current) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+    const handleCapture = async () => {
+        if (!videoRef.current) return;
 
-            const context = canvas.getContext('2d');
-            if (facingMode === 'user') {
-                context.translate(video.videoWidth, 0);
-                context.scale(-1, 1);
-            }
-            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-
-            const maxWidth = maxCaptureWidth;
-            const maxHeight = maxCaptureHeight;
-            let newWidth = canvas.width;
-            let newHeight = canvas.height;
-
-            if (newWidth > maxWidth || newHeight > maxHeight) {
-                const ratio = Math.min(maxWidth / newWidth, maxHeight / newHeight);
-                newWidth *= ratio;
-                newHeight *= ratio;
-            }
-
-            const resizedCanvas = document.createElement('canvas');
-            resizedCanvas.width = newWidth;
-            resizedCanvas.height = newHeight;
-            const resizedContext = resizedCanvas.getContext('2d');
-            resizedContext.imageSmoothingEnabled = true;
-            resizedContext.imageSmoothingQuality = 'high';
-            resizedContext.drawImage(canvas, 0, 0, newWidth, newHeight);
-
-            resizedCanvas.toBlob(blob => {
-                const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, { type: 'image/jpeg' });
-                onCapture(file);
-                onClose();
-            }, 'image/jpeg', 0.92);
+        try {
+            const { file, motion_score: motionScore } = await captureFrame({
+                video: videoRef.current,
+                facingMode,
+                maxWidth: maxCaptureWidth,
+                maxHeight: maxCaptureHeight,
+            });
+            onCapture(file, { motion_score: motionScore });
+            onClose();
+        } catch (captureError) {
+            setError(`Capture failed: ${captureError.message}`);
         }
     };
 
@@ -259,17 +236,16 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
                             className={`w-full h-full object-contain rounded-md ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                         ></video>
                     )}
-                    {debugMode && !error && (
-                        <>
-                            <div className={`pointer-events-none absolute left-1/2 top-1/2 ${captureTarget === 'face' ? 'h-[58%] w-[46%] rounded-full' : 'h-[48%] w-[78%] rounded-md'} -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-emerald-400 shadow-[0_0_0_9999px_rgba(15,23,42,0.20)]`}></div>
-                            <div className="absolute left-6 top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white">
-                                <div>{captureTarget === 'face' ? 'Face calibration' : 'ID calibration'}</div>
-                                <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'}</div>
-                                <div>{videoInfo?.facingMode || facingMode}</div>
-                            </div>
-                        </>
+                    {!error && (
+                        <CameraGuideOverlay target={captureTarget === 'face' ? 'face' : 'id'} />
                     )}
-                    <canvas ref={canvasRef} className="hidden"></canvas>
+                    {debugMode && !error && (
+                        <div className="absolute left-6 top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white">
+                            <div>{captureTarget === 'face' ? 'Face calibration' : 'ID calibration'}</div>
+                            <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'}</div>
+                            <div>{videoInfo?.facingMode || facingMode}</div>
+                        </div>
+                    )}
                 </div>
                 <div className="p-4 border-t bg-slate-50 flex gap-4">
                     <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
@@ -458,11 +434,13 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
     const [faceImagePreview, setFaceImagePreview] = useState(null);
     const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
     const [aiHealth, setAiHealth] = useState(null);
+    const allowDiagnostics = Boolean(import.meta.env.DEV);
+    const [captureSignals, setCaptureSignals] = useState({});
 
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [cameraTarget, setCameraTarget] = useState(null);
 
-    const handleCapture = (file) => {
+    const handleCapture = (file, meta = {}) => {
         const previewUrl = URL.createObjectURL(file);
         clearErrors('images');
 
@@ -471,16 +449,19 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                 setIdFrontPreview(previewUrl);
                 setData('valid_id_front_image', file);
                 clearErrors('valid_id_front_image');
+                setCaptureSignals((prev) => ({ ...prev, id_front: meta }));
                 break;
             case 'id_back':
                 setIdBackPreview(previewUrl);
                 setData('valid_id_back_image', file);
                 clearErrors('valid_id_back_image');
+                setCaptureSignals((prev) => ({ ...prev, id_back: meta }));
                 break;
             case 'face':
                 setFaceImagePreview(previewUrl);
                 setData('face_image', file);
                 clearErrors('face_image');
+                setCaptureSignals((prev) => ({ ...prev, face: meta }));
                 break;
             default:
                 break;
@@ -512,7 +493,7 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                 facingMode={cameraTarget === 'face' ? 'user' : 'environment'}
                 title={`Take Picture of ${cameraTarget?.replace('_', ' ')?.replace('id', 'ID') || ''}`}
                 captureTarget={cameraTarget}
-                debugMode={diagnosticsOpen}
+                debugMode={allowDiagnostics && diagnosticsOpen}
                 idealVideoWidth={isIdCapture ? 1920 : 1280}
                 idealVideoHeight={isIdCapture ? 1080 : 720}
                 maxCaptureWidth={isIdCapture ? 1600 : 1000}
@@ -521,20 +502,24 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
             <div className="space-y-4">
                 <div className="flex items-center justify-between gap-3 border-b pb-2">
                     <h3 className="text-lg font-semibold text-slate-700">Identity Verification</h3>
-                    <SecondaryButton type="button" onClick={() => setDiagnosticsOpen((value) => !value)} className="!w-auto !py-1.5 !px-3 !text-xs">
-                        {diagnosticsOpen ? 'Hide Diagnostics' : 'Diagnostics'}
-                    </SecondaryButton>
+                    {allowDiagnostics && (
+                        <SecondaryButton type="button" onClick={() => setDiagnosticsOpen((value) => !value)} className="!w-auto !py-1.5 !px-3 !text-xs">
+                            {diagnosticsOpen ? 'Hide Diagnostics' : 'Diagnostics'}
+                        </SecondaryButton>
+                    )}
                 </div>
 
-                <CameraDiagnosticsPanel
-                    isOpen={diagnosticsOpen}
-                    aiHealth={aiHealth}
-                    onRunHealthCheck={runHealthCheck}
-                    data={data}
-                    idFrontValidation={idFrontValidation}
-                    idBackValidation={idBackValidation}
-                    selfieValidation={selfieValidation}
-                />
+                {allowDiagnostics && (
+                    <CameraDiagnosticsPanel
+                        isOpen={diagnosticsOpen}
+                        aiHealth={aiHealth}
+                        onRunHealthCheck={runHealthCheck}
+                        data={data}
+                        idFrontValidation={idFrontValidation}
+                        idBackValidation={idBackValidation}
+                        selfieValidation={selfieValidation}
+                    />
+                )}
 
                 <InputError message={errors.images} className="mt-2" />
 
@@ -753,11 +738,17 @@ export default function App({ footerData }) {
     }, [data.email]);
 
     const validateRegistrationImage = (role, fieldName, file, setValidation, controller) => {
+        const captureMeta = role === 'selfie'
+            ? captureSignals.face
+            : role === 'back_id'
+                ? captureSignals.id_back
+                : captureSignals.id_front;
         return validateRegistrationImageWasm({
             role,
             file,
             validIdType: data.valid_id_type,
             signal: controller.signal,
+            captureSignals: captureMeta,
         })
             .then((response) => {
                 const result = response || {};

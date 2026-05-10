@@ -39,9 +39,16 @@ class FraudAnalysisJob implements ShouldQueue
 
         $issues = data_get($result, 'issues', []);
         if ($verification->fake_probability > (float) config('identity_verification.thresholds.fake_probability_max') || count($issues) > 0) {
+            $criticalIssues = array_intersect($issues, [
+                'id_tamper_suspected',
+                'id_screenshot_suspected',
+                'id_recapture_suspected',
+                'duplicate_id_and_selfie_image',
+                'duplicate_uploaded_binary',
+            ]);
             $verification->fraudAlerts()->create([
                 'type' => 'fraud_analysis',
-                'severity' => $verification->fake_probability >= 50 ? 'critical' : 'medium',
+                'severity' => $verification->fake_probability >= 50 || count($criticalIssues) > 0 ? 'critical' : 'medium',
                 'status' => 'open',
                 'message' => 'Fraud analysis found risk indicators.',
                 'metadata' => $result,

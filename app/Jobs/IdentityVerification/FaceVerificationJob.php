@@ -56,6 +56,17 @@ class FaceVerificationJob implements ShouldQueue
             ]);
         }
 
+        if (data_get($result, 'checks.partial_face') || data_get($result, 'checks.off_center') || data_get($result, 'checks.low_alignment')) {
+            $verification->fraudAlerts()->firstOrCreate([
+                'type' => 'face_alignment_issue',
+                'status' => 'open',
+            ], [
+                'severity' => 'medium',
+                'message' => 'Face positioning or alignment issues were detected.',
+                'metadata' => data_get($result, 'checks', []),
+            ]);
+        }
+
         $repository->recordLog($verification, 'face_processed', 'Face comparison completed.', null, 'info', [
             'similarity' => $verification->face_match_score,
         ]);

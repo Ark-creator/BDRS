@@ -254,6 +254,13 @@ class IdDocumentPrecheckService
             'id_low_quality',
             'id_blurry',
             'id_bad_lighting',
+            'id_glare',
+            'id_low_light',
+            'id_screen_capture_risk',
+            'id_recapture_risk',
+            'id_document_boundary_not_found',
+            'id_possible_crop',
+            'id_edge_incomplete',
         ]));
     }
 
@@ -304,6 +311,18 @@ class IdDocumentPrecheckService
             return "The {$this->roleLabel($imageRole)} photo is blurry, dark, or low quality. Please retake it.";
         }
 
+        if (array_intersect($issues, ['id_glare', 'id_low_light'])) {
+            return "The {$this->roleLabel($imageRole)} has glare or low lighting. Please retake with even lighting.";
+        }
+
+        if (array_intersect($issues, ['id_screen_capture_risk', 'id_recapture_risk'])) {
+            return "The {$this->roleLabel($imageRole)} looks like a screenshot or screen photo. Please retake with the original ID.";
+        }
+
+        if (array_intersect($issues, ['id_edge_incomplete', 'id_possible_crop', 'id_document_boundary_not_found'])) {
+            return "The {$this->roleLabel($imageRole)} is not fully inside the frame. Please retake the photo.";
+        }
+
         if ($confidence < $minimumConfidence) {
             return "The {$this->roleLabel($imageRole)} could not be validated clearly. Please retake the photo.";
         }
@@ -335,6 +354,18 @@ class IdDocumentPrecheckService
 
         if (in_array('selfie_liveness_failed', $issues, true) || $score < $minimumScore) {
             return 'The selfie could not pass liveness checks. Please retake a live face photo.';
+        }
+
+        if (array_intersect($issues, ['selfie_screen_replay_risk', 'selfie_recapture_risk'])) {
+            return 'The selfie looks like a screen replay or recaptured image. Please retake a live face photo.';
+        }
+
+        if (in_array('selfie_liveness_texture_low', $issues, true)) {
+            return 'The selfie looks too flat or filtered. Please retake a natural face photo.';
+        }
+
+        if (array_intersect($issues, ['selfie_partial_face', 'selfie_face_misaligned'])) {
+            return 'Your face is not fully visible or aligned. Please retake the selfie with your full face in view.';
         }
 
         return 'The selfie is not valid. Please retake the photo.';

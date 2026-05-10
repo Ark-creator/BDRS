@@ -94,16 +94,19 @@ class VerificationScoreService
     private function documentValidationFailed(Verification $verification): bool
     {
         $validation = $this->documentValidation($verification);
+        $criticalIssues = $this->criticalIssues($verification);
 
         return Arr::get($validation, 'is_identity_document') === false
             || Arr::get($validation, 'is_supported_document') === false
-            || Arr::get($validation, 'matches_expected_type') === false;
+            || Arr::get($validation, 'matches_expected_type') === false
+            || count($criticalIssues) > 0;
     }
 
     private function documentValidationRejectionReason(Verification $verification): ?string
     {
         $validation = $this->documentValidation($verification);
         $issues = Arr::get($validation, 'issues', []);
+        $criticalIssues = $this->criticalIssues($verification);
 
         if (in_array('id_no_readable_text', $issues, true)) {
             return 'The ID text could not be read well enough to validate the document.';
@@ -121,6 +124,18 @@ class VerificationScoreService
             return 'The submitted ID does not match the selected document type.';
         }
 
+        if (count(array_intersect($criticalIssues, ['id_document_boundary_not_found', 'id_edge_incomplete', 'id_possible_crop'])) > 0) {
+            return 'The ID image was cropped or not fully inside the frame.';
+        }
+
+        if (count(array_intersect($criticalIssues, ['id_glare', 'id_low_light'])) > 0) {
+            return 'The ID image has glare or low lighting that prevents validation.';
+        }
+
+        if (count(array_intersect($criticalIssues, ['id_screen_capture_risk', 'id_recapture_risk', 'id_tamper_suspected', 'id_screenshot_suspected', 'id_recapture_suspected'])) > 0) {
+            return 'The ID image appears tampered or recaptured.';
+        }
+
         return null;
     }
 
@@ -129,5 +144,34 @@ class VerificationScoreService
         return $verification->document_validation
             ?? Arr::get($verification->scores ?? [], 'ocr.document_validation', [])
             ?? [];
+    }
+
+    private function criticalIssues(Verification $verification): array
+    {
+        $scores = $verification->scores ?? [];
+        $ocrIssues = Arr::get($scores, 'ocr.issues', []);
+        $fraudIssues = Arr::get($scores, 'fraud.issues', []);
+        $livenessIssues = Arr::get($scores, 'liveness.issues', []);
+
+        return array_values(array_unique(array_merge(
+            array_intersect((array) $ocrIssues, [
+                'id_document_boundary_not_found',
+                'id_possible_crop',
+                'id_edge_incomplete',
+                'id_glare',
+                'id_low_light',
+                'id_screen_capture_risk',
+                'id_recapture_risk',
+            ]),
+            array_intersect((array) $fraudIssues, [
+                'id_tamper_suspected',
+                'id_screenshot_suspected',
+                'id_recapture_suspected',
+            ]),
+            array_intersect((array) $livenessIssues, [
+                'selfie_screen_replay_risk',
+                'selfie_recapture_risk',
+            ])
+        )));
     }
 }

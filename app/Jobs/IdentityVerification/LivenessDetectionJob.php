@@ -37,6 +37,7 @@ class LivenessDetectionJob implements ShouldQueue
             'scores' => $scores,
         ])->save();
 
+        $issues = (array) data_get($result, 'issues', []);
         if ($verification->liveness_score < (float) config('identity_verification.thresholds.liveness_min')) {
             $verification->fraudAlerts()->firstOrCreate([
                 'type' => 'liveness_low_score',
@@ -44,6 +45,17 @@ class LivenessDetectionJob implements ShouldQueue
             ], [
                 'severity' => 'high',
                 'message' => 'Selfie image failed liveness confidence checks.',
+                'metadata' => $result,
+            ]);
+        }
+
+        if (count(array_intersect($issues, ['selfie_screen_replay_risk', 'selfie_recapture_risk', 'selfie_liveness_texture_low'])) > 0) {
+            $verification->fraudAlerts()->firstOrCreate([
+                'type' => 'liveness_spoof_signal',
+                'status' => 'open',
+            ], [
+                'severity' => 'high',
+                'message' => 'Selfie shows potential spoofing or screen replay signals.',
                 'metadata' => $result,
             ]);
         }

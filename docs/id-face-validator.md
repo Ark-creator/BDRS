@@ -571,3 +571,52 @@ The implementation must prioritize:
 - queue-based architecture
 - production readiness
 - maintainability
+
+---
+
+# 26. WASM VERSIONING & BUILD PIPELINE
+
+The browser-side validation engine is versioned under `/public/wasm`.
+
+- Active version: set `IDENTITY_WASM_VERSION` (default `v2`).
+- Rollback: switch `IDENTITY_WASM_VERSION` to `v1` and redeploy assets.
+- Keep previous versions untouched to allow immediate rollback.
+
+### Structure
+
+```
+/public/wasm/v1/tesseract
+/public/wasm/v2/tesseract
+```
+
+The UI reads the version through the `identity-wasm-version` meta tag in `resources/views/app.blade.php`.
+
+---
+
+# 27. DOKPLOY + NIXPACKS DEPLOYMENT
+
+BDRS is prepared for Nixpacks-based deployments (no Docker required).
+
+## Laravel (main app)
+
+- `nixpacks.toml` at repository root handles composer + Vite builds.
+- Start command uses `php artisan serve` for Dokploy containers.
+- For production-grade scaling, run a separate queue worker process:
+  - `php artisan queue:work --queue=identity-verification,default`
+
+## Python AI Service (optional)
+
+- `python-ai/nixpacks.toml` provides a standalone FastAPI deployment.
+- Start with: `uvicorn app.main:app --host 0.0.0.0 --port 8067`
+- Enable server-side prechecks with:
+  - `IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED=true`
+  - `IDENTITY_AI_BASE_URL=http://<python-service-host>:8067`
+
+---
+
+# 28. BROWSER COMPATIBILITY & PERFORMANCE
+
+- Chromium-based browsers: full OCR + FaceDetector support.
+- Safari/Firefox: OCR works; face detection falls back to quality-only checks.
+- Use a stable camera resolution (720p or higher) for smoother validation.
+

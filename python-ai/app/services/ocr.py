@@ -273,8 +273,10 @@ def extract_ocr(
     issues = issue_for_quality(metrics, "id")
     if not geometry["boundary_detected"] and document_side in {"front", "back"}:
         issues.append("id_document_boundary_not_found")
-    if geometry["cropped_risk"] == "medium":
+    if geometry["cropped_risk"] in {"medium", "high"}:
         issues.append("id_possible_crop")
+    if geometry.get("edge_completeness", 0) < 0.12:
+        issues.append("id_edge_incomplete")
     if engine_issue:
         issues.append(engine_issue)
     issues.extend(validation["issues"])

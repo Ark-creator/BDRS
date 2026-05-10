@@ -44,8 +44,12 @@ return [
         'cleanup' => env('IDENTITY_VERIFICATION_CLEANUP_QUEUE', 'maintenance'),
     ],
 
+    'wasm' => [
+        'version' => env('IDENTITY_WASM_VERSION', 'v2'),
+    ],
+
     'registration' => [
-        'server_precheck_enabled' => (bool) env('IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED', false),
+        'server_precheck_enabled' => (bool) env('IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED', true),
     ],
 
     'ai' => [
