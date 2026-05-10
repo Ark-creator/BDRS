@@ -21,7 +21,7 @@ return [
 
     'security' => [
         'antivirus_enabled' => (bool) env('IDENTITY_VERIFICATION_ANTIVIRUS_ENABLED', false),
-        'clamav_host' => env('IDENTITY_VERIFICATION_CLAMAV_HOST', 'clamav'),
+        'clamav_host' => env('IDENTITY_VERIFICATION_CLAMAV_HOST', '127.0.0.1'),
         'clamav_port' => (int) env('IDENTITY_VERIFICATION_CLAMAV_PORT', 3310),
         'clamav_timeout_seconds' => (int) env('IDENTITY_VERIFICATION_CLAMAV_TIMEOUT_SECONDS', 10),
     ],
@@ -44,8 +44,12 @@ return [
         'cleanup' => env('IDENTITY_VERIFICATION_CLEANUP_QUEUE', 'maintenance'),
     ],
 
+    'registration' => [
+        'server_precheck_enabled' => (bool) env('IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED', false),
+    ],
+
     'ai' => [
-        'base_url' => env('IDENTITY_AI_BASE_URL', 'http://python-ai:8067'),
+        'base_url' => env('IDENTITY_AI_BASE_URL', 'http://127.0.0.1:8067'),
         'timeout_seconds' => (int) env('IDENTITY_AI_TIMEOUT_SECONDS', 30),
         'precheck_timeout_seconds' => (int) env('IDENTITY_AI_PRECHECK_TIMEOUT_SECONDS', 20),
         'retry_times' => (int) env('IDENTITY_AI_RETRY_TIMES', 2),

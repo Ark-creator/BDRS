@@ -1,6 +1,8 @@
 # BDRS Identity AI Service
 
-FastAPI service for the Laravel identity verification queue. The default runtime uses deterministic image-quality and forensic heuristics so the service runs quickly in Dokploy and local Docker. Set `INSTALL_HEAVY_AI=true` at build time to install PaddleOCR, DeepFace, InsightFace, RetinaFace, and PyTorch for production model-backed pipelines.
+Optional FastAPI service for the Laravel identity verification queue. Registration now uses browser-side WASM validation, so this service is only needed when `IDENTITY_VERIFICATION_SERVER_PRECHECK_ENABLED=true` or when queue jobs need advanced server-side AI checks.
+
+The default runtime uses deterministic image-quality and forensic heuristics. Install PaddleOCR, DeepFace, InsightFace, RetinaFace, and PyTorch manually if you need production model-backed pipelines.
 
 ID document validation depends on OCR text. Without PaddleOCR installed, `/ocr/extract` returns `id_ocr_engine_unavailable` and keeps the verification out of automatic approval instead of guessing from image quality alone.
 

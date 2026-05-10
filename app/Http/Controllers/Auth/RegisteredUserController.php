@@ -72,7 +72,9 @@ class RegisteredUserController extends Controller
             'terms' => 'accepted',
         ]);
 
-        $this->assertRegistrationImagesAreValid($request);
+        if (config('identity_verification.registration.server_precheck_enabled', false)) {
+            $this->assertRegistrationImagesAreValid($request);
+        }
 
         $user = DB::transaction(function () use ($request) {
             $user = User::create([

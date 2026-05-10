@@ -6,7 +6,7 @@ You are a senior enterprise software architect, AI engineer, DevSecOps engineer,
 
 Your task is to fully design, architect, optimize, and implement an enterprise-grade Identity Verification Module inside an existing Laravel system.
 
-The system must be production-ready, scalable, secure, Docker/Dokploy compatible, queue-based, AI-powered, and modular.
+The system must be production-ready, scalable, secure, local-deployment friendly, queue-based, AI-powered, and modular.
 
 The AI agent must think deeply before generating code and always follow enterprise architecture standards.
 
@@ -69,12 +69,12 @@ The system must:
 
 ## Deployment
 
-- Docker
-- Dokploy
-- Nginx
-- Supervisor
-- Redis Container
-- Separate Python AI Container
+- Laravel local server or production PHP host
+- Vite frontend build
+- Laravel queue worker
+- Redis service when queues or cache require it
+- Optional Python FastAPI service only when server-side AI precheck is enabled
+- Browser-side WASM OCR for registration image prechecks
 
 ---
 
@@ -374,35 +374,30 @@ Create migrations for:
 
 ---
 
-# 14. DOKPLOY DEPLOYMENT
+# 14. LOCAL DEPLOYMENT
 
-The AI agent must make everything Dokploy-ready.
+The AI agent must keep the project runnable with normal local services.
 
 ## Required
 
-- Dockerfile for Laravel
-- Dockerfile for Python
-- docker-compose.yml
-- Redis service
+- Laravel application server
+- Vite development server or production build
+- Database service
 - Queue worker service
-- Horizon service
-- Nginx service
+- Optional Redis service
+- Optional Python AI service when server-side precheck is enabled
 
 ---
 
-# 15. DOCKER ARCHITECTURE
+# 15. RUNTIME ARCHITECTURE
 
-Required services:
+Required runtime processes:
 
-```yaml
-services:
-  app:
-  nginx:
-  redis:
-  mysql:
-  python-ai:
-  queue:
-  horizon:
+```text
+php artisan serve
+npm run dev
+php artisan queue:work
+php artisan reverb:start
 ```
 
 ---
@@ -501,14 +496,13 @@ The AI agent must generate:
 - liveness detection
 - fraud detection
 
-## DevOps
+## Operations
 
-- Dockerfiles
-- docker-compose
-- Dokploy setup
-- Supervisor configs
-- Horizon configs
-- Redis configs
+- environment configuration
+- local run commands
+- queue worker setup
+- Horizon configs when Horizon is used
+- Redis configs when Redis is used
 
 ---
 
@@ -524,7 +518,7 @@ The AI agent must:
 6. Connect Laravel ↔ Python
 7. Optimize performance
 8. Harden security
-9. Prepare Dokploy deployment
+9. Prepare local or production deployment
 10. Generate production-ready implementation
 
 ---
@@ -539,7 +533,6 @@ The system must be:
 - AI-ready
 - queue-based
 - production-ready
-- containerized
 - secure
 - cloud-ready
 - horizontally scalable
@@ -560,7 +553,7 @@ The AI agent must NEVER:
 
 # 25. FINAL GOAL
 
-Build a full enterprise-grade AI-powered identity verification system integrated into Laravel with Python AI services and Dokploy deployment compatibility.
+Build a full enterprise-grade AI-powered identity verification system integrated into Laravel with browser-side WASM validation and optional Python AI services.
 
 The system must operate similarly to fintech-grade KYC systems used by:
 

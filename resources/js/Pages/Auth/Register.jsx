@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import axios from 'axios';
+import { getWasmIdentityHealth, validateRegistrationImageWasm } from '@/Services/identityWasmValidator';
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -72,9 +73,13 @@ const ValidationDebugDetails = ({ label, file, validation }) => {
                 <div>File: {imageSummary(file)}</div>
                 {(dimensions.width || dimensions.height) && <div>Size: {dimensions.width}x{dimensions.height}</div>}
                 {(validation?.confidence || validation?.score) && <div>Score: {validation.confidence || validation.score}</div>}
+                {diagnostics.mode && <div>Mode: {diagnostics.mode}</div>}
+                {diagnostics.engine && <div>Engine: {diagnostics.engine}</div>}
                 {diagnostics.endpoint && <div>Endpoint: {diagnostics.endpoint}</div>}
                 {diagnostics.document_type && <div>Expected: {diagnostics.document_type}</div>}
                 {diagnostics.detected_document_type && <div>Detected: {diagnostics.detected_document_type}</div>}
+                {diagnostics.ocr?.confidence !== undefined && <div>OCR confidence: {diagnostics.ocr.confidence}</div>}
+                {diagnostics.ocr?.preview && <div>OCR: {diagnostics.ocr.preview}</div>}
                 {issues.length > 0 && <div>Issues: {issues.join(', ')}</div>}
                 {validation?.message && <div>Message: {validation.message}</div>}
                 {diagnostics.error && <div className="text-red-700">Error: {diagnostics.error}</div>}
@@ -91,12 +96,13 @@ const CameraDiagnosticsPanel = ({ isOpen, aiHealth, onRunHealthCheck, data, idFr
                     <p className="text-sm font-semibold text-slate-800">Camera Diagnostics</p>
                     <p className="text-xs text-slate-500">Selected ID: {data.valid_id_type || 'none'}</p>
                 </div>
-                <SecondaryButton type="button" onClick={onRunHealthCheck} className="!w-auto !py-1.5 !px-3 !text-xs">Check AI</SecondaryButton>
+                <SecondaryButton type="button" onClick={onRunHealthCheck} className="!w-auto !py-1.5 !px-3 !text-xs">Check WASM</SecondaryButton>
             </div>
             {aiHealth && (
                 <div className={`rounded-md border px-3 py-2 text-xs ${aiHealth.status === 'ok' ? 'border-green-200 bg-green-50 text-green-700' : aiHealth.status === 'checking' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
                     <div>{aiHealth.message}</div>
-                    {aiHealth.diagnostics?.ai_base_url && <div>AI URL: {aiHealth.diagnostics.ai_base_url}</div>}
+                    {aiHealth.diagnostics?.mode && <div>Mode: {aiHealth.diagnostics.mode}</div>}
+                    {aiHealth.diagnostics?.api_calls && <div>API calls: {aiHealth.diagnostics.api_calls}</div>}
                     {aiHealth.diagnostics?.error && <div>Error: {aiHealth.diagnostics.error}</div>}
                 </div>
             )}
@@ -487,10 +493,14 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
     ];
     const isIdCapture = cameraTarget === 'id_front' || cameraTarget === 'id_back';
     const runHealthCheck = () => {
-        setAiHealth({ status: 'checking', message: 'Checking Identity AI service...' });
-        axios.get('/validate-identity-ai-health')
-            .then((response) => setAiHealth(response.data))
-            .catch((error) => setAiHealth(error.response?.data || { status: 'unavailable', message: 'Identity AI service is not reachable.' }));
+        setAiHealth({ status: 'checking', message: 'Checking local WASM validator...' });
+        getWasmIdentityHealth()
+            .then((result) => setAiHealth(result))
+            .catch((error) => setAiHealth({
+                status: 'unavailable',
+                message: 'Local WASM validator is not ready.',
+                diagnostics: { mode: 'browser_wasm', error: error.message },
+            }));
     };
 
     return (
@@ -743,19 +753,14 @@ export default function App({ footerData }) {
     }, [data.email]);
 
     const validateRegistrationImage = (role, fieldName, file, setValidation, controller) => {
-        const formData = new FormData();
-        formData.append('image_role', role);
-        formData.append(fieldName, file);
-        if (data.valid_id_type) {
-            formData.append('valid_id_type', data.valid_id_type);
-        }
-
-        return axios.post('/validate-id-image', formData, {
+        return validateRegistrationImageWasm({
+            role,
+            file,
+            validIdType: data.valid_id_type,
             signal: controller.signal,
-            headers: { 'Content-Type': 'multipart/form-data' },
         })
             .then((response) => {
-                const result = response.data || {};
+                const result = response || {};
                 const nextStatus = result.status || (result.is_valid ? 'valid' : 'invalid');
                 const fallbackValidMessage = role === 'selfie' ? 'Selfie looks valid.' : role === 'back_id' ? 'Back of ID looks valid.' : 'ID looks valid.';
                 const fallbackInvalidMessage = role === 'selfie' ? 'The selfie is not valid. Please retake the photo.' : 'The ID is not valid. Please retake the photo.';
@@ -770,12 +775,12 @@ export default function App({ footerData }) {
                 }
             })
             .catch((error) => {
-                if (error.code === 'ERR_CANCELED') return;
+                if (error.name === 'AbortError') return;
 
-                const message = error.response?.data?.message || 'The image could not be checked. Please retake a clear photo.';
-                const status = error.response?.status === 422 ? 'invalid' : 'unchecked';
+                const message = error.message || 'The image could not be checked. Please retake a clear photo.';
+                const status = 'unchecked';
 
-                setValidation({ status, message, error: error.response?.data || error.message });
+                setValidation({ status, message, error: error.message, diagnostics: { mode: 'browser_wasm', error: error.message } });
                 if (status === 'invalid') {
                     setError(fieldName, message);
                 } else {
