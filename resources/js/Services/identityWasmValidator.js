@@ -178,6 +178,12 @@ let ocrWorkerPromise = null;
 
 const normalizeText = (value) => String(value || '')
     .toLowerCase()
+    .replace(/identificati0n/g, 'identification')
+    .replace(/philipp1ne|ph1lippine/g, 'philippine')
+    .replace(/licen5e/g, 'license')
+    .replace(/\blicence\b/g, 'license')
+    .replace(/\blt0\b/g, 'lto')
+    .replace(/\b1d\b/g, 'id')
     .replace(/[`'’]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
@@ -234,7 +240,7 @@ const getOcrWorker = async () => {
     return ocrWorkerPromise;
 };
 
-const loadCanvas = (file, maxSide = 900) => new Promise((resolve, reject) => {
+const loadCanvas = (file, maxSide = 1200) => new Promise((resolve, reject) => {
     const image = new Image();
     const url = URL.createObjectURL(file);
 
@@ -282,6 +288,10 @@ const analyzeImageQuality = async (file, role) => {
     let sum = 0;
     let min = 255;
     let max = 0;
+    let darkPixels = 0;
+    let brightPixels = 0;
+    let glarePixels = 0;
+    let shadowPixels = 0;
 
     for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
         const luminance = Math.round((0.299 * data[i]) + (0.587 * data[i + 1]) + (0.114 * data[i + 2]));
@@ -289,6 +299,10 @@ const analyzeImageQuality = async (file, role) => {
         sum += luminance;
         min = Math.min(min, luminance);
         max = Math.max(max, luminance);
+        if (luminance < 28) darkPixels += 1;
+        if (luminance > 242) brightPixels += 1;
+        if (luminance > 248) glarePixels += 1;
+        if (luminance < 22) shadowPixels += 1;
     }
 
     const pixels = grayscale.length || 1;
@@ -317,6 +331,11 @@ const analyzeImageQuality = async (file, role) => {
     const sharpness = gradientTotal / Math.max(1, (sampleWidth - 1) * (sampleHeight - 1));
     const edgeDensity = edgePixels / Math.max(1, (sampleWidth - 1) * (sampleHeight - 1));
     const aspectRatio = width / Math.max(1, height);
+    const dynamicRange = max - min;
+    const darkRatio = darkPixels / pixels;
+    const brightRatio = brightPixels / pixels;
+    const glareRatio = glarePixels / pixels;
+    const shadowRatio = shadowPixels / pixels;
     const issues = [];
     const blockingIssues = [];
     const minWidth = role === 'selfie' ? 360 : 500;
@@ -326,23 +345,29 @@ const analyzeImageQuality = async (file, role) => {
         blockingIssues.push('image_resolution_too_low');
     }
 
-    if (brightness < 35) {
+    if (brightness < 28 || shadowRatio > 0.58) {
         blockingIssues.push('image_too_dark');
+    } else if (brightness < 35) {
+        issues.push('image_dark_but_recoverable');
     } else if (brightness < 48) {
         issues.push('image_slightly_dark');
     }
 
-    if (brightness > 235) {
+    if (brightness > 240 || glareRatio > 0.18) {
         blockingIssues.push('image_overexposed');
+    } else if (glareRatio > 0.08 || brightRatio > 0.20) {
+        issues.push('image_glare_detected');
     }
 
-    if (contrast < 12) {
-        blockingIssues.push('image_low_contrast');
+    if (dynamicRange < 28) {
+        blockingIssues.push('image_low_dynamic_range');
+    } else if (contrast < 12 || dynamicRange < 45) {
+        issues.push('image_low_contrast_recoverable');
     } else if (contrast < 18) {
         issues.push('image_contrast_low');
     }
 
-    if (sharpness < 4.5) {
+    if (sharpness < 3.2) {
         blockingIssues.push('image_blurry');
     } else if (sharpness < 7) {
         issues.push('image_soft_focus');
@@ -357,6 +382,9 @@ const analyzeImageQuality = async (file, role) => {
     score -= Math.max(0, brightness - 225) * 1.2;
     score -= Math.max(0, 22 - contrast) * 1.8;
     score -= Math.max(0, 8 - sharpness) * 4;
+    score -= Math.max(0, 42 - dynamicRange) * 1.1;
+    score -= glareRatio * 110;
+    score -= shadowRatio * 80;
     score -= Math.max(0, 500 - width) * 0.04;
     score -= Math.max(0, 280 - height) * 0.04;
 
@@ -372,7 +400,11 @@ const analyzeImageQuality = async (file, role) => {
             sharpness: Number(sharpness.toFixed(2)),
             edge_density: Number(edgeDensity.toFixed(4)),
             aspect_ratio: Number(aspectRatio.toFixed(3)),
-            dynamic_range: max - min,
+            dynamic_range: dynamicRange,
+            dark_pixel_ratio: Number(darkRatio.toFixed(4)),
+            bright_pixel_ratio: Number(brightRatio.toFixed(4)),
+            glare_ratio: Number(glareRatio.toFixed(4)),
+            shadow_ratio: Number(shadowRatio.toFixed(4)),
             score: Math.round(clamp(score, 0, 100)),
             issues,
             blocking_issues: blockingIssues,
@@ -380,21 +412,173 @@ const analyzeImageQuality = async (file, role) => {
     };
 };
 
-const runOcr = async (file, signal) => {
+const createCanvasLike = (width, height) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(width));
+    canvas.height = Math.max(1, Math.round(height));
+    return canvas;
+};
+
+const cloneCanvas = (source) => {
+    const canvas = createCanvasLike(source.width, source.height);
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(source, 0, 0);
+    return canvas;
+};
+
+const filteredCanvas = (source, filter) => {
+    const canvas = createCanvasLike(source.width, source.height);
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.filter = filter;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(source, 0, 0);
+    context.filter = 'none';
+    return canvas;
+};
+
+const thresholdCanvas = (source, mode = 'adaptive') => {
+    const canvas = cloneCanvas(source);
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    const image = context.getImageData(0, 0, canvas.width, canvas.height);
+    const { data } = image;
+    const luminance = new Uint8Array(canvas.width * canvas.height);
+    let sum = 0;
+
+    for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+        const value = Math.round((0.299 * data[i]) + (0.587 * data[i + 1]) + (0.114 * data[i + 2]));
+        luminance[p] = value;
+        sum += value;
+    }
+
+    const mean = sum / Math.max(1, luminance.length);
+    for (let y = 0; y < canvas.height; y += 1) {
+        for (let x = 0; x < canvas.width; x += 1) {
+            const index = y * canvas.width + x;
+            let threshold = mean;
+            if (mode === 'adaptive') {
+                let localSum = 0;
+                let localCount = 0;
+                for (let yy = Math.max(0, y - 6); yy <= Math.min(canvas.height - 1, y + 6); yy += 2) {
+                    for (let xx = Math.max(0, x - 6); xx <= Math.min(canvas.width - 1, x + 6); xx += 2) {
+                        localSum += luminance[yy * canvas.width + xx];
+                        localCount += 1;
+                    }
+                }
+                threshold = (localSum / Math.max(1, localCount)) - 5;
+            }
+
+            const output = luminance[index] > threshold ? 255 : 0;
+            const offset = index * 4;
+            data[offset] = output;
+            data[offset + 1] = output;
+            data[offset + 2] = output;
+            data[offset + 3] = 255;
+        }
+    }
+
+    context.putImageData(image, 0, 0);
+    return canvas;
+};
+
+const buildOcrInputs = (qualityReport) => {
+    const source = qualityReport.canvas;
+    const inputs = [
+        { profile: 'camera_original', source },
+        { profile: 'contrast_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.65) brightness(1.08)') },
+        { profile: 'shadow_recovery_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.35) brightness(1.22)') },
+        { profile: 'adaptive_threshold_wasm', source: thresholdCanvas(filteredCanvas(source, 'grayscale(1) contrast(1.45)'), 'adaptive') },
+    ];
+
+    if (qualityReport.quality.glare_ratio > 0.05 || qualityReport.quality.bright_pixel_ratio > 0.16) {
+        inputs.push({ profile: 'glare_recovery_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.5) brightness(0.9)') });
+    }
+
+    return inputs;
+};
+
+const mergeOcrResults = (results) => {
+    const lines = [];
+    const seen = new Set();
+    for (const result of [...results].sort((a, b) => b.score - a.score)) {
+        for (const line of result.text.split(/\r?\n/)) {
+            const cleaned = cleanLine(line);
+            const key = normalizeText(cleaned);
+            if (!key || seen.has(key) || cleaned.length < 2) continue;
+            seen.add(key);
+            lines.push(cleaned);
+        }
+    }
+
+    const best = [...results].sort((a, b) => b.score - a.score)[0] || { confidence: 0 };
+    const confidence = Math.round(clamp(
+        (best.confidence * 0.72) + (Math.min(100, lines.join(' ').length / 3) * 0.28),
+        0,
+        100
+    ));
+
+    return {
+        ok: true,
+        text: lines.join('\n'),
+        confidence,
+        profiles: results.map(({ profile, confidence: profileConfidence, score, text }) => ({
+            profile,
+            confidence: profileConfidence,
+            score,
+            text_length: text.trim().length,
+        })),
+    };
+};
+
+const runOcr = async (source, signal, profile = 'camera_original') => {
     throwIfAborted(signal);
     const worker = await getOcrWorker();
     throwIfAborted(signal);
 
-    const result = await worker.recognize(file);
+    const result = await worker.recognize(source);
     throwIfAborted(signal);
 
     const data = result?.data || {};
+    const text = data.text || '';
+    const confidence = Math.round(data.confidence || 0);
     return {
         ok: true,
-        text: data.text || '',
-        confidence: Math.round(data.confidence || 0),
+        profile,
+        text,
+        confidence,
+        score: Math.round((confidence * 0.68) + (Math.min(100, text.trim().length / 3) * 0.32)),
         words: data.words || [],
     };
+};
+
+const runOcrPipeline = async (qualityReport, signal) => {
+    const results = [];
+    for (const input of buildOcrInputs(qualityReport)) {
+        throwIfAborted(signal);
+        try {
+            results.push(await runOcr(input.source, signal, input.profile));
+        } catch (error) {
+            if (error.name === 'AbortError') throw error;
+            results.push({
+                ok: false,
+                profile: input.profile,
+                text: '',
+                confidence: 0,
+                score: 0,
+                error: error.message,
+            });
+        }
+    }
+
+    const readableResults = results.filter((result) => result.ok && result.text.trim());
+    if (!readableResults.length) {
+        const firstError = results.find((result) => result.error);
+        if (firstError) {
+            throw new Error(firstError.error);
+        }
+    }
+
+    return mergeOcrResults(readableResults.length ? readableResults : results);
 };
 
 const scoreDocumentType = (rawText, profile) => {
@@ -512,6 +696,19 @@ const validResult = (message, diagnostics, extra = {}) => ({
     ...extra,
 });
 
+const faceDetectionIsConfident = (faceReport) => {
+    if (!faceReport || faceReport.face_count !== 1) return false;
+    if (faceReport.supported) return true;
+
+    const face = faceReport.faces?.[0];
+    if (!face) return false;
+
+    const areaRatio = Number(face.area_ratio || 0);
+    const confidence = Number(face.confidence || faceReport.confidence || 0);
+
+    return confidence >= 72 && areaRatio >= 0.035 && areaRatio <= 0.62;
+};
+
 const validateIdImage = async ({ role, file, validIdType, signal }) => {
     const expectedType = resolveDocumentType(validIdType);
     const qualityReport = await analyzeImageQuality(file, role);
@@ -519,7 +716,7 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
 
     const diagnostics = {
         mode: 'browser_wasm',
-        engine: 'tesseract.js',
+        engine: 'tesseract.js-multipass',
         image_role: role,
         document_type: expectedType,
         selected_document_type: validIdType,
@@ -544,7 +741,7 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
         return invalidResult('Please select a supported ID type before capturing the ID.', diagnostics);
     }
 
-    if (qualityReport.quality.blocking_issues.length > 0 || qualityReport.quality.score < 42) {
+    if (qualityReport.quality.blocking_issues.length > 0 || qualityReport.quality.score < 30) {
         return invalidResult(
             role === 'back_id'
                 ? 'The back of ID photo is not clear enough. Please retake a brighter, sharper photo.'
@@ -555,7 +752,7 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
 
     let ocr;
     try {
-        ocr = await runOcr(file, signal);
+        ocr = await runOcrPipeline(qualityReport, signal);
     } catch (error) {
         if (error.name === 'AbortError') throw error;
 
@@ -574,6 +771,7 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     diagnostics.ocr = {
         confidence: ocr.confidence,
         text_length: ocrText.trim().length,
+        profiles: ocr.profiles || [],
         preview: ocrText.replace(/\s+/g, ' ').trim().slice(0, 180),
     };
     diagnostics.detected_document_type = detectedType?.type || null;
@@ -638,33 +836,155 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     );
 };
 
-const detectFaces = async (file) => {
-    if (!('FaceDetector' in window)) {
+const estimateFacesBySkinAndGeometry = async (file) => {
+    const loaded = await loadCanvas(file, 720);
+    const { context, sampleWidth, sampleHeight } = loaded;
+    const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+    const components = [];
+    const visited = new Uint8Array(sampleWidth * sampleHeight);
+    const skinMask = new Uint8Array(sampleWidth * sampleHeight);
+
+    for (let y = 0; y < sampleHeight; y += 1) {
+        for (let x = 0; x < sampleWidth; x += 1) {
+            const offset = (y * sampleWidth + x) * 4;
+            const r = data[offset];
+            const g = data[offset + 1];
+            const b = data[offset + 2];
+            const maxChannel = Math.max(r, g, b);
+            const minChannel = Math.min(r, g, b);
+            const rg = r - g;
+            const rb = r - b;
+            const luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
+            const likelySkin = luminance > 35
+                && luminance < 245
+                && r > 55
+                && g > 35
+                && b > 20
+                && maxChannel - minChannel > 12
+                && rg > -8
+                && rb > 8;
+
+            if (likelySkin) {
+                skinMask[y * sampleWidth + x] = 1;
+            }
+        }
+    }
+
+    const queue = [];
+    const minArea = Math.max(120, Math.round(sampleWidth * sampleHeight * 0.012));
+    for (let y = 0; y < sampleHeight; y += 3) {
+        for (let x = 0; x < sampleWidth; x += 3) {
+            const start = y * sampleWidth + x;
+            if (!skinMask[start] || visited[start]) continue;
+
+            let minX = x;
+            let maxX = x;
+            let minY = y;
+            let maxY = y;
+            let area = 0;
+            queue.length = 0;
+            queue.push([x, y]);
+            visited[start] = 1;
+
+            while (queue.length) {
+                const [cx, cy] = queue.shift();
+                area += 1;
+                minX = Math.min(minX, cx);
+                maxX = Math.max(maxX, cx);
+                minY = Math.min(minY, cy);
+                maxY = Math.max(maxY, cy);
+
+                for (const [nx, ny] of [[cx + 3, cy], [cx - 3, cy], [cx, cy + 3], [cx, cy - 3]]) {
+                    if (nx < 0 || ny < 0 || nx >= sampleWidth || ny >= sampleHeight) continue;
+                    const index = ny * sampleWidth + nx;
+                    if (!skinMask[index] || visited[index]) continue;
+                    visited[index] = 1;
+                    queue.push([nx, ny]);
+                }
+            }
+
+            const boxWidth = maxX - minX + 1;
+            const boxHeight = maxY - minY + 1;
+            const aspect = boxWidth / Math.max(1, boxHeight);
+            if (area >= minArea && aspect >= 0.45 && aspect <= 1.25) {
+                const areaRatio = (boxWidth * boxHeight) / Math.max(1, sampleWidth * sampleHeight);
+                const centerX = (minX + (boxWidth / 2)) / sampleWidth;
+                const centerY = (minY + (boxHeight / 2)) / sampleHeight;
+                const centered = 1 - Math.min(1, Math.abs(centerX - 0.5) + Math.abs(centerY - 0.42));
+                components.push({
+                    x: minX,
+                    y: minY,
+                    width: boxWidth,
+                    height: boxHeight,
+                    area_ratio: Number(areaRatio.toFixed(4)),
+                    confidence: Math.round(clamp((areaRatio * 230) + (centered * 45), 0, 92)),
+                    detector: 'skin_geometry_wasm_fallback',
+                });
+            }
+        }
+    }
+
+    const faces = components
+        .sort((a, b) => b.confidence - a.confidence)
+        .filter((face, index, all) => index === all.findIndex((other) => (
+            Math.abs(other.x - face.x) < 28 && Math.abs(other.y - face.y) < 28
+        )))
+        .slice(0, 3);
+
+    if (!faces.length || faces[0].confidence < 72) {
         return {
             supported: false,
-            face_count: null,
+            fallback: 'skin_geometry_wasm_fallback',
+            face_count: 0,
             faces: [],
+            confidence: faces[0]?.confidence || 0,
         };
     }
 
-    const detector = new window.FaceDetector({ fastMode: true, maxDetectedFaces: 2 });
-    const bitmap = await createImageBitmap(file);
+    return {
+        supported: false,
+        fallback: 'skin_geometry_wasm_fallback',
+        face_count: faces.length,
+        faces,
+        confidence: faces[0].confidence,
+    };
+};
 
-    try {
-        const faces = await detector.detect(bitmap);
+const detectFaces = async (file) => {
+    if ('FaceDetector' in window) {
+        const detector = new window.FaceDetector({ fastMode: false, maxDetectedFaces: 3 });
+        const bitmap = await createImageBitmap(file);
+        let nativeError = null;
+
+        try {
+            const faces = await detector.detect(bitmap);
+            if (faces.length > 0) {
+                return {
+                    supported: true,
+                    face_count: faces.length,
+                    faces: faces.map((face) => ({
+                        x: Math.round(face.boundingBox.x),
+                        y: Math.round(face.boundingBox.y),
+                        width: Math.round(face.boundingBox.width),
+                        height: Math.round(face.boundingBox.height),
+                        detector: 'browser_face_detector',
+                    })),
+                };
+            }
+        } catch (error) {
+            nativeError = error;
+        } finally {
+            bitmap.close?.();
+        }
+
+        const fallback = await estimateFacesBySkinAndGeometry(file);
         return {
-            supported: true,
-            face_count: faces.length,
-            faces: faces.map((face) => ({
-                x: Math.round(face.boundingBox.x),
-                y: Math.round(face.boundingBox.y),
-                width: Math.round(face.boundingBox.width),
-                height: Math.round(face.boundingBox.height),
-            })),
+            ...fallback,
+            native_error: nativeError?.message,
         };
-    } finally {
-        bitmap.close?.();
     }
+
+    return estimateFacesBySkinAndGeometry(file);
 };
 
 const validateSelfie = async ({ file, signal }) => {
@@ -673,7 +993,7 @@ const validateSelfie = async ({ file, signal }) => {
 
     const diagnostics = {
         mode: 'browser_wasm',
-        engine: 'browser_face_detector_quality_fallback',
+        engine: 'browser_face_detector_wasm_quality',
         image_role: 'selfie',
         quality: qualityReport.quality,
         issues: [...qualityReport.quality.issues, ...qualityReport.quality.blocking_issues],
@@ -696,7 +1016,7 @@ const validateSelfie = async ({ file, signal }) => {
 
     diagnostics.face_detection = faceReport;
 
-    if (faceReport.supported && faceReport.face_count !== 1) {
+    if (!faceDetectionIsConfident(faceReport)) {
         return invalidResult(
             faceReport.face_count > 1
                 ? 'More than one face was detected. Please retake a selfie with only your face visible.'
@@ -772,8 +1092,9 @@ export const getWasmIdentityHealth = async () => {
             mode: 'browser_wasm',
             api_calls: 'disabled',
             ocr_engine: 'tesseract.js',
+            ocr_pipeline: 'multi_pass_canvas_preprocessing',
             ocr_assets: checks,
-            face_detector: 'FaceDetector' in window ? 'available' : 'not_supported_quality_fallback',
+            face_detector: 'FaceDetector' in window ? 'available' : 'skin_geometry_wasm_fallback',
         },
     };
 };

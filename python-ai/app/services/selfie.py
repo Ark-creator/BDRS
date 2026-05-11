@@ -2,10 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-import numpy as np
-
-from app.services.image_quality import cv2
-from app.services.image_quality import issue_for_quality, open_rgb_image, quality_metrics
+from app.services.face import detect_faces
+from app.services.image_quality import issue_for_quality, quality_metrics
 from app.services.liveness import check_liveness
 
 ID_TEXT_MARKERS = [
@@ -26,7 +24,7 @@ ID_TEXT_MARKERS = [
 def validate_selfie(contents: bytes, filename: str) -> dict[str, Any]:
     metrics = quality_metrics(contents)
     liveness = check_liveness(contents, filename)
-    faces = _detect_faces(contents)
+    faces = detect_faces(contents, role="selfie")
     face_count = len(faces)
     issues = issue_for_quality(metrics, "selfie")
     raw_text: list[str] = []
@@ -44,7 +42,7 @@ def validate_selfie(contents: bytes, filename: str) -> dict[str, Any]:
 
     if faces:
         largest_face = max(face["area_ratio"] for face in faces)
-        if largest_face < 0.04:
+        if largest_face < 0.035:
             issues.append("selfie_face_too_small")
         if largest_face > 0.75:
             issues.append("selfie_face_too_close")
@@ -57,13 +55,26 @@ def validate_selfie(contents: bytes, filename: str) -> dict[str, Any]:
         "selfie_low_quality",
         "selfie_blurry",
         "selfie_bad_lighting",
+        "selfie_low_dynamic_range",
+        "selfie_glare",
+        "selfie_heavy_shadow",
         "selfie_liveness_failed",
         "selfie_face_too_small",
         "selfie_face_too_close",
     }
     face_score = 100.0 if face_count == 1 else 0.0
+    face_detection_score = max((face["confidence"] for face in faces), default=0.0)
     score = round(
-        max(0.0, min(98.0, (metrics["quality_score"] * 0.35) + (face_score * 0.45) + (liveness["score"] * 0.20))),
+        max(
+            0.0,
+            min(
+                98.0,
+                (metrics["quality_score"] * 0.30)
+                + (face_score * 0.35)
+                + (face_detection_score * 0.15)
+                + (liveness["score"] * 0.20),
+            ),
+        ),
         2,
     )
     passed = score >= 75 and not critical_issues.intersection(issues)
@@ -83,30 +94,6 @@ def validate_selfie(contents: bytes, filename: str) -> dict[str, Any]:
     }
 
 
-def _detect_faces(contents: bytes) -> list[dict[str, Any]]:
-    if cv2 is None:
-        return []
-
-    image = open_rgb_image(contents)
-    width, height = image.size
-    gray = np.asarray(image.convert("L"), dtype=np.uint8)
-    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    detections = cascade.detectMultiScale(gray, scaleFactor=1.08, minNeighbors=4, minSize=(50, 50))
-
-    faces: list[dict[str, Any]] = []
-    image_area = float(width * height) if width and height else 1.0
-    for x, y, face_width, face_height in detections:
-        faces.append(
-            {
-                "x": int(x),
-                "y": int(y),
-                "width": int(face_width),
-                "height": int(face_height),
-                "area_ratio": round(float(face_width * face_height) / image_area, 4),
-            }
-        )
-
-    return faces
 def _contains_id_text(lines: list[str]) -> bool:
     if not lines:
         return False

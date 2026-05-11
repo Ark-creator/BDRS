@@ -79,6 +79,7 @@ const ValidationDebugDetails = ({ label, file, validation }) => {
                 {diagnostics.document_type && <div>Expected: {diagnostics.document_type}</div>}
                 {diagnostics.detected_document_type && <div>Detected: {diagnostics.detected_document_type}</div>}
                 {diagnostics.ocr?.confidence !== undefined && <div>OCR confidence: {diagnostics.ocr.confidence}</div>}
+                {diagnostics.ocr?.profiles?.length > 0 && <div>OCR passes: {diagnostics.ocr.profiles.map((profile) => `${profile.profile}:${profile.confidence}`).join(', ')}</div>}
                 {diagnostics.ocr?.preview && <div>OCR: {diagnostics.ocr.preview}</div>}
                 {issues.length > 0 && <div>Issues: {issues.join(', ')}</div>}
                 {validation?.message && <div>Message: {validation.message}</div>}
@@ -136,19 +137,111 @@ const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
     </div>
 );
 
+const analyzeLiveFrame = (video, captureTarget) => {
+    const width = video.videoWidth || 0;
+    const height = video.videoHeight || 0;
+    if (!width || !height) return null;
+
+    const sampleWidth = 220;
+    const sampleHeight = Math.max(1, Math.round((height / width) * sampleWidth));
+    const canvas = document.createElement('canvas');
+    canvas.width = sampleWidth;
+    canvas.height = sampleHeight;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.drawImage(video, 0, 0, sampleWidth, sampleHeight);
+    const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+    const gray = new Uint8Array(sampleWidth * sampleHeight);
+    let sum = 0;
+    let glare = 0;
+    let shadow = 0;
+
+    for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
+        const luminance = Math.round((0.299 * data[i]) + (0.587 * data[i + 1]) + (0.114 * data[i + 2]));
+        gray[p] = luminance;
+        sum += luminance;
+        if (luminance > 248) glare += 1;
+        if (luminance < 24) shadow += 1;
+    }
+
+    const pixels = gray.length || 1;
+    const brightness = sum / pixels;
+    let variance = 0;
+    let gradientTotal = 0;
+    let edgePixels = 0;
+    for (let i = 0; i < gray.length; i += 1) {
+        const diff = gray[i] - brightness;
+        variance += diff * diff;
+    }
+    for (let y = 1; y < sampleHeight; y += 1) {
+        for (let x = 1; x < sampleWidth; x += 1) {
+            const index = y * sampleWidth + x;
+            const dx = gray[index] - gray[index - 1];
+            const dy = gray[index] - gray[index - sampleWidth];
+            const gradient = Math.sqrt((dx * dx) + (dy * dy));
+            gradientTotal += gradient;
+            if (gradient > 28) edgePixels += 1;
+        }
+    }
+
+    const contrast = Math.sqrt(variance / pixels);
+    const sharpness = gradientTotal / Math.max(1, (sampleWidth - 1) * (sampleHeight - 1));
+    const edgeDensity = edgePixels / Math.max(1, (sampleWidth - 1) * (sampleHeight - 1));
+    const glareRatio = glare / pixels;
+    const shadowRatio = shadow / pixels;
+    let score = 100;
+    score -= Math.max(0, 44 - brightness) * 1.3;
+    score -= Math.max(0, brightness - 230) * 1.2;
+    score -= Math.max(0, 16 - contrast) * 2.1;
+    score -= Math.max(0, 6 - sharpness) * 5;
+    score -= glareRatio * 120;
+    score -= shadowRatio * 90;
+
+    const isFace = captureTarget === 'face';
+    const cardFramed = !isFace && edgeDensity >= 0.012;
+    const faceReady = isFace && brightness >= 42 && brightness <= 225 && contrast >= 13 && sharpness >= 4.2;
+    const ready = isFace ? faceReady : cardFramed && brightness >= 38 && brightness <= 232 && contrast >= 11 && sharpness >= 3.8;
+    const status = ready && score >= 58 ? 'ready' : score >= 42 ? 'adjust' : 'poor';
+    const message = status === 'ready'
+        ? (isFace ? 'Face photo ready' : 'ID photo ready')
+        : brightness < 38
+            ? 'Add more light'
+            : brightness > 232 || glareRatio > 0.08
+                ? 'Reduce glare'
+                : sharpness < 3.8
+                    ? 'Hold steady'
+                    : isFace
+                        ? 'Center your face'
+                        : 'Fill the guide with the ID';
+
+    return {
+        status,
+        message,
+        score: Math.round(Math.max(0, Math.min(100, score))),
+        brightness: Math.round(brightness),
+        contrast: Number(contrast.toFixed(1)),
+        sharpness: Number(sharpness.toFixed(1)),
+        edgeDensity: Number(edgeDensity.toFixed(4)),
+    };
+};
+
 // --- CAMERA MODAL COMPONENT ---
 const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTarget, debugMode = false, idealVideoWidth = 1280, idealVideoHeight = 720, maxCaptureWidth = 1000, maxCaptureHeight = 1000 }) => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
+    const streamRef = useRef(null);
     const [stream, setStream] = useState(null);
     const [error, setError] = useState(null);
     const [videoInfo, setVideoInfo] = useState(null);
+    const [activeFacingMode, setActiveFacingMode] = useState(facingMode);
+    const [trackCapabilities, setTrackCapabilities] = useState({});
+    const [cameraFeedback, setCameraFeedback] = useState(null);
+    const [torchEnabled, setTorchEnabled] = useState(false);
+    const [zoom, setZoom] = useState(1);
 
     const stopCamera = () => {
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            setStream(null);
-        }
+        streamRef.current?.getTracks?.().forEach(track => track.stop());
+        streamRef.current = null;
+        setStream(null);
     };
 
     const refreshVideoInfo = () => {
@@ -162,24 +255,55 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             height: video.videoHeight || settings.height,
             deviceWidth: settings.width,
             deviceHeight: settings.height,
-            facingMode: settings.facingMode || facingMode,
+            facingMode: settings.facingMode || activeFacingMode,
+            frameRate: settings.frameRate,
+            zoom: settings.zoom,
         });
     };
+
+    useEffect(() => {
+        if (isOpen) {
+            setActiveFacingMode(facingMode);
+            setCameraFeedback(null);
+            setTorchEnabled(false);
+            setZoom(1);
+            setTrackCapabilities({});
+        }
+    }, [isOpen, facingMode]);
 
     useEffect(() => {
         if (isOpen) {
             setError(null);
             navigator.mediaDevices.getUserMedia({
                 video: {
-                    facingMode: facingMode,
+                    facingMode: activeFacingMode,
                     width: { ideal: idealVideoWidth },
-                    height: { ideal: idealVideoHeight }
+                    height: { ideal: idealVideoHeight },
+                    frameRate: { ideal: 30 },
                 }
             })
-            .then(mediaStream => {
+            .then(async mediaStream => {
+                streamRef.current = mediaStream;
                 setStream(mediaStream);
                 if (videoRef.current) {
                     videoRef.current.srcObject = mediaStream;
+                }
+                const track = mediaStream.getVideoTracks?.()[0];
+                const capabilities = track?.getCapabilities?.() || {};
+                setTrackCapabilities(capabilities);
+                if (capabilities.zoom) {
+                    setZoom(track.getSettings?.().zoom || capabilities.zoom.min || 1);
+                }
+                const advanced = [];
+                if (capabilities.focusMode?.includes?.('continuous')) advanced.push({ focusMode: 'continuous' });
+                if (capabilities.exposureMode?.includes?.('continuous')) advanced.push({ exposureMode: 'continuous' });
+                if (capabilities.whiteBalanceMode?.includes?.('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
+                if (advanced.length) {
+                    try {
+                        await track.applyConstraints({ advanced });
+                    } catch {
+                        // Browser support varies; camera remains usable without these hints.
+                    }
                 }
             })
             .catch(err => {
@@ -194,7 +318,50 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
         return () => {
             stopCamera();
         };
-    }, [isOpen, facingMode, idealVideoWidth, idealVideoHeight]);
+    }, [isOpen, activeFacingMode, idealVideoWidth, idealVideoHeight]);
+
+    useEffect(() => {
+        if (!isOpen || !stream) return undefined;
+
+        const interval = window.setInterval(() => {
+            const video = videoRef.current;
+            if (!video || video.readyState < 2) return;
+            const report = analyzeLiveFrame(video, captureTarget);
+            if (report) setCameraFeedback(report);
+            refreshVideoInfo();
+        }, 650);
+
+        return () => window.clearInterval(interval);
+    }, [isOpen, stream, captureTarget]);
+
+    const switchCamera = () => {
+        setActiveFacingMode((mode) => (mode === 'user' ? 'environment' : 'user'));
+    };
+
+    const toggleTorch = async () => {
+        const track = stream?.getVideoTracks?.()[0];
+        if (!track || !trackCapabilities.torch) return;
+        const nextTorch = !torchEnabled;
+        try {
+            await track.applyConstraints({ advanced: [{ torch: nextTorch }] });
+            setTorchEnabled(nextTorch);
+        } catch {
+            setTorchEnabled(false);
+        }
+    };
+
+    const updateZoom = async (value) => {
+        const track = stream?.getVideoTracks?.()[0];
+        const numericValue = Number(value);
+        setZoom(numericValue);
+        if (!track || !trackCapabilities.zoom) return;
+        try {
+            await track.applyConstraints({ advanced: [{ zoom: numericValue }] });
+            refreshVideoInfo();
+        } catch {
+            // Keep the UI responsive even when a browser rejects zoom constraints.
+        }
+    };
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
@@ -204,7 +371,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             canvas.height = video.videoHeight;
 
             const context = canvas.getContext('2d');
-            if (facingMode === 'user') {
+            if (activeFacingMode === 'user') {
                 context.translate(video.videoWidth, 0);
                 context.scale(-1, 1);
             }
@@ -238,6 +405,12 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
     };
 
     if (!isOpen) return null;
+    const feedbackStyles = {
+        ready: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+        adjust: 'border-amber-300 bg-amber-50 text-amber-700',
+        poor: 'border-red-300 bg-red-50 text-red-700',
+    };
+    const canCapture = !!stream && !error && cameraFeedback?.status !== 'poor';
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4">
@@ -256,26 +429,59 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
                             playsInline
                             onLoadedMetadata={refreshVideoInfo}
                             onPlaying={refreshVideoInfo}
-                            className={`w-full h-full object-contain rounded-md ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                            className={`w-full h-full object-contain rounded-md bg-slate-950 ${activeFacingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                         ></video>
                     )}
-                    {debugMode && !error && (
+                    {!error && (
                         <>
-                            <div className={`pointer-events-none absolute left-1/2 top-1/2 ${captureTarget === 'face' ? 'h-[58%] w-[46%] rounded-full' : 'h-[48%] w-[78%] rounded-md'} -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-emerald-400 shadow-[0_0_0_9999px_rgba(15,23,42,0.20)]`}></div>
-                            <div className="absolute left-6 top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white">
-                                <div>{captureTarget === 'face' ? 'Face calibration' : 'ID calibration'}</div>
-                                <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'}</div>
-                                <div>{videoInfo?.facingMode || facingMode}</div>
-                            </div>
+                            <div className={`pointer-events-none absolute left-1/2 top-1/2 ${captureTarget === 'face' ? 'h-[58%] w-[46%] rounded-full' : 'h-[48%] w-[78%] rounded-md'} -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-emerald-400 shadow-[0_0_0_9999px_rgba(15,23,42,0.24)]`}></div>
+                            {cameraFeedback && (
+                                <div className={`absolute left-6 bottom-6 rounded-md border px-3 py-2 text-xs font-semibold ${feedbackStyles[cameraFeedback.status] || feedbackStyles.adjust}`}>
+                                    <div>{cameraFeedback.message}</div>
+                                    <div className="mt-1 h-1.5 w-36 rounded-full bg-white/70">
+                                        <div className="h-1.5 rounded-full bg-current transition-all" style={{ width: `${cameraFeedback.score}%` }}></div>
+                                    </div>
+                                </div>
+                            )}
+                            {debugMode && (
+                                <div className="absolute left-6 top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white">
+                                    <div>{captureTarget === 'face' ? 'Face calibration' : 'ID calibration'}</div>
+                                    <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'}</div>
+                                    <div>{videoInfo?.facingMode || activeFacingMode}</div>
+                                    {cameraFeedback && <div>Q{cameraFeedback.score} B{cameraFeedback.brightness} C{cameraFeedback.contrast} S{cameraFeedback.sharpness}</div>}
+                                </div>
+                            )}
                         </>
                     )}
                     <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
-                <div className="p-4 border-t bg-slate-50 flex gap-4">
-                    <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
-                    <PrimaryButton onClick={handleCapture} disabled={!stream || !!error} className="w-full">
-                        <CameraIcon/> Capture Photo
-                    </PrimaryButton>
+                <div className="space-y-3 border-t bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <SecondaryButton onClick={switchCamera} className="!w-auto !py-2 !px-3 !text-xs">Switch Camera</SecondaryButton>
+                        {trackCapabilities.torch && (
+                            <SecondaryButton onClick={toggleTorch} className="!w-auto !py-2 !px-3 !text-xs">{torchEnabled ? 'Torch Off' : 'Torch On'}</SecondaryButton>
+                        )}
+                        {trackCapabilities.zoom && (
+                            <label className="flex min-w-[180px] flex-1 items-center gap-2 text-xs font-medium text-slate-600">
+                                Zoom
+                                <input
+                                    type="range"
+                                    min={trackCapabilities.zoom.min || 1}
+                                    max={trackCapabilities.zoom.max || 1}
+                                    step={trackCapabilities.zoom.step || 0.1}
+                                    value={zoom}
+                                    onChange={(event) => updateZoom(event.target.value)}
+                                    className="w-full"
+                                />
+                            </label>
+                        )}
+                    </div>
+                    <div className="flex gap-4">
+                        <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
+                        <PrimaryButton onClick={handleCapture} disabled={!canCapture} className="w-full">
+                            <CameraIcon/> Capture Photo
+                        </PrimaryButton>
+                    </div>
                 </div>
             </div>
         </div>
@@ -602,6 +808,11 @@ export default function App({ footerData }) {
     const formContainerRef = useRef(null);
     const formRef = useRef(null);
     const validationQueueRef = useRef(Promise.resolve());
+    const imageValidationKeysRef = useRef({
+        valid_id_front_image: null,
+        valid_id_back_image: null,
+        face_image: null,
+    });
 
     // Initialize with default values directly in useForm so we don't need to load the json!
     const { data, setData, transform, post, processing, errors, reset, clearErrors, setError } = useForm({
@@ -623,6 +834,19 @@ export default function App({ footerData }) {
     const [idFrontValidation, setIdFrontValidation] = useState({ status: 'idle', message: '' });
     const [idBackValidation, setIdBackValidation] = useState({ status: 'idle', message: '' });
     const [selfieValidation, setSelfieValidation] = useState({ status: 'idle', message: '' });
+
+    const imageValidationKey = (role, file, validIdType) => {
+        if (!file) return null;
+
+        return [
+            role,
+            role === 'selfie' ? 'selfie' : validIdType || '',
+            file.name || '',
+            file.type || '',
+            file.size || 0,
+            file.lastModified || 0,
+        ].join('|');
+    };
 
     const enqueueValidation = (task) => {
         const nextTask = validationQueueRef.current.catch(() => {}).then(task);
@@ -752,7 +976,7 @@ export default function App({ footerData }) {
         return () => clearTimeout(handler);
     }, [data.email]);
 
-    const validateRegistrationImage = (role, fieldName, file, setValidation, controller) => {
+    const validateRegistrationImage = (role, fieldName, file, setValidation, controller, validationKey) => {
         return validateRegistrationImageWasm({
             role,
             file,
@@ -760,6 +984,8 @@ export default function App({ footerData }) {
             signal: controller.signal,
         })
             .then((response) => {
+                if (imageValidationKeysRef.current[fieldName] !== validationKey) return;
+
                 const result = response || {};
                 const nextStatus = result.status || (result.is_valid ? 'valid' : 'invalid');
                 const fallbackValidMessage = role === 'selfie' ? 'Selfie looks valid.' : role === 'back_id' ? 'Back of ID looks valid.' : 'ID looks valid.';
@@ -776,6 +1002,7 @@ export default function App({ footerData }) {
             })
             .catch((error) => {
                 if (error.name === 'AbortError') return;
+                if (imageValidationKeysRef.current[fieldName] !== validationKey) return;
 
                 const message = error.message || 'The image could not be checked. Please retake a clear photo.';
                 const status = 'unchecked';
@@ -791,16 +1018,19 @@ export default function App({ footerData }) {
 
     useEffect(() => {
         if (!data.valid_id_front_image || !data.valid_id_type) {
+            imageValidationKeysRef.current.valid_id_front_image = null;
             setIdFrontValidation({ status: 'idle', message: '' });
             return;
         }
 
+        const validationKey = imageValidationKey('front_id', data.valid_id_front_image, data.valid_id_type);
+        imageValidationKeysRef.current.valid_id_front_image = validationKey;
         setIdFrontValidation({ status: 'checking', message: 'Checking front ID photo...' });
         clearErrors('valid_id_front_image');
 
         const controller = new AbortController();
         const handler = setTimeout(() => {
-            enqueueValidation(() => validateRegistrationImage('front_id', 'valid_id_front_image', data.valid_id_front_image, setIdFrontValidation, controller));
+            enqueueValidation(() => validateRegistrationImage('front_id', 'valid_id_front_image', data.valid_id_front_image, setIdFrontValidation, controller, validationKey));
         }, 500);
 
         return () => {
@@ -811,16 +1041,19 @@ export default function App({ footerData }) {
 
     useEffect(() => {
         if (!data.valid_id_back_image || !data.valid_id_type) {
+            imageValidationKeysRef.current.valid_id_back_image = null;
             setIdBackValidation({ status: 'idle', message: '' });
             return;
         }
 
+        const validationKey = imageValidationKey('back_id', data.valid_id_back_image, data.valid_id_type);
+        imageValidationKeysRef.current.valid_id_back_image = validationKey;
         setIdBackValidation({ status: 'checking', message: 'Checking back ID photo...' });
         clearErrors('valid_id_back_image');
 
         const controller = new AbortController();
         const handler = setTimeout(() => {
-            enqueueValidation(() => validateRegistrationImage('back_id', 'valid_id_back_image', data.valid_id_back_image, setIdBackValidation, controller));
+            enqueueValidation(() => validateRegistrationImage('back_id', 'valid_id_back_image', data.valid_id_back_image, setIdBackValidation, controller, validationKey));
         }, 500);
 
         return () => {
@@ -831,16 +1064,19 @@ export default function App({ footerData }) {
 
     useEffect(() => {
         if (!data.face_image) {
+            imageValidationKeysRef.current.face_image = null;
             setSelfieValidation({ status: 'idle', message: '' });
             return;
         }
 
+        const validationKey = imageValidationKey('selfie', data.face_image, data.valid_id_type);
+        imageValidationKeysRef.current.face_image = validationKey;
         setSelfieValidation({ status: 'checking', message: 'Checking selfie...' });
         clearErrors('face_image');
 
         const controller = new AbortController();
         const handler = setTimeout(() => {
-            enqueueValidation(() => validateRegistrationImage('selfie', 'face_image', data.face_image, setSelfieValidation, controller));
+            enqueueValidation(() => validateRegistrationImage('selfie', 'face_image', data.face_image, setSelfieValidation, controller, validationKey));
         }, 500);
 
         return () => {
