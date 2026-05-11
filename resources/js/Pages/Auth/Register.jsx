@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import axios from 'axios';
 import { validateRegistrationImageWasm } from '@/Services/identityWasmValidator';
+import { analyzeImageData, clamp } from '@/IdentityVerification/imageAnalysisCore';
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -128,23 +129,193 @@ const createCaptureMetadata = async (video, facingMode) => {
     };
 };
 
-const CaptureGuideOverlay = ({ captureTarget, streamReady }) => {
+const analyzeLiveCameraFrame = (video, facingMode, captureTarget) => {
+    if (!video?.videoWidth || !video?.videoHeight) return null;
+
+    const maxSide = captureTarget === 'face' ? 260 : 360;
+    const sourceWidth = video.videoWidth;
+    const sourceHeight = video.videoHeight;
+    const scale = Math.min(1, maxSide / Math.max(sourceWidth, sourceHeight));
+    const sampleWidth = Math.max(1, Math.round(sourceWidth * scale));
+    const sampleHeight = Math.max(1, Math.round(sourceHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = sampleWidth;
+    canvas.height = sampleHeight;
+    const context = canvas.getContext('2d', { willReadFrequently: true });
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'medium';
+
+    if (facingMode === 'user') {
+        context.translate(sampleWidth, 0);
+        context.scale(-1, 1);
+    }
+
+    context.drawImage(video, 0, 0, sampleWidth, sampleHeight);
+    const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+
+    return analyzeImageData({
+        data,
+        sampleWidth,
+        sampleHeight,
+        width: sourceWidth,
+        height: sourceHeight,
+        fileSize: 0,
+        role: captureTarget === 'face' ? 'selfie' : 'front_id',
+        captureMetadata: { source: 'camera', motion_score: null },
+    });
+};
+
+const smartReadinessFromAnalysis = (analysis, captureTarget) => {
+    if (!analysis) {
+        return {
+            score: 0,
+            ready: false,
+            state: 'detecting',
+            message: captureTarget === 'face' ? 'Finding face' : 'Finding ID',
+            analysis: null,
+        };
+    }
+
+    const quality = analysis.quality || {};
+    const geometry = analysis.geometry || {};
+    const blockingIssues = quality.blocking_issues || [];
+    let score = quality.score || 0;
+    let message = 'Hold steady';
+    let state = 'adjust';
+
+    if (captureTarget !== 'face') {
+        const boundaryScore = geometry.boundary_score || 0;
+        const edgeScore = (geometry.edge_completeness || 0) * 100;
+        const rotation = Math.abs(geometry.document_rotation_degrees || 0);
+        const perspective = geometry.perspective_skew || 0;
+        const margins = geometry.margins || {};
+        const centered = Math.min(
+            margins.left ?? 0,
+            margins.right ?? 0,
+            margins.top ?? 0,
+            margins.bottom ?? 0
+        ) >= 0.035;
+
+        score = Math.round(clamp((quality.score * 0.45) + (boundaryScore * 0.35) + (edgeScore * 0.20), 0, 100));
+
+        if (!geometry.boundary_detected) {
+            score = Math.min(score, 55);
+            message = 'Show the ID edges';
+            state = 'detecting';
+        } else if (!centered || geometry.cropped_risk === 'high') {
+            score = Math.min(score, 68);
+            message = 'Move ID fully inside';
+        } else if (rotation > 16) {
+            score = Math.min(score, 76);
+            message = 'Straighten the ID';
+        } else if (perspective > 0.22) {
+            score = Math.min(score, 76);
+            message = 'Reduce tilt';
+        } else if (blockingIssues.includes('image_blurry')) {
+            score = Math.min(score, 70);
+            message = 'Hold steady';
+        } else if (blockingIssues.includes('image_too_dark')) {
+            score = Math.min(score, 70);
+            message = 'Add more light';
+        } else if (blockingIssues.includes('id_glare_detected')) {
+            score = Math.min(score, 72);
+            message = 'Avoid glare';
+        } else if (score >= 82) {
+            message = 'Ready';
+            state = 'ready';
+        }
+
+        return {
+            score,
+            ready: state === 'ready' && blockingIssues.length === 0,
+            state,
+            message,
+            analysis,
+        };
+    }
+
+    if (blockingIssues.includes('image_blurry')) {
+        score = Math.min(score, 70);
+        message = 'Hold still';
+    } else if (blockingIssues.includes('image_too_dark')) {
+        score = Math.min(score, 70);
+        message = 'Add more light';
+    } else if (quality.issues?.includes('selfie_glare_detected')) {
+        score = Math.min(score, 76);
+        message = 'Avoid glare';
+    } else if (score >= 78) {
+        message = 'Ready';
+        state = 'ready';
+    } else {
+        message = 'Center your face';
+    }
+
+    return {
+        score,
+        ready: state === 'ready' && blockingIssues.length === 0,
+        state,
+        message,
+        analysis,
+    };
+};
+
+const SmartIdBorder = ({ readiness }) => {
+    const analysis = readiness?.analysis;
+    const geometry = analysis?.geometry;
+    const quadrilateral = geometry?.quadrilateral;
+    const sampleWidth = analysis?.sample_width || analysis?.sampleWidth;
+    const sampleHeight = analysis?.sample_height || analysis?.sampleHeight;
+
+    if (!quadrilateral || !sampleWidth || !sampleHeight) {
+        return null;
+    }
+
+    const points = quadrilateral.map((point) => `${point.x},${point.y}`).join(' ');
+    const color = readiness?.ready ? '#34d399' : readiness?.state === 'detecting' ? '#fbbf24' : '#60a5fa';
+
+    return (
+        <svg
+            className="absolute inset-0 h-full w-full"
+            viewBox={`0 0 ${sampleWidth} ${sampleHeight}`}
+            preserveAspectRatio="xMidYMid slice"
+            aria-hidden="true"
+        >
+            <polygon points={points} fill="rgba(16,185,129,0.05)" stroke="rgba(15,23,42,0.55)" strokeWidth="9" strokeLinejoin="round" />
+            <polygon points={points} fill="transparent" stroke={color} strokeWidth="4" strokeLinejoin="round" className="transition-all duration-200" />
+            {quadrilateral.map((point, index) => (
+                <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r="6" fill={color} />
+            ))}
+        </svg>
+    );
+};
+
+const CaptureGuideOverlay = ({ captureTarget, streamReady, readiness }) => {
     const isFace = captureTarget === 'face';
     const guideStyle = isFace
         ? { width: 'min(54vw, 260px)', height: 'min(62vh, 340px)' }
-        : { width: 'min(86%, 620px)', aspectRatio: '1.586 / 1' };
-    const helper = isFace ? 'Center your face' : 'Fit all ID edges';
+        : { width: 'min(90%, 720px)', aspectRatio: '1.586 / 1' };
+    const helper = readiness?.message || (isFace ? 'Center your face' : 'Show the ID edges');
+    const score = Math.round(readiness?.score || 0);
+    const ready = readiness?.ready;
+    const guideColor = ready ? 'border-emerald-300 shadow-[0_0_32px_rgba(16,185,129,0.28)]' : streamReady ? 'border-sky-300 shadow-[0_0_28px_rgba(56,189,248,0.20)]' : 'border-white/70';
 
     return (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="absolute inset-0 bg-slate-950/20"></div>
+            {!isFace && <SmartIdBorder readiness={readiness} />}
+            <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-950/75 px-3 py-1.5 text-xs font-semibold text-white shadow-lg sm:top-5">
+                <span>Image Quality: {score}%</span>
+                <span className={`h-2 w-2 rounded-full ${ready ? 'bg-emerald-300' : 'bg-amber-300'}`}></span>
+            </div>
             <div className="relative flex flex-col items-center gap-3">
-                <div
-                    style={guideStyle}
-                    className={`${isFace ? 'rounded-[45%]' : 'rounded-lg'} border-2 ${streamReady ? 'border-emerald-300 shadow-[0_0_32px_rgba(16,185,129,0.28)]' : 'border-white/70'} transition-all duration-300`}
-                >
-                    <div className="h-full w-full rounded-[inherit] border border-white/35"></div>
-                </div>
+                {(isFace || !readiness?.analysis?.geometry?.quadrilateral) && (
+                    <div
+                        style={guideStyle}
+                        className={`${isFace ? 'rounded-[45%]' : 'rounded-lg'} border-2 ${guideColor} transition-all duration-300`}
+                    >
+                        <div className="h-full w-full rounded-[inherit] border border-white/35"></div>
+                    </div>
+                )}
                 <div className="rounded-full bg-slate-950/70 px-3 py-1 text-xs font-medium text-white shadow-lg">
                     {helper}
                 </div>
@@ -161,6 +332,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
     const [error, setError] = useState(null);
     const [videoInfo, setVideoInfo] = useState(null);
     const [isCapturing, setIsCapturing] = useState(false);
+    const [liveReadiness, setLiveReadiness] = useState(() => smartReadinessFromAnalysis(null, captureTarget));
 
     const stopCamera = () => {
         if (streamRef.current) {
@@ -188,6 +360,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
     useEffect(() => {
         if (isOpen) {
             setError(null);
+            setLiveReadiness(smartReadinessFromAnalysis(null, captureTarget));
             navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: facingMode,
@@ -216,7 +389,44 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
         };
     }, [isOpen, facingMode, idealVideoWidth, idealVideoHeight]);
 
+    useEffect(() => {
+        if (!isOpen || !stream || error) return undefined;
+
+        let cancelled = false;
+        let busy = false;
+
+        const runAnalysis = () => {
+            if (busy || cancelled) return;
+            busy = true;
+
+            try {
+                const analysis = analyzeLiveCameraFrame(videoRef.current, facingMode, captureTarget);
+                if (!cancelled) {
+                    setLiveReadiness(smartReadinessFromAnalysis(analysis, captureTarget));
+                }
+            } catch {
+                if (!cancelled) {
+                    setLiveReadiness(smartReadinessFromAnalysis(null, captureTarget));
+                }
+            } finally {
+                busy = false;
+            }
+        };
+
+        const initial = window.setTimeout(runAnalysis, 180);
+        const interval = window.setInterval(runAnalysis, 320);
+
+        return () => {
+            cancelled = true;
+            window.clearTimeout(initial);
+            window.clearInterval(interval);
+        };
+    }, [isOpen, stream, error, facingMode, captureTarget]);
+
     const handleCapture = async () => {
+        if (captureTarget !== 'face' && !liveReadiness.ready) return;
+        if (captureTarget === 'face' && (liveReadiness.score || 0) < 70) return;
+
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
@@ -285,6 +495,10 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
 
     if (!isOpen) return null;
 
+    const captureReady = captureTarget === 'face'
+        ? (liveReadiness.score || 0) >= 70
+        : Boolean(liveReadiness.ready);
+
     return (
         <div className="fixed inset-0 bg-black/90 z-50 flex justify-center items-center p-0 sm:p-4">
             <div className="bg-white shadow-xl w-full h-full sm:h-auto sm:max-h-[94vh] sm:max-w-3xl sm:rounded-xl flex flex-col overflow-hidden">
@@ -305,13 +519,13 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
                             className={`h-full min-h-[58vh] w-full object-cover sm:min-h-[60vh] ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                         ></video>
                     )}
-                    {!error && <CaptureGuideOverlay captureTarget={captureTarget} streamReady={Boolean(stream && videoInfo?.width)} />}
+                    {!error && <CaptureGuideOverlay captureTarget={captureTarget} streamReady={Boolean(stream && videoInfo?.width)} readiness={liveReadiness} />}
                     <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
                 <div className="p-4 border-t bg-slate-50 flex gap-3">
                     <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
-                    <PrimaryButton onClick={handleCapture} disabled={!stream || !!error || isCapturing} className="w-full">
-                        <CameraIcon/> {isCapturing ? 'Capturing...' : 'Capture Photo'}
+                    <PrimaryButton onClick={handleCapture} disabled={!stream || !!error || isCapturing || !captureReady} className="w-full">
+                        <CameraIcon/> {isCapturing ? 'Capturing...' : captureReady ? 'Capture Photo' : 'Align to Capture'}
                     </PrimaryButton>
                 </div>
             </div>

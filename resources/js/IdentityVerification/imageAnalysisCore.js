@@ -6,6 +6,18 @@ const COMMON_SCREEN_RATIOS = [16 / 9, 18 / 9, 19.5 / 9, 20 / 9, 4 / 3];
 
 const ratioNear = (ratio, expected, tolerance = 0.035) => Math.abs(ratio - expected) <= tolerance;
 
+const weightedQuantile = (histogram, total, quantile) => {
+    const target = Math.max(1, total * quantile);
+    let running = 0;
+
+    for (let i = 0; i < histogram.length; i += 1) {
+        running += histogram[i];
+        if (running >= target) return i;
+    }
+
+    return histogram.length - 1;
+};
+
 const saturationFor = (red, green, blue) => {
     const max = Math.max(red, green, blue);
     const min = Math.min(red, green, blue);
@@ -43,19 +55,15 @@ const averageHash = (grayscale, width, height, size = 8) => {
 };
 
 const geometryFromEdges = (edgeMap, width, height, edgeDensity) => {
-    let minX = width;
-    let minY = height;
-    let maxX = 0;
-    let maxY = 0;
+    const xHistogram = new Uint16Array(width);
+    const yHistogram = new Uint16Array(height);
     let edgeCount = 0;
 
     for (let y = 0; y < height; y += 1) {
         for (let x = 0; x < width; x += 1) {
             if (!edgeMap[(y * width) + x]) continue;
-            minX = Math.min(minX, x);
-            minY = Math.min(minY, y);
-            maxX = Math.max(maxX, x);
-            maxY = Math.max(maxY, y);
+            xHistogram[x] += 1;
+            yHistogram[y] += 1;
             edgeCount += 1;
         }
     }
@@ -66,11 +74,36 @@ const geometryFromEdges = (edgeMap, width, height, edgeDensity) => {
             boundary_score: 0,
             document_area_ratio: 0,
             document_aspect_ratio: null,
+            document_rotation_degrees: null,
+            perspective_skew: null,
             cropped_risk: 'unknown',
             edge_completeness: 0,
+            quadrilateral: null,
             margins: null,
         };
     }
+
+    const trim = edgeDensity > 0.075 ? 0.035 : 0.018;
+    let minX = weightedQuantile(xHistogram, edgeCount, trim);
+    let maxX = weightedQuantile(xHistogram, edgeCount, 1 - trim);
+    let minY = weightedQuantile(yHistogram, edgeCount, trim);
+    let maxY = weightedQuantile(yHistogram, edgeCount, 1 - trim);
+
+    if (maxX <= minX || maxY <= minY) {
+        minX = 0;
+        minY = 0;
+        maxX = width - 1;
+        maxY = height - 1;
+    }
+
+    let topLeftScore = Infinity;
+    let topRightScore = -Infinity;
+    let bottomRightScore = -Infinity;
+    let bottomLeftScore = -Infinity;
+    let topLeft = null;
+    let topRight = null;
+    let bottomRight = null;
+    let bottomLeft = null;
 
     const boxWidth = Math.max(1, maxX - minX + 1);
     const boxHeight = Math.max(1, maxY - minY + 1);
@@ -113,11 +146,47 @@ const geometryFromEdges = (edgeMap, width, height, edgeDensity) => {
         }
     }
 
+    for (let y = minY; y <= maxY; y += 1) {
+        for (let x = minX; x <= maxX; x += 1) {
+            if (!edgeMap[(y * width) + x]) continue;
+
+            const sum = x + y;
+            const diff = x - y;
+            if (sum < topLeftScore) {
+                topLeftScore = sum;
+                topLeft = { x, y };
+            }
+            if (diff > topRightScore) {
+                topRightScore = diff;
+                topRight = { x, y };
+            }
+            if (sum > bottomRightScore) {
+                bottomRightScore = sum;
+                bottomRight = { x, y };
+            }
+            if (-diff > bottomLeftScore) {
+                bottomLeftScore = -diff;
+                bottomLeft = { x, y };
+            }
+        }
+    }
+
     const sideCompleteness = Object.entries(sideCounts).map(([side, count]) => {
         const density = count / Math.max(1, sideAreas[side]);
         return clamp(density / 0.015, 0, 1);
     });
     const edgeCompleteness = sideCompleteness.reduce((total, value) => total + value, 0) / sideCompleteness.length;
+    const quadrilateral = topLeft && topRight && bottomRight && bottomLeft
+        ? [topLeft, topRight, bottomRight, bottomLeft]
+        : [
+            { x: minX, y: minY },
+            { x: maxX, y: minY },
+            { x: maxX, y: maxY },
+            { x: minX, y: maxY },
+        ];
+    const rotationRadians = Math.atan2(quadrilateral[1].y - quadrilateral[0].y, quadrilateral[1].x - quadrilateral[0].x);
+    const rotationDegrees = rotationRadians * (180 / Math.PI);
+    const perspectiveSkew = Math.abs((quadrilateral[1].y - quadrilateral[0].y) - (quadrilateral[2].y - quadrilateral[3].y)) / Math.max(1, boxHeight);
     const boundaryScore = clamp((areaRatio * 75) + (edgeCompleteness * 35) + (looksCardLike ? 18 : 0), 0, 100);
     const croppedRisk = minMargin < 0.012 || maxFill > 0.97 ? 'high' : minMargin < 0.035 || maxFill > 0.92 ? 'medium' : 'low';
 
@@ -126,8 +195,16 @@ const geometryFromEdges = (edgeMap, width, height, edgeDensity) => {
         boundary_score: round(boundaryScore),
         document_area_ratio: round(areaRatio, 3),
         document_aspect_ratio: round(aspectRatio, 3),
+        document_rotation_degrees: round(rotationDegrees, 1),
+        perspective_skew: round(perspectiveSkew, 3),
         cropped_risk: croppedRisk,
         edge_completeness: round(edgeCompleteness, 3),
+        quadrilateral: quadrilateral.map((point) => ({
+            x: Math.round(point.x),
+            y: Math.round(point.y),
+            nx: round(point.x / width, 4),
+            ny: round(point.y / height, 4),
+        })),
         margins: {
             left: round(marginLeft, 3),
             right: round(marginRight, 3),
