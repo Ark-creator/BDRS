@@ -174,6 +174,30 @@ const DOCUMENT_TYPES = {
     },
 };
 
+const BACK_ID_TEXT_MARKERS = [
+    'back of card',
+    'serial number',
+    'barcode',
+    'qr',
+    'dl codes',
+    'lto codes',
+    'restriction',
+    'restrictions',
+    'conditions',
+    'corrective lenses',
+    'daylight driving',
+    'no hearing aid',
+    'motorcycle',
+    'vehicle',
+    'gross',
+    'gvw',
+    'organ donor',
+    'if found',
+    'return to',
+    'emergency contact',
+    'signature',
+];
+
 let ocrWorkerPromise = null;
 
 const normalizeText = (value) => String(value || '')
@@ -279,6 +303,47 @@ const loadCanvas = (file, maxSide = 1200) => new Promise((resolve, reject) => {
     image.src = url;
 });
 
+const estimateBarcodeSignal = (grayscale, width, height) => {
+    const yStart = Math.floor(height * 0.32);
+    const yEnd = Math.floor(height * 0.92);
+    const xStart = Math.floor(width * 0.08);
+    const xEnd = Math.floor(width * 0.95);
+    let transitions = 0;
+    let samples = 0;
+    let highTransitionRows = 0;
+    let rows = 0;
+
+    for (let y = yStart; y < yEnd; y += 2) {
+        let rowTransitions = 0;
+        for (let x = xStart + 1; x < xEnd; x += 1) {
+            const index = y * width + x;
+            const previous = grayscale[index - 1];
+            const current = grayscale[index];
+            const diff = Math.abs(current - previous);
+            if (diff > 34) {
+                transitions += 1;
+                rowTransitions += 1;
+            }
+            samples += 1;
+        }
+
+        const rowWidth = Math.max(1, xEnd - xStart);
+        if ((rowTransitions / rowWidth) > 0.10) {
+            highTransitionRows += 1;
+        }
+        rows += 1;
+    }
+
+    const transitionDensity = transitions / Math.max(1, samples);
+    const rowDensity = highTransitionRows / Math.max(1, rows);
+
+    return {
+        transition_density: Number(transitionDensity.toFixed(4)),
+        high_transition_row_ratio: Number(rowDensity.toFixed(4)),
+        barcode_like: transitionDensity >= 0.045 && rowDensity >= 0.18,
+    };
+};
+
 const analyzeImageQuality = async (file, role) => {
     const loaded = await loadCanvas(file);
     const { context, sampleWidth, sampleHeight, width, height } = loaded;
@@ -336,6 +401,7 @@ const analyzeImageQuality = async (file, role) => {
     const brightRatio = brightPixels / pixels;
     const glareRatio = glarePixels / pixels;
     const shadowRatio = shadowPixels / pixels;
+    const barcodeSignal = estimateBarcodeSignal(grayscale, sampleWidth, sampleHeight);
     const issues = [];
     const blockingIssues = [];
     const minWidth = role === 'selfie' ? 360 : 500;
@@ -405,6 +471,7 @@ const analyzeImageQuality = async (file, role) => {
             bright_pixel_ratio: Number(brightRatio.toFixed(4)),
             glare_ratio: Number(glareRatio.toFixed(4)),
             shadow_ratio: Number(shadowRatio.toFixed(4)),
+            barcode_signal: barcodeSignal,
             score: Math.round(clamp(score, 0, 100)),
             issues,
             blocking_issues: blockingIssues,
@@ -709,6 +776,32 @@ const faceDetectionIsConfident = (faceReport) => {
     return confidence >= 72 && areaRatio >= 0.035 && areaRatio <= 0.62;
 };
 
+const collectBackIdEvidence = (rawText, qualityReport, expectedScore) => {
+    const normalized = normalizeText(rawText);
+    const markerHits = BACK_ID_TEXT_MARKERS.filter((marker) => normalized.includes(normalizeText(marker)));
+    const serialNumberDetected = /\bserial\s*(?:number|no)?[:\s-]*\d{5,}\b/i.test(rawText)
+        || /\b\d{7,12}\b/.test(rawText);
+    const barcodeLike = Boolean(qualityReport.quality.barcode_signal?.barcode_like);
+    const cardLikeFrame = qualityReport.quality.aspect_ratio >= 1.20
+        && qualityReport.quality.aspect_ratio <= 2.40
+        && qualityReport.quality.edge_density >= 0.01;
+    const acceptsLowOcr = barcodeLike && cardLikeFrame;
+    const isValid = expectedScore >= 12
+        || markerHits.length >= 2
+        || (markerHits.length >= 1 && serialNumberDetected)
+        || (acceptsLowOcr && rawText.trim().length >= 8)
+        || (acceptsLowOcr && qualityReport.quality.score >= 58);
+
+    return {
+        marker_hits: markerHits,
+        serial_number_detected: serialNumberDetected,
+        barcode_like: barcodeLike,
+        card_like_frame: cardLikeFrame,
+        accepts_low_ocr: acceptsLowOcr,
+        is_valid: isValid,
+    };
+};
+
 const validateIdImage = async ({ role, file, validIdType, signal }) => {
     const expectedType = resolveDocumentType(validIdType);
     const qualityReport = await analyzeImageQuality(file, role);
@@ -779,8 +872,14 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     diagnostics.expected_document_score = expectedScore;
     diagnostics.fields = fields;
     diagnostics.confidence = Math.round((qualityReport.quality.score + ocr.confidence + expectedScore) / 3);
+    const backIdEvidence = role === 'back_id'
+        ? collectBackIdEvidence(ocrText, qualityReport, expectedScore)
+        : null;
+    if (backIdEvidence) {
+        diagnostics.back_side_evidence = backIdEvidence;
+    }
 
-    if (ocrText.trim().length < 18 || ocr.confidence < 20) {
+    if ((ocrText.trim().length < 18 || ocr.confidence < 20) && !backIdEvidence?.accepts_low_ocr) {
         return invalidResult(
             role === 'back_id'
                 ? 'The back of ID text is not readable. Please retake a clearer photo.'
@@ -814,7 +913,7 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
         });
     }
 
-    if (role === 'back_id' && expectedScore < 12 && !/(barcode|qr|serial|magnetic|signature|conditions|restrictions|date issued|issued by)/i.test(ocrText)) {
+    if (role === 'back_id' && !backIdEvidence?.is_valid) {
         return invalidResult('The back of ID does not look readable. Please retake the back side of the selected ID.', {
             ...diagnostics,
             issues: [...diagnostics.issues, 'id_back_not_confirmed'],

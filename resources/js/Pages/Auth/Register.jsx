@@ -224,6 +224,36 @@ const analyzeLiveFrame = (video, captureTarget) => {
     };
 };
 
+const cropCanvasToCaptureGuide = (sourceCanvas, captureTarget) => {
+    if (captureTarget !== 'id_front' && captureTarget !== 'id_back') {
+        return sourceCanvas;
+    }
+
+    const cropWidth = sourceCanvas.width * 0.82;
+    const cropHeight = sourceCanvas.height * 0.56;
+    const sourceX = Math.max(0, (sourceCanvas.width - cropWidth) / 2);
+    const sourceY = Math.max(0, (sourceCanvas.height - cropHeight) / 2);
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = Math.round(cropWidth);
+    cropCanvas.height = Math.round(cropHeight);
+    const cropContext = cropCanvas.getContext('2d');
+    cropContext.imageSmoothingEnabled = true;
+    cropContext.imageSmoothingQuality = 'high';
+    cropContext.drawImage(
+        sourceCanvas,
+        sourceX,
+        sourceY,
+        cropWidth,
+        cropHeight,
+        0,
+        0,
+        cropCanvas.width,
+        cropCanvas.height
+    );
+
+    return cropCanvas;
+};
+
 // --- CAMERA MODAL COMPONENT ---
 const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTarget, debugMode = false, idealVideoWidth = 1280, idealVideoHeight = 720, maxCaptureWidth = 1000, maxCaptureHeight = 1000 }) => {
     const videoRef = useRef(null);
@@ -377,10 +407,11 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             }
             context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
 
+            const captureCanvas = cropCanvasToCaptureGuide(canvas, captureTarget);
             const maxWidth = maxCaptureWidth;
             const maxHeight = maxCaptureHeight;
-            let newWidth = canvas.width;
-            let newHeight = canvas.height;
+            let newWidth = captureCanvas.width;
+            let newHeight = captureCanvas.height;
 
             if (newWidth > maxWidth || newHeight > maxHeight) {
                 const ratio = Math.min(maxWidth / newWidth, maxHeight / newHeight);
@@ -394,7 +425,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             const resizedContext = resizedCanvas.getContext('2d');
             resizedContext.imageSmoothingEnabled = true;
             resizedContext.imageSmoothingQuality = 'high';
-            resizedContext.drawImage(canvas, 0, 0, newWidth, newHeight);
+            resizedContext.drawImage(captureCanvas, 0, 0, newWidth, newHeight);
 
             resizedCanvas.toBlob(blob => {
                 const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, { type: 'image/jpeg' });
