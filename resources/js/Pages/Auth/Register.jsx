@@ -59,6 +59,8 @@ const IdPrecheckMessage = ({ validation }) => {
 };
 const CameraIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
 const IdCardIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v1m-4 0h4m-9 4h2m-2 4h4m6-4v4m-2-2h4"></path></svg>;
+const GalleryIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>;
+const AIProcessingIcon = () => <svg className="h-5 w-5 inline-block mr-2 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>;
 
 
 const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
@@ -129,6 +131,13 @@ const createCaptureMetadata = async (video, facingMode) => {
     };
 };
 
+const ID_TARGET_ASPECT_RATIO = 1.586;
+const ID_STEADY_FRAME_TARGET = 15;
+const ID_READY_MIN_AREA = 0.65;
+const ID_READY_MAX_AREA = 0.95;
+const ID_ROLLING_BUFFER_MS = 500;
+const ID_AUTO_TIMEOUT_MS = 30000;
+
 const analyzeLiveCameraFrame = (video, facingMode, captureTarget) => {
     if (!video?.videoWidth || !video?.videoHeight) return null;
 
@@ -165,7 +174,111 @@ const analyzeLiveCameraFrame = (video, facingMode, captureTarget) => {
     });
 };
 
-const smartReadinessFromAnalysis = (analysis, captureTarget) => {
+const frameDistance = (first, second) => {
+    if (!first || !second) return Infinity;
+    return Math.hypot(first.x - second.x, first.y - second.y);
+};
+
+const smoothQuadrilateral = (previous, next, alpha = 0.38) => {
+    if (!previous || !next || previous.length !== next.length) return next;
+
+    return next.map((point, index) => ({
+        ...point,
+        x: roundForUi((previous[index].x * (1 - alpha)) + (point.x * alpha)),
+        y: roundForUi((previous[index].y * (1 - alpha)) + (point.y * alpha)),
+        nx: point.nx,
+        ny: point.ny,
+    }));
+};
+
+const roundForUi = (value) => Math.round(value * 10) / 10;
+
+const updateTrackedAnalysis = (analysis, tracker) => {
+    if (!analysis?.geometry) return analysis;
+
+    const now = performance.now();
+    const geometry = analysis.geometry;
+    const previousGood = tracker.lastGoodGeometry;
+
+    if (geometry.boundary_detected && geometry.quadrilateral) {
+        const smoothedQuadrilateral = smoothQuadrilateral(previousGood?.quadrilateral, geometry.quadrilateral);
+        const smoothedCentroid = smoothedQuadrilateral.reduce((total, point) => ({
+            x: total.x + point.x,
+            y: total.y + point.y,
+        }), { x: 0, y: 0 });
+        smoothedCentroid.x = roundForUi(smoothedCentroid.x / smoothedQuadrilateral.length);
+        smoothedCentroid.y = roundForUi(smoothedCentroid.y / smoothedQuadrilateral.length);
+
+        const trackedGeometry = {
+            ...geometry,
+            quadrilateral: smoothedQuadrilateral,
+            centroid: {
+                ...geometry.centroid,
+                x: smoothedCentroid.x,
+                y: smoothedCentroid.y,
+            },
+            tracking_prediction: false,
+        };
+
+        tracker.lastGoodGeometry = trackedGeometry;
+        tracker.lastGoodAt = now;
+        return { ...analysis, geometry: trackedGeometry };
+    }
+
+    if (previousGood && now - (tracker.lastGoodAt || 0) < 450) {
+        return {
+            ...analysis,
+            geometry: {
+                ...previousGood,
+                boundary_detected: true,
+                tracking_prediction: true,
+                boundary_score: Math.min(previousGood.boundary_score || 0, 64),
+                edge_confidence: Math.min(previousGood.edge_confidence || 0, 70),
+                corner_confidence: Math.min(previousGood.corner_confidence || 0, 70),
+                detection_reason: 'tracking_prediction',
+            },
+        };
+    }
+
+    return analysis;
+};
+
+const sideHintFromMargins = (margins) => {
+    if (!margins) return null;
+    const entries = Object.entries(margins);
+    const [side, value] = entries.reduce((lowest, current) => current[1] < lowest[1] ? current : lowest, entries[0]);
+    if (value >= 0.035) return null;
+    const direction = {
+        left: 'right',
+        right: 'left',
+        top: 'down',
+        bottom: 'up',
+    }[side];
+
+    return { side, direction };
+};
+
+const updateStability = (analysis, tracker) => {
+    const centroid = analysis?.geometry?.centroid;
+    if (!centroid || analysis?.geometry?.tracking_prediction || !analysis?.geometry?.boundary_detected) {
+        tracker.steadyFrames = 0;
+        tracker.lastCentroid = centroid || null;
+        return { steadyFrames: 0, centroidMovement: null };
+    }
+
+    const movement = frameDistance(centroid, tracker.lastCentroid);
+    tracker.steadyFrames = Number.isFinite(movement) && movement < 5
+        ? Math.min(ID_STEADY_FRAME_TARGET, (tracker.steadyFrames || 0) + 1)
+        : 0;
+    tracker.lastCentroid = centroid;
+
+    return {
+        steadyFrames: tracker.steadyFrames,
+        centroidMovement: Number.isFinite(movement) ? roundForUi(movement) : null,
+    };
+};
+
+const smartReadinessFromAnalysis = (analysis, captureTarget, tracking = {}) => {
     if (!analysis) {
         return {
             score: 0,
@@ -173,6 +286,8 @@ const smartReadinessFromAnalysis = (analysis, captureTarget) => {
             state: 'detecting',
             message: captureTarget === 'face' ? 'Finding face' : 'Finding ID',
             analysis: null,
+            sideHint: null,
+            steadyFrames: 0,
         };
     }
 
@@ -186,32 +301,74 @@ const smartReadinessFromAnalysis = (analysis, captureTarget) => {
     if (captureTarget !== 'face') {
         const boundaryScore = geometry.boundary_score || 0;
         const edgeScore = (geometry.edge_completeness || 0) * 100;
+        const edgeConfidence = geometry.edge_confidence || 0;
+        const cornerConfidence = geometry.corner_confidence || 0;
         const rotation = Math.abs(geometry.document_rotation_degrees || 0);
         const perspective = geometry.perspective_skew || 0;
+        const areaRatio = geometry.document_area_ratio || 0;
+        const aspectRatio = geometry.document_aspect_ratio || 0;
         const margins = geometry.margins || {};
+        const sideHint = sideHintFromMargins(margins);
         const centered = Math.min(
             margins.left ?? 0,
             margins.right ?? 0,
             margins.top ?? 0,
             margins.bottom ?? 0
         ) >= 0.035;
+        const steadyFrames = tracking.steadyFrames || 0;
+        const sharpnessThreshold = tracking.sharpnessThreshold || 45;
+        const sharpEnough = (quality.laplacian_variance || 0) >= sharpnessThreshold;
+        const aspectValid = aspectRatio > 0 && Math.abs(aspectRatio - ID_TARGET_ASPECT_RATIO) / ID_TARGET_ASPECT_RATIO <= 0.05;
+        const completeEdges = geometry.boundary_detected
+            && geometry.corners_inside
+            && (geometry.missing_edges || []).length === 0
+            && edgeConfidence >= 92
+            && cornerConfidence >= 92;
+        const glareOk = (quality.glare_ratio || 0) <= 0.10;
+        const sizeReady = areaRatio >= ID_READY_MIN_AREA && areaRatio <= ID_READY_MAX_AREA;
+        const stableReady = steadyFrames >= ID_STEADY_FRAME_TARGET;
 
-        score = Math.round(clamp((quality.score * 0.45) + (boundaryScore * 0.35) + (edgeScore * 0.20), 0, 100));
+        score = Math.round(clamp(
+            (quality.score * 0.24)
+            + (boundaryScore * 0.24)
+            + (edgeScore * 0.16)
+            + (edgeConfidence * 0.18)
+            + (cornerConfidence * 0.10)
+            + (Math.min(steadyFrames / ID_STEADY_FRAME_TARGET, 1) * 100 * 0.08),
+            0,
+            100
+        ));
 
-        if (!geometry.boundary_detected) {
-            score = Math.min(score, 55);
-            message = 'Show the ID edges';
+        if (tracking.timedOut) {
+            score = Math.min(score, 52);
+            message = 'Try better lighting';
+            state = 'timeout';
+        } else if (!geometry.boundary_detected || geometry.tracking_prediction) {
+            score = Math.min(score, geometry.tracking_prediction ? 62 : 48);
+            message = geometry.tracking_prediction ? 'Hold card visible' : 'Show the whole card - edges incomplete';
             state = 'detecting';
+        } else if (!completeEdges) {
+            score = Math.min(score, 68);
+            message = 'Show the whole card - edges incomplete';
         } else if (!centered || geometry.cropped_risk === 'high') {
             score = Math.min(score, 68);
-            message = 'Move ID fully inside';
+            message = sideHint ? `Move ID ${sideHint.direction}` : 'Move ID fully inside';
+        } else if (!aspectValid) {
+            score = Math.min(score, 72);
+            message = 'Flatten the card';
+        } else if (areaRatio < ID_READY_MIN_AREA) {
+            score = Math.min(score, 74);
+            message = 'Move closer';
+        } else if (areaRatio > ID_READY_MAX_AREA) {
+            score = Math.min(score, 74);
+            message = 'Move back slightly';
         } else if (rotation > 16) {
             score = Math.min(score, 76);
             message = 'Straighten the ID';
         } else if (perspective > 0.22) {
             score = Math.min(score, 76);
             message = 'Reduce tilt';
-        } else if (blockingIssues.includes('image_blurry')) {
+        } else if (blockingIssues.includes('image_blurry') || !sharpEnough) {
             score = Math.min(score, 70);
             message = 'Hold steady';
         } else if (blockingIssues.includes('image_too_dark')) {
@@ -219,18 +376,39 @@ const smartReadinessFromAnalysis = (analysis, captureTarget) => {
             message = 'Add more light';
         } else if (blockingIssues.includes('id_glare_detected')) {
             score = Math.min(score, 72);
-            message = 'Avoid glare';
-        } else if (score >= 82) {
-            message = 'Ready';
+            message = 'Tilt to remove glare';
+        } else if (!glareOk) {
+            score = Math.min(score, 72);
+            message = 'Tilt to remove glare';
+        } else if (!stableReady) {
+            score = Math.min(score, 86);
+            message = `Hold still ${steadyFrames}/${ID_STEADY_FRAME_TARGET}`;
+            state = 'near';
+        } else if (score >= 92) {
+            message = 'Captured!';
             state = 'ready';
+        } else {
+            message = 'Hold still';
+            state = score >= 78 ? 'near' : 'adjust';
         }
 
         return {
             score,
-            ready: state === 'ready' && blockingIssues.length === 0,
+            ready: state === 'ready'
+                && blockingIssues.length === 0
+                && completeEdges
+                && sizeReady
+                && stableReady
+                && sharpEnough
+                && glareOk
+                && aspectValid,
             state,
             message,
             analysis,
+            sideHint,
+            steadyFrames,
+            centroidMovement: tracking.centroidMovement ?? null,
+            sharpnessThreshold,
         };
     }
 
@@ -256,37 +434,38 @@ const smartReadinessFromAnalysis = (analysis, captureTarget) => {
         state,
         message,
         analysis,
+        sideHint: null,
+        steadyFrames: 0,
     };
 };
 
-const SmartIdBorder = ({ readiness }) => {
-    const analysis = readiness?.analysis;
-    const geometry = analysis?.geometry;
-    const quadrilateral = geometry?.quadrilateral;
-    const sampleWidth = analysis?.sample_width || analysis?.sampleWidth;
-    const sampleHeight = analysis?.sample_height || analysis?.sampleHeight;
+const drawVideoFrameToCanvas = (video, facingMode, maxWidth, maxHeight) => {
+    if (!video?.videoWidth || !video?.videoHeight) return null;
 
-    if (!quadrilateral || !sampleWidth || !sampleHeight) {
-        return null;
+    const scale = Math.min(1, maxWidth / video.videoWidth, maxHeight / video.videoHeight);
+    const width = Math.max(1, Math.round(video.videoWidth * scale));
+    const height = Math.max(1, Math.round(video.videoHeight * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+
+    if (facingMode === 'user') {
+        context.translate(width, 0);
+        context.scale(-1, 1);
     }
 
-    const points = quadrilateral.map((point) => `${point.x},${point.y}`).join(' ');
-    const color = readiness?.ready ? '#34d399' : readiness?.state === 'detecting' ? '#fbbf24' : '#60a5fa';
+    context.drawImage(video, 0, 0, width, height);
+    return canvas;
+};
 
-    return (
-        <svg
-            className="absolute inset-0 h-full w-full"
-            viewBox={`0 0 ${sampleWidth} ${sampleHeight}`}
-            preserveAspectRatio="xMidYMid slice"
-            aria-hidden="true"
-        >
-            <polygon points={points} fill="rgba(16,185,129,0.05)" stroke="rgba(15,23,42,0.55)" strokeWidth="9" strokeLinejoin="round" />
-            <polygon points={points} fill="transparent" stroke={color} strokeWidth="4" strokeLinejoin="round" className="transition-all duration-200" />
-            {quadrilateral.map((point, index) => (
-                <circle key={`${point.x}-${point.y}-${index}`} cx={point.x} cy={point.y} r="6" fill={color} />
-            ))}
-        </svg>
-    );
+const qualityRankForFrame = (readiness) => {
+    const quality = readiness?.analysis?.quality || {};
+    return (readiness?.score || 0)
+        + ((quality.laplacian_variance || 0) * 0.012)
+        - ((quality.glare_ratio || 0) * 160);
 };
 
 const CaptureGuideOverlay = ({ captureTarget, streamReady, readiness }) => {
@@ -298,20 +477,42 @@ const CaptureGuideOverlay = ({ captureTarget, streamReady, readiness }) => {
     const score = Math.round(readiness?.score || 0);
     const ready = readiness?.ready;
     const guideColor = ready ? 'border-emerald-300 shadow-[0_0_32px_rgba(16,185,129,0.28)]' : streamReady ? 'border-sky-300 shadow-[0_0_28px_rgba(56,189,248,0.20)]' : 'border-white/70';
+    const sideHint = readiness?.sideHint;
+    const edgeHintPosition = {
+        left: 'left-4 top-1/2 -translate-y-1/2',
+        right: 'right-4 top-1/2 -translate-y-1/2',
+        top: 'left-1/2 top-16 -translate-x-1/2',
+        bottom: 'bottom-16 left-1/2 -translate-x-1/2',
+    }[sideHint?.side];
+    const edgeHintArrow = {
+        left: '>',
+        right: '<',
+        top: 'v',
+        bottom: '^',
+    }[sideHint?.side];
+
+    if (isFace) {
+        return <AIFaceScanner readiness={readiness} />;
+    }
 
     return (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <div className="absolute inset-0 bg-slate-950/20"></div>
-            {!isFace && <SmartIdBorder readiness={readiness} />}
+            <AIIdBorder readiness={readiness} captureTarget={captureTarget} />
             <div className="absolute left-1/2 top-4 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-950/75 px-3 py-1.5 text-xs font-semibold text-white shadow-lg sm:top-5">
-                <span>Image Quality: {score}%</span>
-                <span className={`h-2 w-2 rounded-full ${ready ? 'bg-emerald-300' : 'bg-amber-300'}`}></span>
+                <span>Readiness: {score}%</span>
+                <span className={`h-2 w-2 rounded-full ${ready ? 'bg-blue-300 animate-pulse' : readiness?.state === 'near' ? 'bg-orange-300 animate-pulse' : 'bg-emerald-300 animate-pulse'}`}></span>
             </div>
+            {sideHint && edgeHintPosition && (
+                <div className={`absolute z-10 flex h-10 w-10 items-center justify-center rounded-full bg-slate-950/75 text-lg font-bold text-white shadow-lg ${edgeHintPosition}`}>
+                    {edgeHintArrow}
+                </div>
+            )}
             <div className="relative flex flex-col items-center gap-3">
-                {(isFace || !readiness?.analysis?.geometry?.quadrilateral) && (
+                {(!readiness?.analysis?.geometry?.quadrilateral || (readiness?.analysis?.geometry?.boundary_score || 0) < 50) && (
                     <div
                         style={guideStyle}
-                        className={`${isFace ? 'rounded-[45%]' : 'rounded-lg'} border-2 ${guideColor} transition-all duration-300`}
+                        className={`rounded-lg border-2 ${guideColor} transition-all duration-300`}
                     >
                         <div className="h-full w-full rounded-[inherit] border border-white/35"></div>
                     </div>
@@ -333,6 +534,10 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
     const [videoInfo, setVideoInfo] = useState(null);
     const [isCapturing, setIsCapturing] = useState(false);
     const [liveReadiness, setLiveReadiness] = useState(() => smartReadinessFromAnalysis(null, captureTarget));
+    const [captureNotice, setCaptureNotice] = useState(null);
+    const trackingRef = useRef({});
+    const frameBufferRef = useRef([]);
+    const autoCaptureRef = useRef(false);
 
     const stopCamera = () => {
         if (streamRef.current) {
@@ -360,6 +565,10 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
     useEffect(() => {
         if (isOpen) {
             setError(null);
+            setCaptureNotice(null);
+            autoCaptureRef.current = false;
+            frameBufferRef.current = [];
+            trackingRef.current = { startedAt: performance.now(), steadyFrames: 0 };
             setLiveReadiness(smartReadinessFromAnalysis(null, captureTarget));
             navigator.mediaDevices.getUserMedia({
                 video: {
@@ -389,6 +598,60 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
         };
     }, [isOpen, facingMode, idealVideoWidth, idealVideoHeight]);
 
+    const commitCanvasCapture = (sourceCanvas, captureMetadata, closeDelay = 0) => {
+        if (!sourceCanvas || isCapturing) return;
+
+        setIsCapturing(true);
+        sourceCanvas.toBlob(blob => {
+            if (!blob) {
+                setIsCapturing(false);
+                return;
+            }
+
+            const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+            });
+            Object.defineProperty(file, 'captureMetadata', {
+                value: captureMetadata,
+                enumerable: false,
+            });
+
+            onCapture(file);
+            setIsCapturing(false);
+            if (closeDelay > 0) {
+                setCaptureNotice('Captured!');
+                window.setTimeout(onClose, closeDelay);
+            } else {
+                onClose();
+            }
+        }, 'image/jpeg', 0.94);
+    };
+
+    const autoCaptureBestBufferedFrame = (readiness) => {
+        if (autoCaptureRef.current || captureTarget === 'face') return;
+
+        const now = performance.now();
+        const bufferedFrames = frameBufferRef.current.filter((frame) => now - frame.timestamp <= ID_ROLLING_BUFFER_MS);
+        const bestFrame = bufferedFrames.sort((first, second) => second.rank - first.rank)[0];
+        if (!bestFrame?.canvas) return;
+
+        autoCaptureRef.current = true;
+        const captureMetadata = {
+            source: 'camera',
+            captured_at: new Date().toISOString(),
+            auto_capture: true,
+            readiness_score: readiness.score,
+            steady_frames: readiness.steadyFrames,
+            centroid_movement: readiness.centroidMovement,
+            document_geometry: readiness.analysis?.geometry || null,
+            video_width: videoRef.current?.videoWidth,
+            video_height: videoRef.current?.videoHeight,
+            facing_mode: facingMode,
+        };
+        commitCanvasCapture(bestFrame.canvas, captureMetadata, 450);
+    };
+
     useEffect(() => {
         if (!isOpen || !stream || error) return undefined;
 
@@ -400,7 +663,44 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             busy = true;
 
             try {
-                const analysis = analyzeLiveCameraFrame(videoRef.current, facingMode, captureTarget);
+                let analysis = analyzeLiveCameraFrame(videoRef.current, facingMode, captureTarget);
+                const tracker = trackingRef.current;
+                const timedOut = captureTarget !== 'face' && performance.now() - (tracker.startedAt || performance.now()) > ID_AUTO_TIMEOUT_MS;
+
+                if (captureTarget !== 'face') {
+                    analysis = updateTrackedAnalysis(analysis, tracker);
+                    const laplacian = analysis?.quality?.laplacian_variance;
+                    if (!tracker.sharpnessThreshold && Number.isFinite(laplacian)) {
+                        tracker.sharpnessThreshold = Math.max(45, Math.min(120, laplacian * 0.72));
+                    }
+                    const stability = updateStability(analysis, tracker);
+                    const readiness = smartReadinessFromAnalysis(analysis, captureTarget, {
+                        ...stability,
+                        sharpnessThreshold: tracker.sharpnessThreshold,
+                        timedOut,
+                    });
+
+                    if (analysis?.geometry?.boundary_detected && !analysis.geometry.tracking_prediction) {
+                        const canvas = drawVideoFrameToCanvas(videoRef.current, facingMode, maxCaptureWidth, maxCaptureHeight);
+                        if (canvas) {
+                            frameBufferRef.current.push({
+                                canvas,
+                                timestamp: performance.now(),
+                                rank: qualityRankForFrame(readiness),
+                            });
+                            frameBufferRef.current = frameBufferRef.current.filter((frame) => performance.now() - frame.timestamp <= ID_ROLLING_BUFFER_MS);
+                        }
+                    }
+
+                    if (!cancelled) {
+                        setLiveReadiness(readiness);
+                    }
+                    if (readiness.ready) {
+                        autoCaptureBestBufferedFrame(readiness);
+                    }
+                    return;
+                }
+
                 if (!cancelled) {
                     setLiveReadiness(smartReadinessFromAnalysis(analysis, captureTarget));
                 }
@@ -414,22 +714,21 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
         };
 
         const initial = window.setTimeout(runAnalysis, 180);
-        const interval = window.setInterval(runAnalysis, 320);
+        const interval = window.setInterval(runAnalysis, captureTarget === 'face' ? 260 : 120);
 
         return () => {
             cancelled = true;
             window.clearTimeout(initial);
             window.clearInterval(interval);
         };
-    }, [isOpen, stream, error, facingMode, captureTarget]);
+    }, [isOpen, stream, error, facingMode, captureTarget, maxCaptureWidth, maxCaptureHeight]);
 
     const handleCapture = async () => {
         if (captureTarget !== 'face' && !liveReadiness.ready) return;
         if (captureTarget === 'face' && (liveReadiness.score || 0) < 70) return;
 
-        if (videoRef.current && canvasRef.current) {
+        if (videoRef.current) {
             const video = videoRef.current;
-            const canvas = canvasRef.current;
             setIsCapturing(true);
             let captureMetadata;
             try {
@@ -444,52 +743,9 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
                     facing_mode: facingMode,
                 };
             }
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-
-            const context = canvas.getContext('2d');
-            if (facingMode === 'user') {
-                context.translate(video.videoWidth, 0);
-                context.scale(-1, 1);
-            }
-            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-
-            const maxWidth = maxCaptureWidth;
-            const maxHeight = maxCaptureHeight;
-            let newWidth = canvas.width;
-            let newHeight = canvas.height;
-
-            if (newWidth > maxWidth || newHeight > maxHeight) {
-                const ratio = Math.min(maxWidth / newWidth, maxHeight / newHeight);
-                newWidth *= ratio;
-                newHeight *= ratio;
-            }
-
-            const resizedCanvas = document.createElement('canvas');
-            resizedCanvas.width = newWidth;
-            resizedCanvas.height = newHeight;
-            const resizedContext = resizedCanvas.getContext('2d');
-            resizedContext.imageSmoothingEnabled = true;
-            resizedContext.imageSmoothingQuality = 'high';
-            resizedContext.drawImage(canvas, 0, 0, newWidth, newHeight);
-
-            resizedCanvas.toBlob(blob => {
-                if (!blob) {
-                    setIsCapturing(false);
-                    return;
-                }
-                const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, {
-                    type: 'image/jpeg',
-                    lastModified: Date.now(),
-                });
-                Object.defineProperty(file, 'captureMetadata', {
-                    value: captureMetadata,
-                    enumerable: false,
-                });
-                onCapture(file);
-                setIsCapturing(false);
-                onClose();
-            }, 'image/jpeg', 0.92);
+            const captureCanvas = drawVideoFrameToCanvas(video, facingMode, maxCaptureWidth, maxCaptureHeight);
+            setIsCapturing(false);
+            commitCanvasCapture(captureCanvas, captureMetadata);
         }
     };
 
@@ -520,13 +776,398 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
                         ></video>
                     )}
                     {!error && <CaptureGuideOverlay captureTarget={captureTarget} streamReady={Boolean(stream && videoInfo?.width)} readiness={liveReadiness} />}
+                    {captureNotice && (
+                        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-slate-950/35">
+                            <div className="rounded-full bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-xl">{captureNotice}</div>
+                        </div>
+                    )}
                     <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
                 <div className="p-4 border-t bg-slate-50 flex gap-3">
                     <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
-                    <PrimaryButton onClick={handleCapture} disabled={!stream || !!error || isCapturing || !captureReady} className="w-full">
-                        <CameraIcon/> {isCapturing ? 'Capturing...' : captureReady ? 'Capture Photo' : 'Align to Capture'}
+                    <PrimaryButton onClick={handleCapture} disabled={!stream || !!error || isCapturing || (captureTarget === 'face' ? !captureReady : true)} className="w-full">
+                        <CameraIcon/> {isCapturing ? 'Capturing...' : captureTarget === 'face' ? (captureReady ? 'Capture Photo' : 'Align to Capture') : 'Auto Capture Armed'}
                     </PrimaryButton>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- GALLERY UPLOAD MODAL COMPONENT ---
+const GalleryUploadModal = ({ isOpen, onClose, onSelect, title, captureTarget, accept = 'image/*' }) => {
+    const fileInputRef = useRef(null);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState(null);
+
+    useEffect(() => {
+        if (isOpen) {
+            setSelectedFile(null);
+            setPreviewUrl(null);
+            setAnalysisResult(null);
+        }
+    }, [isOpen]);
+
+    const analyzeGalleryImage = async (file) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        return new Promise((resolve) => {
+            img.onload = () => {
+                const maxSize = captureTarget === 'face' ? 800 : 1200;
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxSize || height > maxSize) {
+                    const ratio = Math.min(maxSize / width, maxSize / height);
+                    width *= ratio;
+                    height *= ratio;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const imageData = ctx.getImageData(0, 0, width, height);
+                const data = imageData.data;
+                
+                let totalBrightness = 0;
+                let edgeCount = 0;
+                const brightnessValues = [];
+                
+                for (let i = 0; i < data.length; i += 4) {
+                    const brightness = (0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+                    totalBrightness += brightness;
+                    brightnessValues.push(brightness);
+                    
+                    if (i > 4) {
+                        const prevBrightness = brightnessValues[Math.floor(i / 4) - 1];
+                        if (Math.abs(brightness - prevBrightness) > 30) {
+                            edgeCount++;
+                        }
+                    }
+                }
+                
+                const avgBrightness = totalBrightness / (data.length / 4);
+                const brightnessVariance = brightnessValues.reduce((acc, val) => acc + Math.pow(val - avgBrightness, 2), 0) / brightnessValues.length;
+                
+                const isDark = avgBrightness < 80;
+                const isTooBright = avgBrightness > 200;
+                const hasGoodContrast = brightnessVariance > 500;
+                const hasEdges = edgeCount > (data.length / 16);
+                
+                let quality = 70;
+                let issues = [];
+                let message = 'Image looks good';
+                
+                if (isDark) {
+                    quality -= 25;
+                    issues.push('too_dark');
+                    message = 'Image is too dark. Consider using better lighting.';
+                }
+                if (isTooBright) {
+                    quality -= 20;
+                    issues.push('too_bright');
+                    message = 'Image may be overexposed.';
+                }
+                if (!hasEdges && captureTarget !== 'face') {
+                    quality -= 15;
+                    issues.push('low_detail');
+                    message = 'Image may lack sufficient detail.';
+                }
+                
+                resolve({
+                    quality: Math.max(10, Math.min(100, quality)),
+                    avgBrightness: Math.round(avgBrightness),
+                    brightnessVariance: Math.round(brightnessVariance),
+                    hasEdges,
+                    isDark,
+                    isTooBright,
+                    hasGoodContrast,
+                    issues,
+                    message,
+                    dimensions: { width, height },
+                });
+            };
+            img.src = URL.createObjectURL(file);
+        });
+    };
+
+    const handleFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+        if (!validTypes.includes(file.type)) {
+            alert('Please select a valid image file (JPEG, PNG, or WebP)');
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            alert('File size must be less than 10MB');
+            return;
+        }
+
+        setSelectedFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+        
+        setIsAnalyzing(true);
+        try {
+            const result = await analyzeGalleryImage(file);
+            setAnalysisResult(result);
+        } catch (error) {
+            console.error('Image analysis error:', error);
+            setAnalysisResult({ quality: 50, message: 'Could not analyze image', issues: ['analysis_failed'] });
+        } finally {
+            setIsAnalyzing(false);
+        }
+    };
+
+    const handleConfirm = () => {
+        if (!selectedFile) return;
+        
+        const fileWithMetadata = new File([selectedFile], selectedFile.name, {
+            type: selectedFile.type,
+            lastModified: Date.now(),
+        });
+        
+        Object.defineProperty(fileWithMetadata, 'captureMetadata', {
+            value: {
+                source: 'gallery',
+                captured_at: new Date().toISOString(),
+                gallery_analysis: analysisResult,
+            },
+            enumerable: false,
+        });
+        
+        onSelect(fileWithMetadata);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/90 z-50 flex justify-center items-center p-0 sm:p-4">
+            <div className="bg-white shadow-xl w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-xl flex flex-col overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-3 border-b">
+                    <h2 className="text-base sm:text-lg font-semibold text-slate-800">{title}</h2>
+                    <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-200"><CloseIcon /></button>
+                </div>
+                
+                <div className="flex-1 p-4 overflow-y-auto">
+                    {!previewUrl ? (
+                        <div 
+                            className="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50/50 transition-all"
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept={accept}
+                                onChange={handleFileChange}
+                                className="hidden"
+                            />
+                            <GalleryIcon />
+                            <p className="mt-2 text-slate-600 font-medium">Tap to select from gallery</p>
+                            <p className="text-sm text-slate-400 mt-1">JPEG, PNG, or WebP (max 10MB)</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="relative rounded-lg overflow-hidden bg-slate-100 border">
+                                <img 
+                                    src={previewUrl} 
+                                    alt="Preview" 
+                                    className="w-full h-auto max-h-64 object-contain"
+                                />
+                                <button 
+                                    onClick={() => { setSelectedFile(null); setPreviewUrl(null); setAnalysisResult(null); }}
+                                    className="absolute top-2 right-2 bg-slate-800/70 text-white p-1.5 rounded-full hover:bg-slate-900"
+                                >
+                                    <CloseIcon />
+                                </button>
+                            </div>
+                            
+                            {isAnalyzing ? (
+                                <div className="flex items-center justify-center gap-2 py-3 text-slate-600">
+                                    <AIProcessingIcon />
+                                    <span>Analyzing image quality...</span>
+                                </div>
+                            ) : analysisResult && (
+                                <div className={`p-3 rounded-lg border ${analysisResult.quality >= 60 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-medium text-slate-700">AI Quality Score</span>
+                                        <span className={`font-bold ${analysisResult.quality >= 60 ? 'text-green-600' : 'text-amber-600'}`}>
+                                            {analysisResult.quality}%
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-slate-600">
+                                        {analysisResult.message}
+                                    </div>
+                                    {analysisResult.issues.length > 0 && (
+                                        <div className="mt-2 flex flex-wrap gap-1">
+                                            {analysisResult.issues.map((issue, idx) => (
+                                                <span key={idx} className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded">
+                                                    {issue.replace('_', ' ')}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+                
+                <div className="p-4 border-t bg-slate-50 flex gap-3">
+                    <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
+                    <PrimaryButton 
+                        onClick={handleConfirm} 
+                        disabled={!selectedFile || isAnalyzing} 
+                        className="w-full"
+                    >
+                        Use This Image
+                    </PrimaryButton>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- AI ENHANCED ID BORDER ---
+const AIIdBorder = ({ readiness, captureTarget }) => {
+    const analysis = readiness?.analysis;
+    const geometry = analysis?.geometry;
+    const quadrilateral = geometry?.quadrilateral;
+    const sampleWidth = analysis?.sample_width || analysis?.sampleWidth;
+    const sampleHeight = analysis?.sample_height || analysis?.sampleHeight;
+    
+    if (!quadrilateral || !sampleWidth || !sampleHeight || (geometry?.boundary_score || 0) < 50) {
+        return null;
+    }
+
+    const points = quadrilateral.map((point) => `${point.x},${point.y}`).join(' ');
+    
+    const getStatusColor = () => {
+        if (readiness?.ready) return { stroke: '#2563eb', fill: 'rgba(37,99,235,0.10)', glow: 'rgba(37,99,235,0.45)' };
+        if (readiness?.state === 'near') return { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.08)', glow: 'rgba(245,158,11,0.34)' };
+        if (geometry?.boundary_detected) return { stroke: '#10b981', fill: 'rgba(16,185,129,0.07)', glow: 'rgba(16,185,129,0.30)' };
+        return { stroke: '#f59e0b', fill: 'rgba(245,158,11,0.06)', glow: 'rgba(245,158,11,0.24)' };
+    };
+    
+    const colors = getStatusColor();
+    const strokeWidth = readiness?.ready ? 8 : readiness?.state === 'near' ? 6 : 4;
+
+    return (
+        <svg className="absolute inset-0 h-full w-full pointer-events-none" viewBox={`0 0 ${sampleWidth} ${sampleHeight}`} preserveAspectRatio="xMidYMid slice">
+            <defs>
+                <filter id="aiGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="4" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+            </defs>
+            
+            <polygon points={points} fill={colors.fill} stroke="rgba(15,23,42,0.45)" strokeWidth={strokeWidth + 7} strokeLinejoin="round" />
+            <polygon points={points} fill="transparent" stroke={colors.stroke} strokeWidth={strokeWidth} strokeLinejoin="round" filter="url(#aiGlow)" className="transition-all duration-150" />
+            
+            {quadrilateral.map((point, index) => (
+                <g key={`corner-${index}`}>
+                    <circle cx={point.x} cy={point.y} r={readiness?.ready ? 10 : 7} fill={colors.stroke} opacity="0.28" />
+                    <circle cx={point.x} cy={point.y} r={readiness?.ready ? 5 : 4} fill={colors.stroke} />
+                    <circle cx={point.x} cy={point.y} r="2" fill="white" />
+                </g>
+            ))}
+        </svg>
+    );
+};
+
+// --- AI FACE SCANNER OVERLAY ---
+const AIFaceScanner = ({ readiness }) => {
+    const analysis = readiness?.analysis;
+    const geometry = analysis?.geometry || {};
+    const faceBox = geometry.face_box;
+    const quality = analysis?.quality || {};
+    const score = Math.round(readiness?.score || 0);
+    const ready = readiness?.ready;
+    const message = readiness?.message || 'Position your face';
+    
+    const getStatusColor = () => {
+        if (ready) return { bg: 'bg-green-500', text: 'text-green-400', border: 'border-green-400' };
+        if (readiness?.state === 'detecting') return { bg: 'bg-amber-500', text: 'text-amber-400', border: 'border-amber-400' };
+        return { bg: 'bg-blue-500', text: 'text-blue-400', border: 'border-blue-400' };
+    };
+    
+    const colors = getStatusColor();
+
+    return (
+        <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 bg-slate-950/30"></div>
+            
+            {faceBox && (
+                <div 
+                    className="absolute border-2 animate-pulse"
+                    style={{
+                        left: `${faceBox.x}%`,
+                        top: `${faceBox.y}%`,
+                        width: `${faceBox.width}%`,
+                        height: `${faceBox.height}%`,
+                        borderColor: colors.border,
+                        backgroundColor: `${colors.bg.replace('bg-', 'rgba(')}${ready ? '20' : '10'}`,
+                    }}
+                >
+                    {ready && (
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-green-600 text-white text-xs px-2 py-1 rounded-full">
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" /></svg>
+                            Face Detected
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            <div className="relative flex flex-col items-center gap-4">
+                <div 
+                    className={`w-56 h-64 sm:w-64 sm:h-80 rounded-[40%] border-3 ${colors.border} bg-slate-900/20 transition-all duration-300`}
+                    style={{
+                        boxShadow: ready 
+                            ? `0 0 40px ${colors.bg.replace('bg-', '')}40, inset 0 0 20px ${colors.bg.replace('bg-', '')}20`
+                            : '0 0 20px rgba(59,130,246,0.2)',
+                    }}
+                >
+                    <div className="h-full w-full rounded-[inherit] border border-white/20"></div>
+                    
+                    {!faceBox && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <svg className="w-16 h-16 text-slate-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex flex-col items-center gap-2">
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900/80 backdrop-blur ${colors.text}`}>
+                        <div className={`w-2 h-2 rounded-full ${colors.bg} animate-pulse`}></div>
+                        <span className="text-sm font-medium">{message}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 text-white/70 text-xs">
+                        <span>Quality: {score}%</span>
+                        <div className="w-24 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                            <div 
+                                className={`h-full rounded-full transition-all duration-300 ${ready ? 'bg-green-500' : colors.bg}`} 
+                                style={{ width: `${score}%` }}
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div className="absolute top-4 left-4 right-4 flex justify-between">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur text-white text-xs">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    AI Face Scan
                 </div>
             </div>
         </div>
@@ -710,12 +1351,40 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
 
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [cameraTarget, setCameraTarget] = useState(null);
+    
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [galleryTarget, setGalleryTarget] = useState(null);
 
     const handleCapture = (file) => {
         const previewUrl = URL.createObjectURL(file);
         clearErrors('images');
 
         switch (cameraTarget) {
+            case 'id_front':
+                setIdFrontPreview(previewUrl);
+                setData('valid_id_front_image', file);
+                clearErrors('valid_id_front_image');
+                break;
+            case 'id_back':
+                setIdBackPreview(previewUrl);
+                setData('valid_id_back_image', file);
+                clearErrors('valid_id_back_image');
+                break;
+            case 'face':
+                setFaceImagePreview(previewUrl);
+                setData('face_image', file);
+                clearErrors('face_image');
+                break;
+            default:
+                break;
+        }
+    };
+
+    const handleGallerySelect = (file) => {
+        const previewUrl = URL.createObjectURL(file);
+        clearErrors('images');
+
+        switch (galleryTarget) {
             case 'id_front':
                 setIdFrontPreview(previewUrl);
                 setData('valid_id_front_image', file);
@@ -756,6 +1425,14 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                 maxCaptureWidth={isIdCapture ? 1600 : 1000}
                 maxCaptureHeight={isIdCapture ? 1200 : 1000}
             />
+            <GalleryUploadModal
+                isOpen={isGalleryOpen}
+                onClose={() => setIsGalleryOpen(false)}
+                onSelect={handleGallerySelect}
+                title={`Select ${galleryTarget?.replace('_', ' ')?.replace('id', 'ID') || ''} from Gallery`}
+                captureTarget={galleryTarget}
+                accept="image/jpeg,image/png,image/webp"
+            />
             <div className="space-y-4">
                 <div className="border-b pb-2">
                     <h3 className="text-lg font-semibold text-slate-700">Identity Verification</h3>
@@ -778,7 +1455,10 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                         <div className="w-full h-32 bg-slate-100 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
                             {idFrontPreview ? <img src={idFrontPreview} alt="ID Front Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Front Preview</span>}
                         </div>
-                        <SecondaryButton type="button" onClick={() => { setCameraTarget('id_front'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Front</SecondaryButton>
+                        <div className="grid grid-cols-2 gap-2">
+                            <SecondaryButton type="button" onClick={() => { setCameraTarget('id_front'); setIsCameraOpen(true); }} className="!py-2 !text-sm"><CameraIcon /> Camera</SecondaryButton>
+                            <SecondaryButton type="button" onClick={() => { setGalleryTarget('id_front'); setIsGalleryOpen(true); }} className="!py-2 !text-sm"><GalleryIcon /> Gallery</SecondaryButton>
+                        </div>
                         <IdPrecheckMessage validation={idFrontValidation} />
                         <InputError message={errors.valid_id_front_image} className="mt-2" />
                     </div>
@@ -787,7 +1467,10 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                         <div className="w-full h-32 bg-slate-100 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
                             {idBackPreview ? <img src={idBackPreview} alt="ID Back Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Back Preview</span>}
                         </div>
-                        <SecondaryButton type="button" onClick={() => { setCameraTarget('id_back'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Back</SecondaryButton>
+                        <div className="grid grid-cols-2 gap-2">
+                            <SecondaryButton type="button" onClick={() => { setCameraTarget('id_back'); setIsCameraOpen(true); }} className="!py-2 !text-sm"><CameraIcon /> Camera</SecondaryButton>
+                            <SecondaryButton type="button" onClick={() => { setGalleryTarget('id_back'); setIsGalleryOpen(true); }} className="!py-2 !text-sm"><GalleryIcon /> Gallery</SecondaryButton>
+                        </div>
                         <IdPrecheckMessage validation={idBackValidation} />
                         <InputError message={errors.valid_id_back_image} className="mt-2" />
                     </div>
@@ -798,7 +1481,10 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                     <div className="w-full h-48 bg-slate-100 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
                         {faceImagePreview ? <img src={faceImagePreview} alt="Face Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-sm">Face Preview</span>}
                     </div>
-                    <SecondaryButton type="button" onClick={() => { setCameraTarget('face'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Take Picture of Face</SecondaryButton>
+                    <div className="grid grid-cols-2 gap-2">
+                        <SecondaryButton type="button" onClick={() => { setCameraTarget('face'); setIsCameraOpen(true); }} className="!py-2 !text-sm"><CameraIcon /> Camera</SecondaryButton>
+                        <SecondaryButton type="button" onClick={() => { setGalleryTarget('face'); setIsGalleryOpen(true); }} className="!py-2 !text-sm"><GalleryIcon /> Gallery</SecondaryButton>
+                    </div>
                     <IdPrecheckMessage validation={selfieValidation} />
                     <InputError message={errors.face_image} className="mt-2" />
                 </div>

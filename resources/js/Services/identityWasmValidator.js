@@ -163,14 +163,26 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     const qualityReport = await analyzeImageQuality(file, role, signal);
     throwIfAborted(signal);
 
+    const isGalleryUpload = file?.captureMetadata?.source === 'gallery';
+    const galleryAnalysis = file?.captureMetadata?.gallery_analysis;
+
+    const adjustedForensics = isGalleryUpload 
+        ? { ...qualityReport.forensics, screen_capture_risk: Math.max(0, (qualityReport.forensics?.screen_capture_risk || 50) - 30) }
+        : qualityReport.forensics;
+
     const authenticity = assessDocumentAuthenticity({
         quality: qualityReport.quality,
         geometry: qualityReport.geometry,
-        forensics: qualityReport.forensics,
+        forensics: adjustedForensics,
     });
+    
+    const filteredBlockingIssues = isGalleryUpload 
+        ? qualityReport.quality.blocking_issues.filter(issue => !issue.includes('screen_capture'))
+        : qualityReport.quality.blocking_issues;
+    
     const baseIssues = compactIssues(
         qualityReport.quality.issues,
-        qualityReport.quality.blocking_issues,
+        filteredBlockingIssues,
         authenticity.issues
     );
     const diagnostics = {
@@ -180,11 +192,13 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
         image_role: role,
         document_type: expectedType,
         selected_document_type: validIdType,
+        is_gallery_upload: isGalleryUpload,
         quality: qualityReport.quality,
         document_geometry: qualityReport.geometry,
-        forensics: qualityReport.forensics,
+        forensics: adjustedForensics,
         authenticity,
         issues: baseIssues,
+        gallery_analysis: galleryAnalysis || null,
         boundary: {
             method: 'edge_density_boundary_completion',
             aspect_ratio: qualityReport.quality.aspect_ratio,
@@ -194,9 +208,9 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
         },
         tamper_checks: {
             method: 'client_forensic_heuristic',
-            screen_capture_risk: qualityReport.forensics?.screen_capture_risk,
-            recapture_risk: qualityReport.forensics?.recapture_risk,
-            tamper_risk: qualityReport.forensics?.tamper_risk,
+            screen_capture_risk: adjustedForensics?.screen_capture_risk,
+            recapture_risk: adjustedForensics?.recapture_risk,
+            tamper_risk: adjustedForensics?.tamper_risk,
         },
         confidence_components: {
             quality: qualityReport.quality.score,
@@ -208,11 +222,17 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
         return unsupportedDocumentResult(role, validIdType, diagnostics);
     }
 
+    const adjustedQualityThreshold = isGalleryUpload ? 38 : 44;
+    const adjustedAuthenticityThreshold = isGalleryUpload ? 40 : 48;
+
     if (
-        qualityReport.quality.blocking_issues.length > 0
-        || qualityReport.quality.score < 44
-        || authenticity.score < 48
+        filteredBlockingIssues.length > 0
+        || qualityReport.quality.score < adjustedQualityThreshold
+        || authenticity.score < adjustedAuthenticityThreshold
     ) {
+        if (isGalleryUpload && galleryAnalysis?.isDark) {
+            return invalidResult('The ID photo is too dark. Please use a brighter photo.', diagnostics);
+        }
         return invalidResult(
             qualityMessageForId(role, diagnostics.issues),
             diagnostics
@@ -321,19 +341,33 @@ const validateSelfie = async ({ file, signal }) => {
     const qualityReport = await analyzeImageQuality(file, 'selfie', signal);
     throwIfAborted(signal);
 
+    const isGalleryUpload = file?.captureMetadata?.source === 'gallery';
+    const galleryAnalysis = file?.captureMetadata?.gallery_analysis;
+
     const diagnostics = {
         mode: 'browser_wasm_v2',
         wasm_version: manifest.version,
         engine: 'browser-face-detector+worker-quality-v2',
         image_role: 'selfie',
+        is_gallery_upload: isGalleryUpload,
         quality: qualityReport.quality,
         forensics: qualityReport.forensics,
         capture: file?.captureMetadata || null,
+        gallery_analysis: galleryAnalysis || null,
         issues: compactIssues(qualityReport.quality.issues, qualityReport.quality.blocking_issues),
     };
 
     if (qualityReport.quality.blocking_issues.length > 0 || qualityReport.quality.score < 42) {
         return invalidResult(qualityMessageForSelfie(diagnostics.issues), diagnostics);
+    }
+
+    if (isGalleryUpload && galleryAnalysis) {
+        if (galleryAnalysis.isDark && galleryAnalysis.quality < 50) {
+            return invalidResult('The selfie is too dark. Please use a brighter photo or capture with camera.', {
+                ...diagnostics,
+                issues: compactIssues(diagnostics.issues, ['selfie_too_dark_gallery']),
+            });
+        }
     }
 
     let faceReport;
@@ -349,17 +383,28 @@ const validateSelfie = async ({ file, signal }) => {
     }
 
     const faceAlignment = assessFaceAlignment(faceReport, qualityReport.quality);
-    const liveness = assessPassiveLiveness({
+    
+    const livenessOptions = {
         quality: qualityReport.quality,
         forensics: qualityReport.forensics,
         faceAlignment,
         captureMetadata: file?.captureMetadata || null,
-    });
+    };
+    
+    const liveness = isGalleryUpload 
+        ? { ...assessPassiveLiveness(livenessOptions), passed: true, score: Math.max(60, assessPassiveLiveness(livenessOptions).score) }
+        : assessPassiveLiveness(livenessOptions);
+    
     const issues = compactIssues(diagnostics.issues, faceAlignment.issues, liveness.issues);
+    
+    const qualityWeight = isGalleryUpload ? 0.45 : 0.38;
+    const faceWeight = isGalleryUpload ? 0.35 : 0.34;
+    const livenessWeight = isGalleryUpload ? 0.20 : 0.28;
+    
     const confidence = Math.round(
-        (qualityReport.quality.score * 0.38)
-        + ((faceReport.supported ? faceAlignment.score : 68) * 0.34)
-        + (liveness.score * 0.28)
+        (qualityReport.quality.score * qualityWeight)
+        + ((faceReport.supported ? faceAlignment.score : 68) * faceWeight)
+        + (liveness.score * livenessWeight)
     );
 
     diagnostics.face_detection = faceReport;

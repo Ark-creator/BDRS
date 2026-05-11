@@ -3,20 +3,9 @@ export const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const round = (value, places = 2) => Number(value.toFixed(places));
 
 const COMMON_SCREEN_RATIOS = [16 / 9, 18 / 9, 19.5 / 9, 20 / 9, 4 / 3];
+const CARD_ASPECT_RATIO = 1.586;
 
 const ratioNear = (ratio, expected, tolerance = 0.035) => Math.abs(ratio - expected) <= tolerance;
-
-const weightedQuantile = (histogram, total, quantile) => {
-    const target = Math.max(1, total * quantile);
-    let running = 0;
-
-    for (let i = 0; i < histogram.length; i += 1) {
-        running += histogram[i];
-        if (running >= target) return i;
-    }
-
-    return histogram.length - 1;
-};
 
 const saturationFor = (red, green, blue) => {
     const max = Math.max(red, green, blue);
@@ -54,163 +43,311 @@ const averageHash = (grayscale, width, height, size = 8) => {
     return cells.map((value) => (value > mean ? '1' : '0')).join('');
 };
 
-const geometryFromEdges = (edgeMap, width, height, edgeDensity) => {
-    const xHistogram = new Uint16Array(width);
-    const yHistogram = new Uint16Array(height);
-    let edgeCount = 0;
+const emptyGeometry = (reason = 'not_found') => ({
+    boundary_detected: false,
+    boundary_score: 0,
+    document_area_ratio: 0,
+    document_aspect_ratio: null,
+    document_rotation_degrees: null,
+    perspective_skew: null,
+    cropped_risk: 'unknown',
+    edge_completeness: 0,
+    edge_confidence: 0,
+    corner_confidence: 0,
+    side_confidence: { top: 0, right: 0, bottom: 0, left: 0 },
+    missing_edges: ['top', 'right', 'bottom', 'left'],
+    corners_inside: false,
+    quadrilateral: null,
+    centroid: null,
+    margins: null,
+    detection_reason: reason,
+});
 
-    for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-            if (!edgeMap[(y * width) + x]) continue;
-            xHistogram[x] += 1;
-            yHistogram[y] += 1;
-            edgeCount += 1;
+const distance = (first, second) => Math.hypot(first.x - second.x, first.y - second.y);
+
+const polygonArea = (points) => Math.abs(points.reduce((total, point, index) => {
+    const next = points[(index + 1) % points.length];
+    return total + ((point.x * next.y) - (next.x * point.y));
+}, 0)) / 2;
+
+const orderQuadrilateral = (points) => {
+    const center = points.reduce((total, point) => ({
+        x: total.x + point.x,
+        y: total.y + point.y,
+    }), { x: 0, y: 0 });
+    center.x /= points.length;
+    center.y /= points.length;
+
+    const ordered = [...points].sort((a, b) => Math.atan2(a.y - center.y, a.x - center.x) - Math.atan2(b.y - center.y, b.x - center.x));
+    const startIndex = ordered.reduce((best, point, index) => {
+        const bestPoint = ordered[best];
+        return point.x + point.y < bestPoint.x + bestPoint.y ? index : best;
+    }, 0);
+
+    return [...ordered.slice(startIndex), ...ordered.slice(0, startIndex)];
+};
+
+const edgeCoverageBetween = (edgeMap, width, height, start, end) => {
+    const length = distance(start, end);
+    const steps = Math.max(14, Math.round(length));
+    const radius = Math.max(1, Math.round(Math.min(width, height) * 0.006));
+    let hits = 0;
+
+    for (let step = 0; step <= steps; step += 1) {
+        const t = step / steps;
+        const x = Math.round(start.x + ((end.x - start.x) * t));
+        const y = Math.round(start.y + ((end.y - start.y) * t));
+        let found = false;
+
+        for (let dy = -radius; dy <= radius && !found; dy += 1) {
+            const yy = y + dy;
+            if (yy < 1 || yy >= height - 1) continue;
+
+            for (let dx = -radius; dx <= radius; dx += 1) {
+                const xx = x + dx;
+                if (xx < 1 || xx >= width - 1) continue;
+                if (edgeMap[(yy * width) + xx]) {
+                    found = true;
+                    break;
+                }
+            }
         }
+
+        if (found) hits += 1;
     }
 
-    if (edgeCount === 0) {
-        return {
-            boundary_detected: false,
-            boundary_score: 0,
-            document_area_ratio: 0,
-            document_aspect_ratio: null,
-            document_rotation_degrees: null,
-            perspective_skew: null,
-            cropped_risk: 'unknown',
-            edge_completeness: 0,
-            quadrilateral: null,
-            margins: null,
+    return hits / Math.max(1, steps + 1);
+};
+
+const serializePoint = (point, width, height) => ({
+    x: round(point.x, 1),
+    y: round(point.y, 1),
+    nx: round(point.x / width, 4),
+    ny: round(point.y / height, 4),
+});
+
+const geometryFromEdges = (edgeMap, grayscale, saturationMap, width, height, edgeDensity, brightness, contrast) => {
+    const pixels = width * height;
+    const visited = new Uint8Array(pixels);
+    const queue = new Int32Array(pixels);
+    const minimumComponentPixels = Math.max(36, Math.round(pixels * 0.006));
+    const brightnessFloor = brightness < 72 ? brightness + 16 : 88;
+    const documentThreshold = clamp(brightness + Math.max(14, contrast * 0.58), brightnessFloor, 188);
+    const isDocumentPixel = (index) => grayscale[index] >= documentThreshold && saturationMap[index] <= 180;
+    const candidates = [];
+
+    for (let start = 0; start < pixels; start += 1) {
+        if (visited[start] || !isDocumentPixel(start)) continue;
+
+        let queueStart = 0;
+        let queueEnd = 0;
+        let count = 0;
+        let minX = width;
+        let minY = height;
+        let maxX = 0;
+        let maxY = 0;
+        let sumX = 0;
+        let sumY = 0;
+        let sumXX = 0;
+        let sumYY = 0;
+        let sumXY = 0;
+
+        visited[start] = 1;
+        queue[queueEnd] = start;
+        queueEnd += 1;
+
+        while (queueStart < queueEnd) {
+            const index = queue[queueStart];
+            queueStart += 1;
+
+            const x = index % width;
+            const y = Math.floor(index / width);
+            count += 1;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+            sumX += x;
+            sumY += y;
+            sumXX += x * x;
+            sumYY += y * y;
+            sumXY += x * y;
+
+            for (let dy = -1; dy <= 1; dy += 1) {
+                const yy = y + dy;
+                if (yy < 0 || yy >= height) continue;
+
+                for (let dx = -1; dx <= 1; dx += 1) {
+                    if (dx === 0 && dy === 0) continue;
+                    const xx = x + dx;
+                    if (xx < 0 || xx >= width) continue;
+                    const next = (yy * width) + xx;
+                    if (visited[next] || !isDocumentPixel(next)) continue;
+
+                    visited[next] = 1;
+                    queue[queueEnd] = next;
+                    queueEnd += 1;
+                }
+            }
+        }
+
+        if (count < minimumComponentPixels) continue;
+
+        const bboxWidth = maxX - minX + 1;
+        const bboxHeight = maxY - minY + 1;
+        const bboxAreaRatio = (bboxWidth * bboxHeight) / pixels;
+        if (bboxAreaRatio > 0.98 || bboxAreaRatio < 0.012) continue;
+
+        const centerX = sumX / count;
+        const centerY = sumY / count;
+        const covXX = (sumXX / count) - (centerX * centerX);
+        const covYY = (sumYY / count) - (centerY * centerY);
+        const covXY = (sumXY / count) - (centerX * centerY);
+        const theta = 0.5 * Math.atan2(2 * covXY, covXX - covYY);
+        let axisX = Math.cos(theta);
+        let axisY = Math.sin(theta);
+        let crossX = -axisY;
+        let crossY = axisX;
+        let minU = Infinity;
+        let maxU = -Infinity;
+        let minV = Infinity;
+        let maxV = -Infinity;
+
+        for (let i = 0; i < queueEnd; i += 1) {
+            const index = queue[i];
+            const x = (index % width) - centerX;
+            const y = Math.floor(index / width) - centerY;
+            const u = (x * axisX) + (y * axisY);
+            const v = (x * crossX) + (y * crossY);
+            minU = Math.min(minU, u);
+            maxU = Math.max(maxU, u);
+            minV = Math.min(minV, v);
+            maxV = Math.max(maxV, v);
+        }
+
+        let longSide = maxU - minU;
+        let shortSide = maxV - minV;
+        if (shortSide > longSide) {
+            [longSide, shortSide] = [shortSide, longSide];
+            [axisX, crossX] = [crossX, axisX];
+            [axisY, crossY] = [crossY, axisY];
+            [minU, minV] = [minV, minU];
+            [maxU, maxV] = [maxV, maxU];
+        }
+
+        if (longSide < 18 || shortSide < 12) continue;
+
+        const aspectRatio = longSide / Math.max(1, shortSide);
+        if (aspectRatio < 1.18 || aspectRatio > 2.25) continue;
+
+        const rawCorners = [
+            { x: centerX + (axisX * minU) + (crossX * minV), y: centerY + (axisY * minU) + (crossY * minV) },
+            { x: centerX + (axisX * maxU) + (crossX * minV), y: centerY + (axisY * maxU) + (crossY * minV) },
+            { x: centerX + (axisX * maxU) + (crossX * maxV), y: centerY + (axisY * maxU) + (crossY * maxV) },
+            { x: centerX + (axisX * minU) + (crossX * maxV), y: centerY + (axisY * minU) + (crossY * maxV) },
+        ];
+        const quadrilateral = orderQuadrilateral(rawCorners);
+        const sideCoverage = {
+            top: edgeCoverageBetween(edgeMap, width, height, quadrilateral[0], quadrilateral[1]),
+            right: edgeCoverageBetween(edgeMap, width, height, quadrilateral[1], quadrilateral[2]),
+            bottom: edgeCoverageBetween(edgeMap, width, height, quadrilateral[2], quadrilateral[3]),
+            left: edgeCoverageBetween(edgeMap, width, height, quadrilateral[3], quadrilateral[0]),
         };
+        const sideValues = Object.values(sideCoverage);
+        const edgeCompleteness = sideValues.reduce((total, value) => total + value, 0) / sideValues.length;
+        const minSideCoverage = Math.min(...sideValues);
+        const areaRatio = polygonArea(quadrilateral) / pixels;
+        const fillRatio = count / Math.max(1, longSide * shortSide);
+        const aspectScore = clamp(1 - (Math.abs(aspectRatio - CARD_ASPECT_RATIO) / 0.52), 0, 1);
+        const fillScore = clamp((fillRatio - 0.22) / 0.48, 0, 1);
+        const textureScore = clamp(edgeDensity / 0.035, 0, 1);
+        const boundaryScore = clamp(
+            (aspectScore * 35)
+            + (edgeCompleteness * 40)
+            + (minSideCoverage * 18)
+            + (fillScore * 10)
+            + (textureScore * 5),
+            0,
+            100
+        );
+        const cornersInside = quadrilateral.every((point) => point.x >= 2 && point.y >= 2 && point.x <= width - 3 && point.y <= height - 3);
+        const missingEdges = Object.entries(sideCoverage).filter(([, value]) => value < 0.22).map(([side]) => side);
+
+        candidates.push({
+            boundaryScore,
+            quadrilateral,
+            aspectRatio,
+            areaRatio,
+            edgeCompleteness,
+            minSideCoverage,
+            sideCoverage,
+            cornersInside,
+            missingEdges,
+            bbox: { minX, maxX, minY, maxY },
+            center: { x: centerX, y: centerY },
+            fillRatio,
+        });
     }
 
-    const trim = edgeDensity > 0.075 ? 0.035 : 0.018;
-    let minX = weightedQuantile(xHistogram, edgeCount, trim);
-    let maxX = weightedQuantile(xHistogram, edgeCount, 1 - trim);
-    let minY = weightedQuantile(yHistogram, edgeCount, trim);
-    let maxY = weightedQuantile(yHistogram, edgeCount, 1 - trim);
-
-    if (maxX <= minX || maxY <= minY) {
-        minX = 0;
-        minY = 0;
-        maxX = width - 1;
-        maxY = height - 1;
+    if (!candidates.length) {
+        return emptyGeometry('card_rectangle_not_found');
     }
 
-    let topLeftScore = Infinity;
-    let topRightScore = -Infinity;
-    let bottomRightScore = -Infinity;
-    let bottomLeftScore = -Infinity;
-    let topLeft = null;
-    let topRight = null;
-    let bottomRight = null;
-    let bottomLeft = null;
-
-    const boxWidth = Math.max(1, maxX - minX + 1);
-    const boxHeight = Math.max(1, maxY - minY + 1);
-    const aspectRatio = boxWidth / boxHeight;
-    const areaRatio = (boxWidth * boxHeight) / Math.max(1, width * height);
+    candidates.sort((first, second) => second.boundaryScore - first.boundaryScore);
+    const candidate = candidates[0];
+    const quadrilateral = candidate.quadrilateral;
+    const minX = Math.min(...quadrilateral.map((point) => point.x));
+    const maxX = Math.max(...quadrilateral.map((point) => point.x));
+    const minY = Math.min(...quadrilateral.map((point) => point.y));
+    const maxY = Math.max(...quadrilateral.map((point) => point.y));
     const marginLeft = minX / width;
     const marginRight = (width - maxX - 1) / width;
     const marginTop = minY / height;
     const marginBottom = (height - maxY - 1) / height;
     const minMargin = Math.min(marginLeft, marginRight, marginTop, marginBottom);
-    const maxFill = Math.max(boxWidth / width, boxHeight / height);
-    const looksCardLike = (aspectRatio >= 1.2 && aspectRatio <= 2.35) || (aspectRatio >= 0.42 && aspectRatio <= 0.85);
-    const boundaryDetected = looksCardLike && areaRatio >= 0.18 && areaRatio <= 0.96 && edgeDensity >= 0.005;
-
-    const sideThicknessX = Math.max(2, Math.round(boxWidth * 0.035));
-    const sideThicknessY = Math.max(2, Math.round(boxHeight * 0.035));
-    const sideCounts = { top: 0, right: 0, bottom: 0, left: 0 };
-    const sideAreas = {
-        top: boxWidth * sideThicknessY,
-        bottom: boxWidth * sideThicknessY,
-        left: boxHeight * sideThicknessX,
-        right: boxHeight * sideThicknessX,
-    };
-
-    for (let x = minX; x <= maxX; x += 1) {
-        for (let y = minY; y < Math.min(maxY, minY + sideThicknessY); y += 1) {
-            if (edgeMap[(y * width) + x]) sideCounts.top += 1;
-        }
-        for (let y = Math.max(minY, maxY - sideThicknessY); y <= maxY; y += 1) {
-            if (edgeMap[(y * width) + x]) sideCounts.bottom += 1;
-        }
-    }
-
-    for (let y = minY; y <= maxY; y += 1) {
-        for (let x = minX; x < Math.min(maxX, minX + sideThicknessX); x += 1) {
-            if (edgeMap[(y * width) + x]) sideCounts.left += 1;
-        }
-        for (let x = Math.max(minX, maxX - sideThicknessX); x <= maxX; x += 1) {
-            if (edgeMap[(y * width) + x]) sideCounts.right += 1;
-        }
-    }
-
-    for (let y = minY; y <= maxY; y += 1) {
-        for (let x = minX; x <= maxX; x += 1) {
-            if (!edgeMap[(y * width) + x]) continue;
-
-            const sum = x + y;
-            const diff = x - y;
-            if (sum < topLeftScore) {
-                topLeftScore = sum;
-                topLeft = { x, y };
-            }
-            if (diff > topRightScore) {
-                topRightScore = diff;
-                topRight = { x, y };
-            }
-            if (sum > bottomRightScore) {
-                bottomRightScore = sum;
-                bottomRight = { x, y };
-            }
-            if (-diff > bottomLeftScore) {
-                bottomLeftScore = -diff;
-                bottomLeft = { x, y };
-            }
-        }
-    }
-
-    const sideCompleteness = Object.entries(sideCounts).map(([side, count]) => {
-        const density = count / Math.max(1, sideAreas[side]);
-        return clamp(density / 0.015, 0, 1);
-    });
-    const edgeCompleteness = sideCompleteness.reduce((total, value) => total + value, 0) / sideCompleteness.length;
-    const quadrilateral = topLeft && topRight && bottomRight && bottomLeft
-        ? [topLeft, topRight, bottomRight, bottomLeft]
-        : [
-            { x: minX, y: minY },
-            { x: maxX, y: minY },
-            { x: maxX, y: maxY },
-            { x: minX, y: maxY },
-        ];
-    const rotationRadians = Math.atan2(quadrilateral[1].y - quadrilateral[0].y, quadrilateral[1].x - quadrilateral[0].x);
+    const maxFill = Math.max((maxX - minX + 1) / width, (maxY - minY + 1) / height);
+    const topLength = distance(quadrilateral[0], quadrilateral[1]);
+    const rightLength = distance(quadrilateral[1], quadrilateral[2]);
+    const bottomLength = distance(quadrilateral[2], quadrilateral[3]);
+    const leftLength = distance(quadrilateral[3], quadrilateral[0]);
+    const longEdge = topLength >= rightLength
+        ? [quadrilateral[0], quadrilateral[1]]
+        : [quadrilateral[1], quadrilateral[2]];
+    const rotationRadians = Math.atan2(longEdge[1].y - longEdge[0].y, longEdge[1].x - longEdge[0].x);
     const rotationDegrees = rotationRadians * (180 / Math.PI);
-    const perspectiveSkew = Math.abs((quadrilateral[1].y - quadrilateral[0].y) - (quadrilateral[2].y - quadrilateral[3].y)) / Math.max(1, boxHeight);
-    const boundaryScore = clamp((areaRatio * 75) + (edgeCompleteness * 35) + (looksCardLike ? 18 : 0), 0, 100);
-    const croppedRisk = minMargin < 0.012 || maxFill > 0.97 ? 'high' : minMargin < 0.035 || maxFill > 0.92 ? 'medium' : 'low';
+    const horizontalSkew = Math.abs(topLength - bottomLength) / Math.max(1, Math.max(topLength, bottomLength));
+    const verticalSkew = Math.abs(leftLength - rightLength) / Math.max(1, Math.max(leftLength, rightLength));
+    const perspectiveSkew = (horizontalSkew + verticalSkew) / 2;
+    const croppedRisk = !candidate.cornersInside || minMargin < 0.012 || maxFill > 0.97 ? 'high' : minMargin < 0.035 || maxFill > 0.92 ? 'medium' : 'low';
+    const boundaryDetected = candidate.boundaryScore >= 58
+        && candidate.minSideCoverage >= 0.18
+        && candidate.edgeCompleteness >= 0.28
+        && candidate.cornersInside
+        && candidate.missingEdges.length === 0;
 
     return {
         boundary_detected: boundaryDetected,
-        boundary_score: round(boundaryScore),
-        document_area_ratio: round(areaRatio, 3),
-        document_aspect_ratio: round(aspectRatio, 3),
+        boundary_score: round(candidate.boundaryScore),
+        document_area_ratio: round(candidate.areaRatio, 3),
+        document_aspect_ratio: round(candidate.aspectRatio, 3),
         document_rotation_degrees: round(rotationDegrees, 1),
         perspective_skew: round(perspectiveSkew, 3),
         cropped_risk: croppedRisk,
-        edge_completeness: round(edgeCompleteness, 3),
-        quadrilateral: quadrilateral.map((point) => ({
-            x: Math.round(point.x),
-            y: Math.round(point.y),
-            nx: round(point.x / width, 4),
-            ny: round(point.y / height, 4),
-        })),
+        edge_completeness: round(candidate.edgeCompleteness, 3),
+        edge_confidence: round(clamp((candidate.minSideCoverage - 0.18) / 0.48, 0, 1) * 100),
+        corner_confidence: round((candidate.cornersInside ? 74 : 45) + (Math.min(candidate.boundaryScore, 100) * 0.26)),
+        side_confidence: Object.fromEntries(Object.entries(candidate.sideCoverage).map(([side, value]) => [side, round(clamp((value - 0.18) / 0.48, 0, 1) * 100)])),
+        missing_edges: candidate.missingEdges,
+        corners_inside: candidate.cornersInside,
+        quadrilateral: quadrilateral.map((point) => serializePoint(point, width, height)),
+        centroid: serializePoint(candidate.center, width, height),
         margins: {
             left: round(marginLeft, 3),
             right: round(marginRight, 3),
             top: round(marginTop, 3),
             bottom: round(marginBottom, 3),
         },
+        detection_reason: boundaryDetected ? 'four_card_edges_detected' : 'edges_incomplete',
     };
 };
 
@@ -296,6 +433,7 @@ export const analyzeImageData = ({
     captureMetadata = null,
 }) => {
     const grayscale = new Uint8Array(sampleWidth * sampleHeight);
+    const saturationMap = new Uint8Array(sampleWidth * sampleHeight);
     const edgeMap = new Uint8Array(sampleWidth * sampleHeight);
     const histogram = new Uint32Array(256);
 
@@ -313,6 +451,7 @@ export const analyzeImageData = ({
         const saturation = saturationFor(red, green, blue);
 
         grayscale[p] = luminance;
+        saturationMap[p] = Math.round(saturation);
         histogram[luminance] += 1;
         sum += luminance;
         min = Math.min(min, luminance);
@@ -371,7 +510,7 @@ export const analyzeImageData = ({
     const lowLightRatio = lowLightPixels / pixels;
     const geometry = role === 'selfie'
         ? null
-        : geometryFromEdges(edgeMap, sampleWidth, sampleHeight, edgeDensity);
+        : geometryFromEdges(edgeMap, grayscale, saturationMap, sampleWidth, sampleHeight, edgeDensity, brightness, contrast);
 
     const issues = [];
     const blockingIssues = [];
