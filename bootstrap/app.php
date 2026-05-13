@@ -39,6 +39,7 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->alias([
+            'verified' => \App\Http\Middleware\EnsureEmailIsVerifiedWhenEnabled::class,
             'progressive.throttle' => \App\Http\Middleware\ProgressiveThrottleRequests::class,
             'verification.access' => \App\Http\Middleware\EnsureIdentityVerificationAccess::class,
         ]);

@@ -12,8 +12,10 @@ class HomeController extends Controller
 {
     public function __invoke()
     {
-        // Fetch only the document types that are NOT archived
-        $documentTypes = DocumentType::where('is_archived', false)->get();
+        // Fetch only document types that residents can currently request.
+        $documentTypes = DocumentType::where('is_archived', false)
+            ->where('is_requestable', true)
+            ->get();
 
         // 2. Fetch the 5 latest announcements with image URLs
         $announcements = Announcement::latest()

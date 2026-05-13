@@ -61,6 +61,11 @@ class DocumentRequestController extends Controller
                 ->with('error', 'Your account must be verified to request documents. Please wait for an admin to approve your credentials.');
         }
 
+        if ($documentType->is_archived || !$documentType->is_requestable) {
+            return redirect()->route('residents.home')
+                ->with('error', 'This document is not currently available for request.');
+        }
+
         // Explicit mapping to ensure correct component paths
         $map = [
             'Brgy Business Permit' => 'BrgyBusinessPermit',
@@ -114,7 +119,12 @@ class DocumentRequestController extends Controller
             'signature_data'   => 'nullable|string',
         ]);
 
-        $documentType = DocumentType::find($commonValidated['document_type_id']);
+        $documentType = DocumentType::whereKey($commonValidated['document_type_id'])->first();
+
+        if (!$documentType || $documentType->is_archived || !$documentType->is_requestable) {
+            return back()->with('error', 'This document is not currently available for request.');
+        }
+
         $formData = [];
 
         // 2. Handle specific fields based on document type
