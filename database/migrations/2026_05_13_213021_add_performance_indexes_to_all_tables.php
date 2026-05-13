@@ -96,7 +96,6 @@ return new class extends Migration
         });
 
         Schema::table('failed_jobs', function (Blueprint $table) {
-            $table->index('queue', 'failed_jobs_queue_index');
             $table->index('failed_at', 'failed_jobs_failed_at_index');
         });
 
@@ -108,61 +107,49 @@ return new class extends Migration
 
     public function down(): void
     {
-        $drop = function (Blueprint $table, array $indexes) {
-            foreach ($indexes as $index) {
-                $table->dropIndex($index);
-            }
-        };
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropIndex('users_role_index');
+            $table->dropIndex('users_status_index');
+            $table->dropIndex('users_verification_status_index');
+        });
 
-        Schema::table('users', fn ($t) => $drop($t, [
-            'users_barangay_id_index', 'users_role_index', 'users_status_index', 'users_verification_status_index',
-        ]));
+        Schema::table('document_types', function (Blueprint $table) {
+            $table->dropIndex('document_types_is_archived_index');
+        });
 
-        Schema::table('user_profiles', fn ($t) => $drop($t, ['user_profiles_user_id_index']));
+        Schema::table('document_requests', function (Blueprint $table) {
+            $table->dropIndex('document_requests_status_index');
+            $table->dropIndex('document_requests_payment_status_index');
+            $table->dropIndex('document_requests_created_at_index');
+            $table->dropIndex('document_requests_status_user_id_index');
+            $table->dropIndex('document_requests_barangay_id_status_index');
+        });
 
-        Schema::table('document_types', fn ($t) => $drop($t, [
-            'document_types_barangay_id_index', 'document_types_is_archived_index', 'document_types_archived_by_index',
-        ]));
+        Schema::table('payments', function (Blueprint $table) {
+            $table->dropIndex('payments_status_index');
+            $table->dropIndex('payments_reference_number_index');
+        });
 
-        Schema::table('document_requests', fn ($t) => $drop($t, [
-            'document_requests_barangay_id_index', 'document_requests_user_id_index',
-            'document_requests_document_type_id_index', 'document_requests_processed_by_index',
-            'document_requests_status_index', 'document_requests_payment_status_index',
-            'document_requests_created_at_index', 'document_requests_status_user_id_index',
-            'document_requests_barangay_id_status_index',
-        ]));
+        Schema::table('contact_messages', fn ($t) => $t->dropIndex('contact_messages_status_index'));
 
-        Schema::table('uploaded_credentials', fn ($t) => $drop($t, ['uploaded_credentials_document_request_id_index']));
+        Schema::table('replies', fn ($t) => $t->dropIndex('replies_contact_message_id_status_index'));
 
-        Schema::table('payments', fn ($t) => $drop($t, [
-            'payments_document_request_id_index', 'payments_status_index', 'payments_reference_number_index',
-        ]));
+        Schema::table('announcements', fn ($t) => $t->dropIndex('announcements_created_at_index'));
 
-        Schema::table('contact_messages', fn ($t) => $drop($t, [
-            'contact_messages_barangay_id_index', 'contact_messages_user_id_index', 'contact_messages_status_index',
-        ]));
+        Schema::table('immutable_documents_archive_history', function (Blueprint $table) {
+            $table->dropIndex('idah_status_index');
+            $table->dropIndex('idah_created_at_index');
+            $table->dropIndex('idah_original_request_id_index');
+        });
 
-        Schema::table('replies', fn ($t) => $drop($t, [
-            'replies_contact_message_id_index', 'replies_user_id_index', 'replies_contact_message_id_status_index',
-        ]));
-
-        Schema::table('announcements', fn ($t) => $drop($t, [
-            'announcements_barangay_id_index', 'announcements_user_id_index', 'announcements_created_at_index',
-        ]));
-
-        Schema::table('barangays', fn ($t) => $drop($t, ['barangays_municipality_id_index']));
-
-        Schema::table('immutable_documents_archive_history', fn ($t) => $drop($t, [
-            'idah_barangay_id_index', 'idah_user_id_index', 'idah_document_type_id_index',
-            'idah_processed_by_index', 'idah_original_request_id_index', 'idah_status_index', 'idah_created_at_index',
-        ]));
-
-        Schema::table('notifications', fn ($t) => $drop($t, ['notifications_read_at_index']));
-
-        Schema::table('cache', fn ($t) => $drop($t, ['cache_expiration_index']));
-        Schema::table('cache_locks', fn ($t) => $drop($t, ['cache_locks_expiration_index']));
-        Schema::table('jobs', fn ($t) => $drop($t, ['jobs_queue_reserved_available_index']));
-        Schema::table('failed_jobs', fn ($t) => $drop($t, ['failed_jobs_queue_index', 'failed_jobs_failed_at_index']));
-        Schema::table('audit_logs', fn ($t) => $drop($t, ['audit_logs_user_id_index', 'audit_logs_created_at_index']));
+        Schema::table('notifications', fn ($t) => $t->dropIndex('notifications_read_at_index'));
+        Schema::table('cache', fn ($t) => $t->dropIndex('cache_expiration_index'));
+        Schema::table('cache_locks', fn ($t) => $t->dropIndex('cache_locks_expiration_index'));
+        Schema::table('jobs', fn ($t) => $t->dropIndex('jobs_queue_reserved_available_index'));
+        Schema::table('failed_jobs', fn ($t) => $t->dropIndex('failed_jobs_failed_at_index'));
+        Schema::table('audit_logs', function (Blueprint $table) {
+            $table->dropIndex('audit_logs_user_id_index');
+            $table->dropIndex('audit_logs_created_at_index');
+        });
     }
 };
