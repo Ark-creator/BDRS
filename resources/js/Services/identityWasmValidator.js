@@ -504,6 +504,139 @@ const filteredCanvas = (source, filter) => {
     return canvas;
 };
 
+const sharpenCanvas = (source, strength = 1.0) => {
+    const canvas = cloneCanvas(source);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const { data } = imageData;
+    const w = canvas.width;
+    const h = canvas.height;
+    const output = new Uint8ClampedArray(data.length);
+
+    for (let i = 0; i < data.length; i += 4) {
+        output[i] = data[i];
+        output[i + 1] = data[i + 1];
+        output[i + 2] = data[i + 2];
+        output[i + 3] = data[i + 3];
+    }
+
+    for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+            for (let c = 0; c < 3; c++) {
+                const idx = (y * w + x) * 4 + c;
+                const top = ((y - 1) * w + x) * 4 + c;
+                const bottom = ((y + 1) * w + x) * 4 + c;
+                const left = (y * w + (x - 1)) * 4 + c;
+                const right = (y * w + (x + 1)) * 4 + c;
+                const center = data[idx];
+                const sharpened = center + strength * (4 * center - data[top] - data[bottom] - data[left] - data[right]);
+                output[idx] = Math.max(0, Math.min(255, Math.round(sharpened)));
+            }
+        }
+    }
+
+    imageData.data.set(output);
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+};
+
+const claheLikeCanvas = (source) => {
+    const canvas = cloneCanvas(source);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const { data } = imageData;
+    const w = canvas.width;
+    const h = canvas.height;
+    const tileSize = Math.max(8, Math.min(32, Math.floor(Math.min(w, h) / 8)));
+    const tilesX = Math.ceil(w / tileSize);
+    const tilesY = Math.ceil(h / tileSize);
+    const tileLut = [];
+
+    for (let ty = 0; ty < tilesY; ty++) {
+        tileLut[ty] = [];
+        for (let tx = 0; tx < tilesX; tx++) {
+            const histogram = new Int32Array(256);
+            let count = 0;
+            const startX = tx * tileSize;
+            const startY = ty * tileSize;
+            const endX = Math.min(startX + tileSize, w);
+            const endY = Math.min(startY + tileSize, h);
+
+            for (let y = startY; y < endY; y++) {
+                for (let x = startX; x < endX; x++) {
+                    const lum = Math.round(
+                        0.299 * data[(y * w + x) * 4] +
+                        0.587 * data[(y * w + x) * 4 + 1] +
+                        0.114 * data[(y * w + x) * 4 + 2]
+                    );
+                    histogram[Math.max(0, Math.min(255, lum))]++;
+                    count++;
+                }
+            }
+
+            const clipLimit = Math.max(1, Math.floor(count / 256 * 2.5));
+            let excess = 0;
+            for (let i = 0; i < 256; i++) {
+                if (histogram[i] > clipLimit) {
+                    excess += histogram[i] - clipLimit;
+                    histogram[i] = clipLimit;
+                }
+            }
+            const redistribute = Math.floor(excess / 256);
+            for (let i = 0; i < 256; i++) histogram[i] += redistribute;
+
+            const cdf = new Float32Array(256);
+            cdf[0] = histogram[0];
+            for (let i = 1; i < 256; i++) cdf[i] = cdf[i - 1] + histogram[i];
+            const cdfMin = cdf.find(v => v > 0) || 0;
+            const denom = Math.max(1, count - cdfMin);
+            const lut = new Uint8Array(256);
+            for (let i = 0; i < 256; i++) {
+                lut[i] = Math.round(((cdf[i] - cdfMin) / denom) * 255);
+            }
+            tileLut[ty][tx] = lut;
+        }
+    }
+
+    for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+            const idx = (y * w + x) * 4;
+            const fy = y / tileSize - 0.5;
+            const fx = x / tileSize - 0.5;
+            const ty1 = Math.max(0, Math.floor(fy));
+            const ty2 = Math.min(tilesY - 1, ty1 + 1);
+            const tx1 = Math.max(0, Math.floor(fx));
+            const tx2 = Math.min(tilesX - 1, tx1 + 1);
+            const fyFrac = fy - ty1;
+            const fxFrac = fx - tx1;
+
+            for (let c = 0; c < 3; c++) {
+                const lum = Math.round(
+                    c === 0 ? 0.299 * data[idx] : c === 1 ? 0.587 * data[idx + 1] : 0.114 * data[idx + 2]
+                );
+                const grayVal = Math.round(0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]);
+                const clamped = Math.max(0, Math.min(255, grayVal));
+
+                const v00 = tileLut[ty1][tx1][clamped];
+                const v10 = tileLut[ty1][tx2][clamped];
+                const v01 = tileLut[ty2][tx1][clamped];
+                const v11 = tileLut[ty2][tx2][clamped];
+
+                const mapped = v00 * (1 - fxFrac) * (1 - fyFrac)
+                    + v10 * fxFrac * (1 - fyFrac)
+                    + v01 * (1 - fxFrac) * fyFrac
+                    + v11 * fxFrac * fyFrac;
+
+                const scale = data[idx + c] > 0 ? mapped / Math.max(1, grayVal) : 1;
+                data[idx + c] = Math.max(0, Math.min(255, Math.round(data[idx + c] * scale)));
+            }
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas;
+};
+
 const thresholdCanvas = (source, mode = 'adaptive') => {
     const canvas = cloneCanvas(source);
     const context = canvas.getContext('2d', { willReadFrequently: true });
@@ -550,6 +683,7 @@ const thresholdCanvas = (source, mode = 'adaptive') => {
 
 const buildOcrInputs = (qualityReport) => {
     const source = qualityReport.canvas;
+    const q = qualityReport.quality;
     const inputs = [
         { profile: 'camera_original', source },
         { profile: 'contrast_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.65) brightness(1.08)') },
@@ -557,8 +691,26 @@ const buildOcrInputs = (qualityReport) => {
         { profile: 'adaptive_threshold_wasm', source: thresholdCanvas(filteredCanvas(source, 'grayscale(1) contrast(1.45)'), 'adaptive') },
     ];
 
-    if (qualityReport.quality.glare_ratio > 0.05 || qualityReport.quality.bright_pixel_ratio > 0.16) {
+    if (q.sharpness < 7 || q.score < 65) {
+        const grayBase = filteredCanvas(source, 'grayscale(1) contrast(1.3)');
+        inputs.push({ profile: 'sharpened_wasm', source: sharpenCanvas(grayBase, 0.8) });
+    }
+
+    if (q.brightness < 100 || q.contrast < 25 || q.dynamic_range < 120) {
+        inputs.push({ profile: 'clahe_wasm', source: claheLikeCanvas(filteredCanvas(source, 'grayscale(1)')) });
+    }
+
+    if (q.glare_ratio > 0.05 || q.bright_pixel_ratio > 0.16) {
         inputs.push({ profile: 'glare_recovery_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.5) brightness(0.9)') });
+    }
+
+    if (q.dark_pixel_ratio > 0.12 || q.brightness < 60) {
+        inputs.push({ profile: 'dark_recovery_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.8) brightness(1.35)') });
+    }
+
+    if (q.score < 55 && inputs.length < 7) {
+        const sharpBase = sharpenCanvas(filteredCanvas(source, 'contrast(1.4)'), 1.2);
+        inputs.push({ profile: 'aggressive_sharpen_wasm', source: thresholdCanvas(sharpBase, 'adaptive') });
     }
 
     return inputs;
@@ -577,9 +729,16 @@ const mergeOcrResults = (results) => {
         }
     }
 
-    const best = [...results].sort((a, b) => b.score - a.score)[0] || { confidence: 0 };
+    const sorted = [...results].sort((a, b) => b.score - a.score);
+    const best = sorted[0] || { confidence: 0 };
+    const top3 = sorted.slice(0, 3);
+    const avgConfidence = top3.length
+        ? top3.reduce((s, r) => s + r.confidence, 0) / top3.length
+        : 0;
+    const textLengthScore = Math.min(100, lines.join(' ').length / 3);
+    const uniqueLineBonus = Math.min(15, lines.length * 1.5);
     const confidence = Math.round(clamp(
-        (best.confidence * 0.72) + (Math.min(100, lines.join(' ').length / 3) * 0.28),
+        (avgConfidence * 0.50) + (best.confidence * 0.22) + (textLengthScore * 0.20) + uniqueLineBonus * 0.08,
         0,
         100
     ));

@@ -1,8 +1,9 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import InputError from '@/Components/InputError';
 import axios from 'axios';
 import { getWasmIdentityHealth, validateRegistrationImageWasm } from '@/Services/identityWasmValidator';
+import { analyzeCameraFrame, createStabilityTracker, createAutoCaptureManager, getCameraErrorMessage, checkBrowserSupport } from '@/Services/cameraScanner';
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -137,91 +138,8 @@ const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
     </div>
 );
 
-const analyzeLiveFrame = (video, captureTarget) => {
-    const width = video.videoWidth || 0;
-    const height = video.videoHeight || 0;
-    if (!width || !height) return null;
-
-    const sampleWidth = 220;
-    const sampleHeight = Math.max(1, Math.round((height / width) * sampleWidth));
-    const canvas = document.createElement('canvas');
-    canvas.width = sampleWidth;
-    canvas.height = sampleHeight;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    context.drawImage(video, 0, 0, sampleWidth, sampleHeight);
-    const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
-    const gray = new Uint8Array(sampleWidth * sampleHeight);
-    let sum = 0;
-    let glare = 0;
-    let shadow = 0;
-
-    for (let i = 0, p = 0; i < data.length; i += 4, p += 1) {
-        const luminance = Math.round((0.299 * data[i]) + (0.587 * data[i + 1]) + (0.114 * data[i + 2]));
-        gray[p] = luminance;
-        sum += luminance;
-        if (luminance > 248) glare += 1;
-        if (luminance < 24) shadow += 1;
-    }
-
-    const pixels = gray.length || 1;
-    const brightness = sum / pixels;
-    let variance = 0;
-    let gradientTotal = 0;
-    let edgePixels = 0;
-    for (let i = 0; i < gray.length; i += 1) {
-        const diff = gray[i] - brightness;
-        variance += diff * diff;
-    }
-    for (let y = 1; y < sampleHeight; y += 1) {
-        for (let x = 1; x < sampleWidth; x += 1) {
-            const index = y * sampleWidth + x;
-            const dx = gray[index] - gray[index - 1];
-            const dy = gray[index] - gray[index - sampleWidth];
-            const gradient = Math.sqrt((dx * dx) + (dy * dy));
-            gradientTotal += gradient;
-            if (gradient > 28) edgePixels += 1;
-        }
-    }
-
-    const contrast = Math.sqrt(variance / pixels);
-    const sharpness = gradientTotal / Math.max(1, (sampleWidth - 1) * (sampleHeight - 1));
-    const edgeDensity = edgePixels / Math.max(1, (sampleWidth - 1) * (sampleHeight - 1));
-    const glareRatio = glare / pixels;
-    const shadowRatio = shadow / pixels;
-    let score = 100;
-    score -= Math.max(0, 44 - brightness) * 1.3;
-    score -= Math.max(0, brightness - 230) * 1.2;
-    score -= Math.max(0, 16 - contrast) * 2.1;
-    score -= Math.max(0, 6 - sharpness) * 5;
-    score -= glareRatio * 120;
-    score -= shadowRatio * 90;
-
-    const isFace = captureTarget === 'face';
-    const cardFramed = !isFace && edgeDensity >= 0.012;
-    const faceReady = isFace && brightness >= 42 && brightness <= 225 && contrast >= 13 && sharpness >= 4.2;
-    const ready = isFace ? faceReady : cardFramed && brightness >= 38 && brightness <= 232 && contrast >= 11 && sharpness >= 3.8;
-    const status = ready && score >= 58 ? 'ready' : score >= 42 ? 'adjust' : 'poor';
-    const message = status === 'ready'
-        ? (isFace ? 'Face photo ready' : 'ID photo ready')
-        : brightness < 38
-            ? 'Add more light'
-            : brightness > 232 || glareRatio > 0.08
-                ? 'Reduce glare'
-                : sharpness < 3.8
-                    ? 'Hold steady'
-                    : isFace
-                        ? 'Center your face'
-                        : 'Fill the guide with the ID';
-
-    return {
-        status,
-        message,
-        score: Math.round(Math.max(0, Math.min(100, score))),
-        brightness: Math.round(brightness),
-        contrast: Number(contrast.toFixed(1)),
-        sharpness: Number(sharpness.toFixed(1)),
-        edgeDensity: Number(edgeDensity.toFixed(4)),
-    };
+const analyzeLiveFrame = (video, captureTarget, stabilityTracker) => {
+    return analyzeCameraFrame(video, captureTarget, stabilityTracker);
 };
 
 const cropCanvasToCaptureGuide = (sourceCanvas, captureTarget) => {
@@ -254,27 +172,41 @@ const cropCanvasToCaptureGuide = (sourceCanvas, captureTarget) => {
     return cropCanvas;
 };
 
-// --- CAMERA MODAL COMPONENT ---
 const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTarget, debugMode = false, idealVideoWidth = 1280, idealVideoHeight = 720, maxCaptureWidth = 1000, maxCaptureHeight = 1000 }) => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const streamRef = useRef(null);
     const [stream, setStream] = useState(null);
     const [error, setError] = useState(null);
+    const [errorInfo, setErrorInfo] = useState(null);
     const [videoInfo, setVideoInfo] = useState(null);
     const [activeFacingMode, setActiveFacingMode] = useState(facingMode);
     const [trackCapabilities, setTrackCapabilities] = useState({});
     const [cameraFeedback, setCameraFeedback] = useState(null);
     const [torchEnabled, setTorchEnabled] = useState(false);
     const [zoom, setZoom] = useState(1);
+    const [autoEnabled, setAutoEnabled] = useState(false);
+    const [autoCountdown, setAutoCountdown] = useState(0);
+    const [captureFlash, setCaptureFlash] = useState(false);
+    const [analysisInterval, setAnalysisInterval] = useState(500);
+    const stabilityTrackerRef = useRef(null);
+    const autoCaptureRef = useRef(null);
+    const retryCameraRef = useRef(0);
 
-    const stopCamera = () => {
+    if (!stabilityTrackerRef.current) {
+        stabilityTrackerRef.current = createStabilityTracker();
+    }
+    if (!autoCaptureRef.current) {
+        autoCaptureRef.current = createAutoCaptureManager();
+    }
+
+    const stopCamera = useCallback(() => {
         streamRef.current?.getTracks?.().forEach(track => track.stop());
         streamRef.current = null;
         setStream(null);
-    };
+    }, []);
 
-    const refreshVideoInfo = () => {
+    const refreshVideoInfo = useCallback(() => {
         const video = videoRef.current;
         const track = stream?.getVideoTracks?.()[0];
         const settings = track?.getSettings?.() || {};
@@ -289,7 +221,75 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             frameRate: settings.frameRate,
             zoom: settings.zoom,
         });
-    };
+    }, [stream, activeFacingMode]);
+
+    const startCamera = useCallback(async () => {
+        const browserCheck = checkBrowserSupport();
+        if (!browserCheck.supported) {
+            setError(browserCheck.message);
+            setErrorInfo({ title: 'Unsupported Browser', message: browserCheck.message, steps: ['Use Chrome, Safari, or Firefox'], canRetry: false });
+            return;
+        }
+
+        setError(null);
+        setErrorInfo(null);
+
+        try {
+            const constraints = {
+                video: {
+                    facingMode: activeFacingMode,
+                    width: { ideal: idealVideoWidth },
+                    height: { ideal: idealVideoHeight },
+                    frameRate: { ideal: 30 },
+                }
+            };
+
+            let mediaStream;
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+            } catch (constraintErr) {
+                if (constraintErr.name === 'OverconstrainedError') {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: activeFacingMode }
+                    });
+                } else {
+                    throw constraintErr;
+                }
+            }
+
+            streamRef.current = mediaStream;
+            setStream(mediaStream);
+            if (videoRef.current) {
+                videoRef.current.srcObject = mediaStream;
+            }
+            const track = mediaStream.getVideoTracks?.()[0];
+            const capabilities = track?.getCapabilities?.() || {};
+            setTrackCapabilities(capabilities);
+            if (capabilities.zoom) {
+                setZoom(track.getSettings?.().zoom || capabilities.zoom.min || 1);
+            }
+            const advanced = [];
+            if (capabilities.focusMode?.includes?.('continuous')) advanced.push({ focusMode: 'continuous' });
+            if (capabilities.exposureMode?.includes?.('continuous')) advanced.push({ exposureMode: 'continuous' });
+            if (capabilities.whiteBalanceMode?.includes?.('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
+            if (advanced.length) {
+                try {
+                    await track.applyConstraints({ advanced });
+                } catch {
+                }
+            }
+            stabilityTrackerRef.current?.reset();
+            autoCaptureRef.current?.reset();
+            setAutoCountdown(0);
+            setCaptureFlash(false);
+        } catch (err) {
+            console.error("Camera Error:", err);
+            const info = getCameraErrorMessage(err);
+            setError(info.title + ': ' + info.message);
+            setErrorInfo(info);
+            stopCamera();
+        }
+    }, [activeFacingMode, idealVideoWidth, idealVideoHeight, stopCamera]);
 
     useEffect(() => {
         if (isOpen) {
@@ -298,57 +298,24 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             setTorchEnabled(false);
             setZoom(1);
             setTrackCapabilities({});
+            setAutoCountdown(0);
+            setCaptureFlash(false);
+            stabilityTrackerRef.current?.reset();
+            autoCaptureRef.current?.reset();
         }
     }, [isOpen, facingMode]);
 
     useEffect(() => {
         if (isOpen) {
-            setError(null);
-            navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: activeFacingMode,
-                    width: { ideal: idealVideoWidth },
-                    height: { ideal: idealVideoHeight },
-                    frameRate: { ideal: 30 },
-                }
-            })
-            .then(async mediaStream => {
-                streamRef.current = mediaStream;
-                setStream(mediaStream);
-                if (videoRef.current) {
-                    videoRef.current.srcObject = mediaStream;
-                }
-                const track = mediaStream.getVideoTracks?.()[0];
-                const capabilities = track?.getCapabilities?.() || {};
-                setTrackCapabilities(capabilities);
-                if (capabilities.zoom) {
-                    setZoom(track.getSettings?.().zoom || capabilities.zoom.min || 1);
-                }
-                const advanced = [];
-                if (capabilities.focusMode?.includes?.('continuous')) advanced.push({ focusMode: 'continuous' });
-                if (capabilities.exposureMode?.includes?.('continuous')) advanced.push({ exposureMode: 'continuous' });
-                if (capabilities.whiteBalanceMode?.includes?.('continuous')) advanced.push({ whiteBalanceMode: 'continuous' });
-                if (advanced.length) {
-                    try {
-                        await track.applyConstraints({ advanced });
-                    } catch {
-                        // Browser support varies; camera remains usable without these hints.
-                    }
-                }
-            })
-            .catch(err => {
-                console.error("Camera Error:", err);
-                setError(`Could not access the camera. Please ensure you have granted permission in your browser. Error: ${err.name}`);
-                stopCamera();
-            });
+            retryCameraRef.current = 0;
+            startCamera();
         } else {
             stopCamera();
         }
-
         return () => {
             stopCamera();
         };
-    }, [isOpen, activeFacingMode, idealVideoWidth, idealVideoHeight]);
+    }, [isOpen, activeFacingMode, startCamera, stopCamera]);
 
     useEffect(() => {
         if (!isOpen || !stream) return undefined;
@@ -356,13 +323,75 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
         const interval = window.setInterval(() => {
             const video = videoRef.current;
             if (!video || video.readyState < 2) return;
-            const report = analyzeLiveFrame(video, captureTarget);
-            if (report) setCameraFeedback(report);
+            const startTime = performance.now();
+            const report = analyzeLiveFrame(video, captureTarget, stabilityTrackerRef.current);
+            if (report) {
+                setCameraFeedback(report);
+                if (autoEnabled && autoCaptureRef.current) {
+                    const acResult = autoCaptureRef.current.update(report);
+                    if (acResult.countdown > 0) {
+                        setAutoCountdown(acResult.countdown);
+                    } else {
+                        setAutoCountdown(0);
+                    }
+                    if (acResult.shouldCapture) {
+                        setAutoCountdown(0);
+                        setCaptureFlash(true);
+                        performCapture();
+                        autoCaptureRef.current.finishCapture();
+                    }
+                }
+            }
             refreshVideoInfo();
-        }, 650);
+            const elapsed = performance.now() - startTime;
+            if (elapsed > 300) setAnalysisInterval(prev => Math.min(prev + 100, 1200));
+            else if (elapsed < 80) setAnalysisInterval(prev => Math.max(prev - 50, 300));
+        }, analysisInterval);
 
         return () => window.clearInterval(interval);
-    }, [isOpen, stream, captureTarget]);
+    }, [isOpen, stream, captureTarget, autoEnabled, analysisInterval, refreshVideoInfo]);
+
+    const performCapture = useCallback(() => {
+        if (!videoRef.current || !canvasRef.current) return;
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        const context = canvas.getContext('2d');
+        if (activeFacingMode === 'user') {
+            context.translate(video.videoWidth, 0);
+            context.scale(-1, 1);
+        }
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+
+        const captureCanvas = cropCanvasToCaptureGuide(canvas, captureTarget);
+        let newWidth = captureCanvas.width;
+        let newHeight = captureCanvas.height;
+
+        if (newWidth > maxCaptureWidth || newHeight > maxCaptureHeight) {
+            const ratio = Math.min(maxCaptureWidth / newWidth, maxCaptureHeight / newHeight);
+            newWidth *= ratio;
+            newHeight *= ratio;
+        }
+
+        const resizedCanvas = document.createElement('canvas');
+        resizedCanvas.width = newWidth;
+        resizedCanvas.height = newHeight;
+        const resizedContext = resizedCanvas.getContext('2d');
+        resizedContext.imageSmoothingEnabled = true;
+        resizedContext.imageSmoothingQuality = 'high';
+        resizedContext.drawImage(captureCanvas, 0, 0, newWidth, newHeight);
+
+        resizedCanvas.toBlob(blob => {
+            const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, { type: 'image/jpeg' });
+            onCapture(file);
+            setTimeout(() => {
+                setCaptureFlash(false);
+                onClose();
+            }, 200);
+        }, 'image/jpeg', 0.92);
+    }, [activeFacingMode, captureTarget, maxCaptureWidth, maxCaptureHeight, title, onCapture, onClose]);
 
     const switchCamera = () => {
         setActiveFacingMode((mode) => (mode === 'user' ? 'environment' : 'user'));
@@ -389,75 +418,70 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
             await track.applyConstraints({ advanced: [{ zoom: numericValue }] });
             refreshVideoInfo();
         } catch {
-            // Keep the UI responsive even when a browser rejects zoom constraints.
         }
     };
 
-    const handleCapture = () => {
-        if (videoRef.current && canvasRef.current) {
-            const video = videoRef.current;
-            const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+    const toggleAutoCapture = () => {
+        const next = !autoEnabled;
+        setAutoEnabled(next);
+        autoCaptureRef.current?.setEnabled(next);
+        if (!next) setAutoCountdown(0);
+    };
 
-            const context = canvas.getContext('2d');
-            if (activeFacingMode === 'user') {
-                context.translate(video.videoWidth, 0);
-                context.scale(-1, 1);
-            }
-            context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-
-            const captureCanvas = cropCanvasToCaptureGuide(canvas, captureTarget);
-            const maxWidth = maxCaptureWidth;
-            const maxHeight = maxCaptureHeight;
-            let newWidth = captureCanvas.width;
-            let newHeight = captureCanvas.height;
-
-            if (newWidth > maxWidth || newHeight > maxHeight) {
-                const ratio = Math.min(maxWidth / newWidth, maxHeight / newHeight);
-                newWidth *= ratio;
-                newHeight *= ratio;
-            }
-
-            const resizedCanvas = document.createElement('canvas');
-            resizedCanvas.width = newWidth;
-            resizedCanvas.height = newHeight;
-            const resizedContext = resizedCanvas.getContext('2d');
-            resizedContext.imageSmoothingEnabled = true;
-            resizedContext.imageSmoothingQuality = 'high';
-            resizedContext.drawImage(captureCanvas, 0, 0, newWidth, newHeight);
-
-            resizedCanvas.toBlob(blob => {
-                const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, { type: 'image/jpeg' });
-                onCapture(file);
-                onClose();
-            }, 'image/jpeg', 0.92);
-        }
+    const handleRetry = () => {
+        retryCameraRef.current++;
+        setError(null);
+        setErrorInfo(null);
+        startCamera();
     };
 
     if (!isOpen) return null;
-    const feedbackStyles = {
-        ready: 'border-emerald-300 bg-emerald-50 text-emerald-700',
-        adjust: 'border-amber-300 bg-amber-50 text-amber-700',
-        poor: 'border-red-300 bg-red-50 text-red-700',
+
+    const frameColorMap = {
+        green: { border: 'border-emerald-400', shadow: 'shadow-emerald-400/30', corner: 'border-emerald-400', text: 'text-emerald-600' },
+        yellow: { border: 'border-amber-400', shadow: 'shadow-amber-400/30', corner: 'border-amber-400', text: 'text-amber-600' },
+        red: { border: 'border-red-400', shadow: 'shadow-red-400/30', corner: 'border-red-400', text: 'text-red-600' },
     };
+    const frameColors = frameColorMap[cameraFeedback?.frameColor || 'yellow'];
     const canCapture = !!stream && !error && cameraFeedback?.status !== 'poor';
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex justify-center items-center p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
-                    <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-200"><CloseIcon /></button>
+        <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex justify-center items-center p-2 sm:p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[95vh] sm:max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center p-3 sm:p-4 border-b shrink-0">
+                    <h2 className="text-base sm:text-xl font-semibold text-slate-800">{title}</h2>
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={toggleAutoCapture}
+                            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${autoEnabled ? 'bg-emerald-100 text-emerald-700 border border-emerald-300' : 'bg-slate-100 text-slate-600 border border-slate-300'}`}
+                        >
+                            {autoEnabled ? 'Auto ON' : 'Auto OFF'}
+                        </button>
+                        <button onClick={onClose} className="p-1 rounded-full text-slate-400 hover:bg-slate-200"><CloseIcon /></button>
+                    </div>
                 </div>
-                <div className="p-4 flex-grow relative overflow-hidden">
+                <div className="p-2 sm:p-4 flex-grow relative overflow-hidden" style={{ minHeight: '280px' }}>
                     {error ? (
-                        <div className="w-full h-full flex items-center justify-center text-center text-red-600 bg-red-50 rounded-md p-4">{error}</div>
+                        <div className="w-full h-full flex flex-col items-center justify-center text-center rounded-md p-4 bg-slate-50">
+                            <svg className="h-12 w-12 text-red-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                            <h3 className="text-red-700 font-semibold text-sm mb-1">{errorInfo?.title || 'Camera Error'}</h3>
+                            <p className="text-red-600 text-xs mb-3 max-w-sm">{errorInfo?.message || error}</p>
+                            {errorInfo?.steps?.length > 0 && (
+                                <ol className="text-xs text-slate-600 text-left space-y-1 mb-3">
+                                    {errorInfo.steps.map((step, i) => <li key={i} className="flex gap-2"><span className="font-medium text-slate-400">{i + 1}.</span> {step}</li>)}
+                                </ol>
+                            )}
+                            {errorInfo?.canRetry && (
+                                <SecondaryButton type="button" onClick={handleRetry} className="!w-auto !py-2 !px-6 !text-xs">Retry Camera</SecondaryButton>
+                            )}
+                        </div>
                     ) : (
                         <video
                             ref={videoRef}
                             autoPlay
                             playsInline
+                            muted
                             onLoadedMetadata={refreshVideoInfo}
                             onPlaying={refreshVideoInfo}
                             className={`w-full h-full object-contain rounded-md bg-slate-950 ${activeFacingMode === 'user' ? 'scale-x-[-1]' : ''}`}
@@ -465,36 +489,79 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
                     )}
                     {!error && (
                         <>
-                            <div className={`pointer-events-none absolute left-1/2 top-1/2 ${captureTarget === 'face' ? 'h-[58%] w-[46%] rounded-full' : 'h-[48%] w-[78%] rounded-md'} -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-emerald-400 shadow-[0_0_0_9999px_rgba(15,23,42,0.24)]`}></div>
+                            <div
+                                className={`pointer-events-none absolute left-1/2 top-1/2 ${captureTarget === 'face' ? 'h-[58%] w-[46%] rounded-full' : 'h-[48%] w-[78%] rounded-md'} -translate-x-1/2 -translate-y-1/2 border-[3px] ${frameColors.border} shadow-[0_0_0_9999px_rgba(15,23,42,0.28)] transition-all duration-500 ${cameraFeedback?.status === 'ready' ? 'shadow-[0_0_24px_rgba(52,211,153,0.25),0_0_0_9999px_rgba(15,23,42,0.28)]' : ''}`}
+                            >
+                                {captureTarget !== 'face' && (
+                                    <>
+                                        <div className={`absolute -top-[3px] -left-[3px] w-5 h-5 border-t-[3px] border-l-[3px] ${frameColors.corner} rounded-tl-md transition-colors duration-500`}></div>
+                                        <div className={`absolute -top-[3px] -right-[3px] w-5 h-5 border-t-[3px] border-r-[3px] ${frameColors.corner} rounded-tr-md transition-colors duration-500`}></div>
+                                        <div className={`absolute -bottom-[3px] -left-[3px] w-5 h-5 border-b-[3px] border-l-[3px] ${frameColors.corner} rounded-bl-md transition-colors duration-500`}></div>
+                                        <div className={`absolute -bottom-[3px] -right-[3px] w-5 h-5 border-b-[3px] border-r-[3px] ${frameColors.corner} rounded-br-md transition-colors duration-500`}></div>
+                                    </>
+                                )}
+                            </div>
+
                             {cameraFeedback && (
-                                <div className={`absolute left-6 bottom-6 rounded-md border px-3 py-2 text-xs font-semibold ${feedbackStyles[cameraFeedback.status] || feedbackStyles.adjust}`}>
-                                    <div>{cameraFeedback.message}</div>
-                                    <div className="mt-1 h-1.5 w-36 rounded-full bg-white/70">
-                                        <div className="h-1.5 rounded-full bg-current transition-all" style={{ width: `${cameraFeedback.score}%` }}></div>
+                                <div className="absolute left-3 bottom-3 sm:left-6 sm:bottom-6 right-3 sm:right-auto">
+                                    <div className={`rounded-lg border px-3 py-2 text-xs font-semibold backdrop-blur-sm ${cameraFeedback.status === 'ready' ? 'border-emerald-300/80 bg-emerald-50/90 text-emerald-700' : cameraFeedback.status === 'adjust' ? 'border-amber-300/80 bg-amber-50/90 text-amber-700' : 'border-red-300/80 bg-red-50/90 text-red-700'}`}>
+                                        <div className="font-bold">{cameraFeedback.message}</div>
+                                        {cameraFeedback.detailMessage && cameraFeedback.detailMessage !== cameraFeedback.message && (
+                                            <div className="font-normal opacity-80 mt-0.5">{cameraFeedback.detailMessage}</div>
+                                        )}
+                                        <div className="mt-1.5 h-1.5 w-36 rounded-full bg-white/70">
+                                            <div className="h-1.5 rounded-full bg-current transition-all duration-300" style={{ width: `${cameraFeedback.score}%` }}></div>
+                                        </div>
+                                        {cameraFeedback.stability && !cameraFeedback.stability.isStable && (
+                                            <div className="mt-1 flex items-center gap-1 opacity-70">
+                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                                <span>Stabilizing... {cameraFeedback.stability.stability}%</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
+
+                            {autoCountdown > 0 && (
+                                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-white/90 shadow-2xl border-4 border-emerald-400">
+                                        <span className="text-3xl font-bold text-emerald-600" key={autoCountdown} style={{ animation: 'countdownPop 0.6s ease-out' }}>{autoCountdown}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {captureFlash && (
+                                <div className="pointer-events-none absolute inset-0 bg-white animate-capture-flash rounded-md" style={{ animation: 'captureFlash 0.4s ease-out forwards' }}></div>
+                            )}
+
                             {debugMode && (
-                                <div className="absolute left-6 top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white">
-                                    <div>{captureTarget === 'face' ? 'Face calibration' : 'ID calibration'}</div>
-                                    <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'}</div>
-                                    <div>{videoInfo?.facingMode || activeFacingMode}</div>
-                                    {cameraFeedback && <div>Q{cameraFeedback.score} B{cameraFeedback.brightness} C{cameraFeedback.contrast} S{cameraFeedback.sharpness}</div>}
+                                <div className="absolute left-3 top-3 sm:left-6 sm:top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white space-y-0.5">
+                                    <div className="font-medium">{captureTarget === 'face' ? 'Face' : 'ID'} calibration</div>
+                                    <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'} @ {videoInfo?.frameRate || '?'}fps</div>
+                                    <div>{videoInfo?.facingMode || activeFacingMode} | interval {analysisInterval}ms</div>
+                                    {cameraFeedback && (
+                                        <>
+                                            <div>Q:{cameraFeedback.score} B:{cameraFeedback.brightness} C:{cameraFeedback.contrast} S:{cameraFeedback.sharpness}</div>
+                                            <div>Blur:{cameraFeedback.blurScore} Edge:{cameraFeedback.edgeDensity} Dist:{cameraFeedback.distance}</div>
+                                            <div>Stab:{cameraFeedback.stability?.stability}% Tilt:{cameraFeedback.tiltAngle || 0}°</div>
+                                            <div>Glare:{cameraFeedback.glareRatio} Shadow:{cameraFeedback.shadowRatio}</div>
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </>
                     )}
                     <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
-                <div className="space-y-3 border-t bg-slate-50 p-4">
+                <div className="space-y-2 border-t bg-slate-50 p-3 sm:p-4 shrink-0">
                     <div className="flex flex-wrap items-center gap-2">
-                        <SecondaryButton onClick={switchCamera} className="!w-auto !py-2 !px-3 !text-xs">Switch Camera</SecondaryButton>
+                        <SecondaryButton onClick={switchCamera} className="!w-auto !py-1.5 !px-3 !text-xs">Switch</SecondaryButton>
                         {trackCapabilities.torch && (
-                            <SecondaryButton onClick={toggleTorch} className="!w-auto !py-2 !px-3 !text-xs">{torchEnabled ? 'Torch Off' : 'Torch On'}</SecondaryButton>
+                            <SecondaryButton onClick={toggleTorch} className={`!w-auto !py-1.5 !px-3 !text-xs ${torchEnabled ? '!bg-amber-100 !border-amber-300' : ''}`}>{torchEnabled ? 'Torch ON' : 'Torch'}</SecondaryButton>
                         )}
                         {trackCapabilities.zoom && (
-                            <label className="flex min-w-[180px] flex-1 items-center gap-2 text-xs font-medium text-slate-600">
-                                Zoom
+                            <label className="flex min-w-[140px] flex-1 items-center gap-2 text-xs font-medium text-slate-600">
+                                <span className="shrink-0">Zoom</span>
                                 <input
                                     type="range"
                                     min={trackCapabilities.zoom.min || 1}
@@ -507,10 +574,10 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTar
                             </label>
                         )}
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-3">
                         <SecondaryButton onClick={onClose} className="w-full">Cancel</SecondaryButton>
-                        <PrimaryButton onClick={handleCapture} disabled={!canCapture} className="w-full">
-                            <CameraIcon/> Capture Photo
+                        <PrimaryButton onClick={performCapture} disabled={!canCapture} className="w-full">
+                            <CameraIcon/> Capture
                         </PrimaryButton>
                     </div>
                 </div>
@@ -1152,7 +1219,7 @@ export default function App({ footerData }) {
 
             <div className="bg-gradient-to-br from-sky-50 to-slate-200">
                 <Head title="Register | Brgy. San Lorenzo" />
-                <style>{`.animate-fade-in { animation: fadeIn 0.5s ease-in-out; } @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } } .animate-fade-in-fast { animation: fadeIn 0.2s ease-in-out; }`}</style>
+                <style>{`.animate-fade-in { animation: fadeIn 0.5s ease-in-out; } @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } } .animate-fade-in-fast { animation: fadeIn 0.2s ease-in-out; } @keyframes countdownPop { 0% { transform: scale(2.2); opacity: 0; } 50% { transform: scale(0.95); opacity: 1; } 100% { transform: scale(1); opacity: 1; } } @keyframes captureFlash { 0% { opacity: 0; } 15% { opacity: 0.95; } 100% { opacity: 0; } }`}</style>
                 <div className="flex items-center justify-center min-h-screen p-4">
                     <div className="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden md:flex">
                          <AuthLayout
