@@ -4,21 +4,26 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
+use App\Events\AnnouncementUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage; // Added for file deletion
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use App\Services\ImageCompressionService;
 
 class AnnouncementController extends Controller
 {
+    public function __construct(
+        private ImageCompressionService $compressionService
+    ) {}
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
         $announcements = Announcement::latest()
-            ->with('user') // Siguraduhing may 'user' relationship ang Announcement model mo
+            ->with('user.profile')
             ->paginate(5) // Gumagamit tayo ng paginate
             ->through(fn ($announcement) => [
                 'id' => $announcement->id,
@@ -52,17 +57,19 @@ class AnnouncementController extends Controller
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:10240',
         ]);
 
-        $imagePath = $request->file('image')->store('announcements', 'public');
+        $imagePath = $this->compressionService->compress($request->file('image'), 'announcements', 80);
 
-        Announcement::create([
+        $announcement = Announcement::create([
             'tag' => $request->tag,
             'title' => $request->title,
             'description' => $request->description,
             'link' => $request->link,
             'image' => $imagePath,
             'barangay_id' => Auth::user()->barangay_id,
-            'user_id' => Auth::id(), // Get the currently logged-in user's ID
+            'user_id' => Auth::id(),
         ]);
+
+        broadcast(new AnnouncementUpdated($announcement, 'created'))->toOthers();
 
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement created successfully.');
     }
@@ -93,27 +100,34 @@ class AnnouncementController extends Controller
         if ($request->hasFile('image')) {
             // Delete the old image from storage
             if ($announcement->image) {
-                Storage::disk('public')->delete($announcement->image);
+                Storage::disk(config('filesystems.public_uploads_disk', 's3'))->delete($announcement->image);
             }
-            // Store the new image and add it to our update data array.
-            $updateData['image'] = $request->file('image')->store('announcements', 'public');
+            // Store the new compressed image
+            $updateData['image'] = $this->compressionService->compress($request->file('image'), 'announcements', 80);
         }
 
         // 3. Update the announcement with the prepared data.
         // This now only includes the 'image' key if a new one was uploaded.
         $announcement->update($updateData);
 
+        broadcast(new AnnouncementUpdated($announcement->fresh(), 'updated'))->toOthers();
+
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement updated successfully.');
     }
 
     public function destroy(Announcement $announcement)
     {
-        // Delete the image file from storage if it exists
+        $announcementData = $announcement->replicate();
+        $announcementData->setAttribute('id', $announcement->id);
+
         if ($announcement->image) {
-            Storage::disk('public')->delete($announcement->image);
+            Storage::disk(config('filesystems.public_uploads_disk', 's3'))->delete($announcement->image);
         }
 
         $announcement->delete();
+
+        broadcast(new AnnouncementUpdated($announcementData, 'deleted'))->toOthers();
+
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement deleted successfully.');
     }
 }

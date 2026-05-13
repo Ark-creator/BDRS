@@ -4,10 +4,21 @@ namespace App\Providers;
 
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL; // Siguraduhing naka-import ito
 use App\Models\User;
+use App\Models\Verification;
+use App\Policies\VerificationPolicy;
+use App\Events\IdentityVerificationCompleted;
+use App\Events\IdentityVerificationRequiresReview;
+use App\Events\IdentityVerificationReviewed;
+use App\Events\IdentityVerificationSubmitted;
+use App\Listeners\RecordIdentityVerificationAudit;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Notification; // <-- 1. Import Notification facade
+use Illuminate\Support\Facades\RateLimiter;
 use App\Notifications\Channels\SemaphoreChannel;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureRateLimiters();
 
           // --- ADD THIS BLOCK ---
         // Register the custom notification channel for Semaphore.
@@ -32,9 +44,15 @@ class AppServiceProvider extends ServiceProvider
             return new SemaphoreChannel();
         });
         Vite::prefetch(concurrency: 3);
+        Gate::policy(Verification::class, VerificationPolicy::class);
 
-        // Force HTTPS in production
-        if ($this->app->environment('production')) {
+        Event::listen(IdentityVerificationSubmitted::class, RecordIdentityVerificationAudit::class);
+        Event::listen(IdentityVerificationCompleted::class, RecordIdentityVerificationAudit::class);
+        Event::listen(IdentityVerificationRequiresReview::class, RecordIdentityVerificationAudit::class);
+        Event::listen(IdentityVerificationReviewed::class, RecordIdentityVerificationAudit::class);
+
+        // Force generated URLs to HTTPS whenever the deployed app URL uses HTTPS.
+        if ($this->app->environment('production') || str_starts_with((string) config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
 
@@ -47,7 +65,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Gate for Admin dashboard access (admins and super admins)
         Gate::define('be-admin', function (User $user) {
-            return $user->role === 'admin';
+            return in_array($user->role, ['admin', 'super_admin']);
         });
 
         // Gate for resident-level pages (residents and admins; superadmin handled by before)
@@ -62,6 +80,54 @@ class AppServiceProvider extends ServiceProvider
 
            Gate::define('manage-users', function (User $user) {
             return in_array($user->role, ['super_admin', 'admin']);
+        });
+    }
+
+    private function configureRateLimiters(): void
+    {
+        RateLimiter::for('public', function (Request $request) {
+            $ip = (string) $request->ip();
+
+            return [
+                Limit::perMinute((int) config('security.rate_limits.public_per_minute'))->by('public:minute:'.$ip),
+                Limit::perHour((int) config('security.rate_limits.public_per_hour'))->by('public:hour:'.$ip),
+            ];
+        });
+
+        RateLimiter::for('authenticated', function (Request $request) {
+            $identity = $request->user()
+                ? 'user:'.$request->user()->getAuthIdentifier()
+                : 'ip:'.$request->ip();
+
+            return [
+                Limit::perMinute((int) config('security.rate_limits.authenticated_per_minute'))->by('auth:minute:'.$identity),
+                Limit::perHour((int) config('security.rate_limits.authenticated_per_hour'))->by('auth:hour:'.$identity),
+            ];
+        });
+
+        RateLimiter::for('sensitive', function (Request $request) {
+            $identity = $request->user()
+                ? 'user:'.$request->user()->getAuthIdentifier()
+                : 'ip:'.$request->ip();
+
+            return [
+                Limit::perMinute((int) config('security.rate_limits.sensitive_per_minute'))->by('sensitive:minute:'.$identity),
+                Limit::perHour((int) config('security.rate_limits.sensitive_per_hour'))->by('sensitive:hour:'.$identity),
+            ];
+        });
+
+        RateLimiter::for('honeypot', function (Request $request) {
+            return Limit::perMinute((int) config('security.rate_limits.honeypot_per_minute'))
+                ->by('honeypot:'.$request->ip());
+        });
+
+        RateLimiter::for('traffic-dashboard', function (Request $request) {
+            $identity = $request->user()
+                ? 'user:'.$request->user()->getAuthIdentifier()
+                : 'ip:'.$request->ip();
+
+            return Limit::perMinute((int) config('security.rate_limits.dashboard_per_minute'))
+                ->by('traffic-dashboard:'.$identity);
         });
     }
 }

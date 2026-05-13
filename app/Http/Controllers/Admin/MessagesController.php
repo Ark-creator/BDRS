@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Events\AdminMessageSent;
+use App\Events\UnreadMessageCountUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Models\Reply;
+use App\Services\AdminUnreadMessageNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,7 +44,31 @@ class MessagesController extends Controller
         $message->update(['status' => 'replied']);
 
         $newReply->load('user');
-        broadcast(new AdminMessageSent($newReply))->toOthers();
+        broadcast(new AdminMessageSent($newReply));
+
+        // Notify resident about new reply
+        if ($message->user_id) {
+            $unreadReplies = Reply::whereHas('contactMessage', function ($query) use ($message) {
+                    $query->where('user_id', $message->user_id);
+                })
+                ->where('user_id', '!=', $message->user_id)
+                ->where('status', 'unread')
+                ->with('contactMessage:id,subject')
+                ->latest()
+                ->limit(5)
+                ->get()
+                ->map(function ($reply) {
+                    return [
+                        'id' => $reply->id,
+                        'subject' => $reply->contactMessage->subject ?? 'Reply to your message',
+                        'message' => $reply->message,
+                    ];
+                });
+
+            $unreadCount = $unreadReplies->count();
+            
+            broadcast(new UnreadMessageCountUpdated($message->user_id, $unreadCount, $unreadReplies->toArray()));
+        }
 
         return response()->json(['status' => 'success']);
     }
@@ -58,31 +84,9 @@ class MessagesController extends Controller
             return response()->json(['messages' => [], 'count' => 0]);
         }
 
-        $unreadConversations = ContactMessage::where(function ($query) {
-            $query->where('status', 'unread')
-                  ->orWhereHas('replies', function ($subQuery) {
-                      $subQuery->where('status', 'unread')
-                               ->whereHas('user', function ($userQuery) {
-                                   $userQuery->where('role', 'resident');
-                               });
-                  });
-        })->with('user')->get();
-
-        $totalUnreadCount = $unreadConversations->count();
-        
-        $formattedMessages = $unreadConversations->map(function ($message) {
-            return [
-                'id' => 'contact-' . $message->id,
-                'subject' => $message->subject,
-                'message' => $message->message,
-                'created_at' => $message->created_at,
-            ];
-        })->sortByDesc('created_at')->take(5)->values();
-
-        return response()->json([
-            'messages' => $formattedMessages,
-            'count' => $totalUnreadCount,
-        ]);
+        return response()->json(
+            app(AdminUnreadMessageNotifier::class)->payloadForBarangay($user->barangay_id)
+        );
     }
 
     /**
@@ -106,6 +110,15 @@ class MessagesController extends Controller
              ->where('status', 'unread')
              ->update(['status' => 'read']);
 
+        // Broadcast updated unread count to admins
+        $this->broadcastUnreadCountToAdmins();
+
         return redirect()->route('admin.messages');
+    }
+
+    private function broadcastUnreadCountToAdmins(): void
+    {
+        app(AdminUnreadMessageNotifier::class)
+            ->broadcastToBarangayAdmins(Auth::user()->barangay_id);
     }
 }

@@ -6,6 +6,7 @@ use App\Events\ResidentMessageSent; // 👈 PALITAN ITO
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Models\Reply;
+use App\Services\AdminUnreadMessageNotifier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\JsonResponse;
@@ -81,8 +82,17 @@ class ConversationController extends Controller
 
         $newReply->load('user'); 
         // 👇 GAMITIN ANG BAGONG EVENT
-        broadcast(new ResidentMessageSent($newReply))->toOthers();
+        broadcast(new ResidentMessageSent($newReply));
+
+        // Notify admins about new unread message
+        $this->broadcastUnreadCountToAdmins();
 
         return response()->json(['status' => 'success'], 201);
+    }
+
+    private function broadcastUnreadCountToAdmins(): void
+    {
+        app(AdminUnreadMessageNotifier::class)
+            ->broadcastToBarangayAdmins(Auth::user()->barangay_id);
     }
 }

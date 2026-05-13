@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Resident;
 
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
+use App\Services\AdminUnreadMessageNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,7 +23,7 @@ class ContactUsController extends Controller
         ]);
 
         // Create a new ContactMessage record
-        ContactMessage::create([
+        $contactMessage = ContactMessage::create([
             'user_id' => Auth::id(), // Get the ID of the currently authenticated user
             'subject' => $validated['subject'],
             'message' => $validated['message'],
@@ -30,7 +31,16 @@ class ContactUsController extends Controller
             'status' => 'unread', // Default status for new messages
         ]);
 
+        // Notify admins about new message
+        $this->broadcastUnreadCount();
+
         // Redirect back to the contact page with a success message
         return redirect()->route('residents.contact')->with('success', 'Your message has been sent successfully!');
+    }
+
+    private function broadcastUnreadCount(): void
+    {
+        app(AdminUnreadMessageNotifier::class)
+            ->broadcastToBarangayAdmins(Auth::user()->barangay_id);
     }
 }

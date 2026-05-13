@@ -5,9 +5,15 @@ import { motion, useScroll, useSpring, useInView, AnimatePresence } from 'framer
 import { TypeAnimation } from 'react-type-animation';
 import clsx from 'clsx';
 import OfficialsWelcome from '@/Components/OfficialsWelcome';
-import FooterWelcome from '@/Components/FooterWelcome'; // Tama ang path na ito
+import FooterWelcome from '@/Components/FooterWelcome';
 import Announcements from '@/Components/Residents/Announcements';
 import TranslateButton from '@/Components/TranslateButton';
+import {
+    normalizeAnnouncements,
+    prependAnnouncement,
+    removeAnnouncement,
+    updateAnnouncement,
+} from '@/utils/announcementList';
 
 const content = {
     // ... (walang pagbabago sa content object mo)
@@ -105,12 +111,14 @@ const StepCard = ({ icon, title, description }) => ( <div className="relative fl
 const FaqItem = ({ question, answer }) => { const [isOpen, setIsOpen] = useState(false); return ( <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.5 }} className={clsx( "mb-4 rounded-xl border transition-all duration-300", isOpen ? "border-blue-500 bg-white dark:bg-slate-800/50" : "border-slate-200 bg-white/50 dark:border-slate-700 dark:bg-slate-800/30 hover:bg-white/80 dark:hover:bg-slate-800/60" )} > <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-start text-left p-6" > <div className="flex items-start gap-4"> <h3 className="text-md font-semibold text-slate-800 dark:text-slate-100">{question}</h3> </div> <motion.div animate={{ rotate: isOpen ? 180 : 0 }} className="ml-4"> <ChevronDown className="h-5 w-5 text-slate-500 flex-shrink-0" /> </motion.div> </button> <AnimatePresence> {isOpen && ( <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden" > <div className="px-6 pb-6 pl-16 text-slate-600 dark:text-slate-400 text-sm"> {answer} </div> </motion.div> )} </AnimatePresence> </motion.div> ); };
 const AuroraBackground = () => ( <div className="absolute top-0 left-0 w-full h-full overflow-hidden -z-10"> <motion.div className="absolute top-[20%] left-[1%] w-[40rem] h-[40rem] bg-gradient-to-tr from-sky-200 to-blue-500 rounded-full blur-3xl" animate={{ x: [-20, 20, -20], y: [-20, 20, -20], rotate: [0, 5, 0], opacity: [0.15, 0.25, 0.15] }} transition={{ duration: 20, repeat: Infinity, repeatType: "mirror", ease: "easeInOut" }} /> </div> );
 
+const ANNOUNCEMENT_LIMIT = 5;
 
 // 1. DAGDAGAN NG `footerData` DITO PARA MATANGGAP ANG PROP GALING SA CONTROLLER
 export default function Welcome({ auth, announcements = [], footerData , officials }) {
     const [scrolled, setScrolled] = useState(false);
     const [language, setLanguage] = useState('en');
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [announcementList, setAnnouncementList] = useState(() => normalizeAnnouncements(announcements, ANNOUNCEMENT_LIMIT));
 
     const { scrollYProgress } = useScroll();
     const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
@@ -134,6 +142,31 @@ export default function Welcome({ auth, announcements = [], footerData , officia
             document.body.classList.remove('overflow-hidden');
         };
     }, [isMobileMenuOpen]);
+
+    useEffect(() => {
+        setAnnouncementList(normalizeAnnouncements(announcements, ANNOUNCEMENT_LIMIT));
+    }, [announcements]);
+
+    useEffect(() => {
+        if (!window.Echo) return;
+
+        const channel = window.Echo.channel('announcements');
+        
+        channel.listen('.AnnouncementUpdated', (event) => {
+            if (event.action === 'created') {
+                setAnnouncementList(prev => prependAnnouncement(prev, event.announcement, ANNOUNCEMENT_LIMIT));
+            } else if (event.action === 'deleted') {
+                setAnnouncementList(prev => removeAnnouncement(prev, event.announcement.id));
+            } else if (event.action === 'updated') {
+                setAnnouncementList(prev => updateAnnouncement(prev, event.announcement));
+            }
+        });
+
+        return () => {
+            channel.stopListening('.AnnouncementUpdated');
+            window.Echo.leave('announcements');
+        };
+    }, []);
 
     const t = content[language];
 
@@ -246,7 +279,7 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                     </div>
                     <div className="py-16 sm:py-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                            <Announcements announcements={announcements} />
+                            <Announcements announcements={announcementList} />
                         </div>
                     </div>
                     <section id="how-it-works" className="py-20 sm:py-28 relative bg-white dark:bg-slate-900/70 backdrop-blur-sm">
@@ -304,7 +337,6 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                     </section>
                 </main>
                 
-                {/* 2. SIGURADUHING MAY `footerData` NA PINAPASA DITO */}
                 <FooterWelcome footerData={footerData} />
             </div>
         </>
