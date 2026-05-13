@@ -12,9 +12,15 @@ class HomeController extends Controller
 {
     public function __invoke()
     {
+
         $documentTypes = Cache::remember('resident.document_types', now()->addMinutes(10), function () {
             return DocumentType::where('is_archived', false)->get();
         });
+
+        // Fetch only document types that residents can currently request.
+        $documentTypes = DocumentType::where('is_archived', false)
+            ->where('is_requestable', true)
+            ->get();
 
         $announcements = Cache::remember('resident.announcements', now()->addMinutes(5), function () {
             return Announcement::select(['id', 'tag', 'title', 'description', 'link', 'image', 'user_id', 'created_at'])

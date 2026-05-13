@@ -18,8 +18,14 @@ class DocumentType extends Model
         'template_path',
         'requirements_description',
         'is_archived',
+        'is_requestable',
         'archived_by',
         'barangay_id',
+    ];
+
+    protected $casts = [
+        'is_archived' => 'boolean',
+        'is_requestable' => 'boolean',
     ];
 
     /**

@@ -7,6 +7,7 @@ use Inertia\Response;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Route;
@@ -53,7 +54,11 @@ public function store(LoginRequest $request): RedirectResponse
     }
 
     // 2. Check for email verification
-    if (!$user->hasVerifiedEmail()) {
+    if (!SystemSetting::emailVerificationEnabled() && !$user->hasVerifiedEmail()) {
+        $user->forceFill(['email_verified_at' => now()])->save();
+    }
+
+    if (SystemSetting::emailVerificationEnabled() && !$user->hasVerifiedEmail()) {
         return redirect()->route('verification.notice');
     }
 

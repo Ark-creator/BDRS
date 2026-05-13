@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Auth;
 
+use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,6 +28,36 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
+        $response->assertRedirect(route('residents.home', absolute: false));
+    }
+
+    public function test_unverified_users_are_redirected_when_email_verification_is_enabled(): void
+    {
+        SystemSetting::setValue(SystemSetting::EMAIL_VERIFICATION_ENABLED, true);
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertFalse($user->fresh()->hasVerifiedEmail());
+        $response->assertRedirect(route('verification.notice'));
+    }
+
+    public function test_unverified_users_can_continue_when_email_verification_is_disabled(): void
+    {
+        SystemSetting::setValue(SystemSetting::EMAIL_VERIFICATION_ENABLED, false);
+        $user = User::factory()->unverified()->create();
+
+        $response = $this->post('/login', [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $this->assertAuthenticatedAs($user);
+        $this->assertTrue($user->fresh()->hasVerifiedEmail());
         $response->assertRedirect(route('residents.home', absolute: false));
     }
 
