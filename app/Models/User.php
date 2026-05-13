@@ -2,57 +2,41 @@
 
 namespace App\Models;
 
-use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Notifications\Notifiable;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Casts\Attribute;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
-
-use Illuminate\Database\Eloquent\Relations\BelongsTo; 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable implements MustVerifyEmail 
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * Mass assignable attributes.
-     */
     protected $fillable = [
         'email',
         'password',
         'role',
         'status',
-        'two_factor_enabled', 
-        'two_factor_code',    
-        'two_factor_expires_at', 
-        'verification_status', 
+        'two_factor_enabled',
+        'two_factor_code',
+        'two_factor_expires_at',
+        'verification_status',
         'barangay_id',
         'two_factor_method',
         'email_verified_at',
-
-
     ];
 
-    /**
-     * Attributes hidden from arrays/JSON.
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Append custom attributes to arrays/JSON.
-     */
-    
+    protected $appends = ['full_name', 'is_verified'];
 
-    /**
-     * Attribute casting.
-     */
     protected function casts(): array
     {
         return [
@@ -62,37 +46,33 @@ class User extends Authenticatable implements MustVerifyEmail
         ];
     }
 
-    /**
-     * Accessor for the full name.
-     * Returns "First Middle Last" if available, trims extra spaces.
-     */
-    protected $appends = ['full_name', 'is_verified'];
     protected function fullName(): Attribute
-{
-    return Attribute::make(
-        get: fn () => trim(
-            collect([
-                $this->profile?->first_name,
-                $this->profile?->middle_name,
-                $this->profile?->last_name
-            ])
-            ->filter()
-            ->implode(' ')
-        )
-    );
-}
+    {
+        return Attribute::make(
+            get: fn () => trim(
+                collect([
+                    $this->profile?->first_name,
+                    $this->profile?->middle_name,
+                    $this->profile?->last_name,
+                ])
+                    ->filter()
+                    ->implode(' ')
+            )
+        );
+    }
 
-    /**
-     * Relationship: One user has one profile.
-     */
+    protected function isVerified(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->verification_status === 'verified',
+        );
+    }
+
     public function profile(): HasOne
     {
         return $this->hasOne(UserProfile::class);
     }
 
-    /**
-     * Relationship: All document requests of this user.
-     */
     public function documentRequests(): HasMany
     {
         return $this->hasMany(DocumentRequest::class);
@@ -104,49 +84,32 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     public function barangay(): BelongsTo
-{
-    return $this->belongsTo(Barangay::class);
-}
+    {
+        return $this->belongsTo(Barangay::class);
+    }
 
-    /**
-     * Relationship: Requests processed by this user.
-     */
     public function processedRequests(): HasMany
     {
         return $this->hasMany(DocumentRequest::class, 'processed_by');
     }
+
     public function getFullNameAttribute()
-{
-    if (!$this->relationLoaded('profile')) {
-        $this->load('profile');
-    }
-
-    return trim(
-        collect([
-            $this->profile->first_name ?? '',
-            $this->profile->middle_name ?? '',
-            $this->profile->last_name ?? ''
-        ])->filter()->implode(' ')
-    );
-}
-
- protected function isVerified(): Attribute
     {
-        return Attribute::make(
-            get: fn () => $this->verification_status === 'verified',
+        if (! $this->relationLoaded('profile')) {
+            $this->load('profile');
+        }
+
+        return trim(
+            collect([
+                $this->profile->first_name ?? '',
+                $this->profile->middle_name ?? '',
+                $this->profile->last_name ?? '',
+            ])->filter()->implode(' ')
         );
     }
-  /**
-     * Route notifications for the Semaphore channel.
-     * This tells Laravel how to get the phone number for this user.
-     *
-     * @param  \Illuminate\Notifications\Notification  $notification
-     * @return string|null
-     */
+
     public function routeNotificationForSemaphore($notification): ?string
     {
-        // Return the phone number from the related profile model
         return $this->profile?->phone_number;
     }
 }
-    

@@ -2,49 +2,45 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\AnnouncementUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Announcement;
-use App\Events\AnnouncementUpdated;
+use App\Services\ImageCompressionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
-use App\Services\ImageCompressionService;
 
 class AnnouncementController extends Controller
 {
     public function __construct(
         private ImageCompressionService $compressionService
     ) {}
-    /**
-     * Display a listing of the resource.
-     */
+
     public function index()
     {
-        $announcements = Announcement::latest()
-            ->with('user.profile')
-            ->paginate(5) // Gumagamit tayo ng paginate
+        $announcements = Announcement::select(['id', 'tag', 'title', 'description', 'link', 'image', 'user_id', 'created_at'])
+            ->with('user.profile:user_id,first_name,middle_name,last_name')
+            ->latest()
+            ->paginate(5)
             ->through(fn ($announcement) => [
                 'id' => $announcement->id,
                 'tag' => $announcement->tag,
                 'title' => $announcement->title,
                 'description' => $announcement->description,
                 'link' => $announcement->link,
-                'image_url' => $announcement->image_url, // Siguraduhing may image_url accessor ka
+                'image_url' => $announcement->image_url,
                 'created_at' => $announcement->created_at,
                 'user' => $announcement->user,
             ]);
 
         return Inertia::render('Admin/Announcement', [
-            // ANG PANGALAN NG PROP AY DAPAT 'announcements'
-            'announcements' => $announcements
+            'announcements' => $announcements,
         ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -52,8 +48,6 @@ class AnnouncementController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'link' => 'nullable|url',
-            // 'barangay_id' => Auth::user()->barangay_id,
-            // Changed max size to 10MB (10240 KB)
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:10240',
         ]);
 
@@ -70,15 +64,12 @@ class AnnouncementController extends Controller
         ]);
 
         broadcast(new AnnouncementUpdated($announcement, 'created'))->toOthers();
+        $this->flushAnnouncementCache();
 
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement created successfully.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-
-     public function update(Request $request, Announcement $announcement)
+    public function update(Request $request, Announcement $announcement)
     {
         $validated = $request->validate([
             'tag' => 'required|string|max:50',
@@ -88,7 +79,6 @@ class AnnouncementController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240',
         ]);
 
-        // 1. Prepare data for update, initially excluding the image.
         $updateData = [
             'tag' => $validated['tag'],
             'title' => $validated['title'],
@@ -96,21 +86,17 @@ class AnnouncementController extends Controller
             'link' => $validated['link'],
         ];
 
-        // 2. Check if a new image was uploaded.
         if ($request->hasFile('image')) {
-            // Delete the old image from storage
             if ($announcement->image) {
                 Storage::disk(config('filesystems.public_uploads_disk', 's3'))->delete($announcement->image);
             }
-            // Store the new compressed image
             $updateData['image'] = $this->compressionService->compress($request->file('image'), 'announcements', 80);
         }
 
-        // 3. Update the announcement with the prepared data.
-        // This now only includes the 'image' key if a new one was uploaded.
         $announcement->update($updateData);
 
         broadcast(new AnnouncementUpdated($announcement->fresh(), 'updated'))->toOthers();
+        $this->flushAnnouncementCache();
 
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement updated successfully.');
     }
@@ -127,7 +113,14 @@ class AnnouncementController extends Controller
         $announcement->delete();
 
         broadcast(new AnnouncementUpdated($announcementData, 'deleted'))->toOthers();
+        $this->flushAnnouncementCache();
 
         return Redirect::route('admin.announcements.index')->with('success', 'Announcement deleted successfully.');
+    }
+
+    private function flushAnnouncementCache(): void
+    {
+        Cache::forget('welcome.announcements');
+        Cache::forget('resident.announcements');
     }
 }

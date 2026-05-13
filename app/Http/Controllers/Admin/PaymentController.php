@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
@@ -19,18 +20,15 @@ class PaymentController extends Controller
 
         // Start building the query on DocumentRequest model
         $paymentsQuery = DocumentRequest::query()
-            // IMPORTANT: The query is now hardcoded to only fetch 'Paid' transactions
-            ->where('payment_status', 'Paid')
-            // Filter for Business Permits only
+            ->paid()
             ->whereHas('documentType', fn ($query) => $query->where('name', 'Brgy Business Permit'))
-            // Eager load related data to avoid N+1 query issues
-            ->with(['user.profile', 'documentType', 'processor.profile']);
+            ->with(['user.profile:user_id,first_name,middle_name,last_name', 'documentType:id,name', 'processor.profile:user_id,first_name,middle_name,last_name']);
 
         // Apply search filter for requestor's name
         $paymentsQuery->when($filters['search'] ?? null, function ($query, $search) {
             $query->whereHas('user.profile', function ($subQuery) use ($search) {
                 $subQuery->where('first_name', 'like', "%{$search}%")
-                         ->orWhere('last_name', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%");
             });
         });
 
