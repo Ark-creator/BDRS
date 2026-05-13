@@ -3,7 +3,7 @@ import { Head, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { AnimatePresence, motion } from 'framer-motion';
 import clsx from 'clsx';
-import { Users, Camera, X, CheckCircle, Phone, MapPin, Mail, ImageUp, Building, Contact, Trash2 } from 'lucide-react';
+import { Users, Camera, X, CheckCircle, Phone, MapPin, Mail, ImageUp, Building, Contact, Trash2, FileText, ShieldCheck } from 'lucide-react';
 
 //================================================================
 // ✨ Polished & Professional Reusable UI Components ✨
@@ -18,7 +18,7 @@ const PageHeader = ({ title, description }) => (
 
 const Tabs = ({ tabs, activeTab, setActiveTab }) => (
     <div className="mb-6 flex justify-center">
-        <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex space-x-1">
+        <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex flex-wrap gap-1">
             {tabs.map((tab) => (
                 <button
                     key={tab.id}
@@ -44,6 +44,30 @@ const FormRow = ({ children }) => ( <div className="px-6 py-5 grid grid-cols-1 m
 const FormLabel = ({ title, description }) => ( <div className="md:col-span-1 pt-1"><h4 className="font-semibold text-slate-800 dark:text-slate-200">{title}</h4>{description && <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>}</div> );
 const FormControl = ({ children }) => <div className="md:col-span-2">{children}</div>;
 const InputField = ({ name, value, onChange, type = 'text', ...props }) => { const InputComponent = type === 'textarea' ? 'textarea' : 'input'; return ( <InputComponent id={name} name={name} type={type} value={value || ''} onChange={onChange} className={clsx("block w-full rounded-md bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm transition duration-150 ease-in-out", type === 'textarea' ? 'py-2 px-3' : 'h-10 px-3')} {...props} /> ); };
+const ToggleSwitch = ({ checked, onChange, label, description, meta }) => (
+    <label className="flex items-center justify-between gap-4 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/30 px-4 py-3">
+        <span className="min-w-0">
+            <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</span>
+            {description && <span className="mt-1 block text-sm text-slate-500 dark:text-slate-400">{description}</span>}
+            {meta && <span className="mt-1 block text-xs font-medium text-slate-400 dark:text-slate-500">{meta}</span>}
+        </span>
+        <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="sr-only"
+        />
+        <span className={clsx(
+            'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors',
+            checked ? 'bg-blue-600' : 'bg-slate-300 dark:bg-slate-600'
+        )}>
+            <span className={clsx(
+                'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform',
+                checked ? 'translate-x-5' : 'translate-x-1'
+            )} />
+        </span>
+    </label>
+);
 const ImageUploader = ({ currentImageUrl, onImageChange, onImageRemove, shape = 'square' }) => { const shapeClasses = { square: 'rounded-full w-40 h-40', circle: 'rounded-full w-24 h-24' }; return ( <div className="flex items-center gap-5"> <div className={clsx("flex-shrink-0 bg-slate-100 dark:bg-slate-700/50 flex items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-600", shapeClasses[shape])}>{currentImageUrl ? ( <img src={currentImageUrl} alt="Preview" className={clsx("h-full w-full object-cover", shapeClasses[shape])} /> ) : ( <ImageUp className="h-8 w-8 text-slate-400" /> )}</div> <div className="flex items-center gap-2"><label className="cursor-pointer rounded-md bg-white dark:bg-slate-700 px-4 py-2 text-sm font-semibold text-slate-800 dark:text-slate-200 shadow-sm ring-1 ring-inset ring-slate-300 dark:ring-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600/80 transition-colors"><span>Upload File</span><input type="file" className="sr-only" onChange={onImageChange} accept="image/*" /></label>{currentImageUrl && ( <button type="button" onClick={onImageRemove} className="p-2 rounded-md text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 size={16} /></button> )}</div></div> ); };
 const CardFooter = ({ children }) => ( <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-200 dark:border-slate-700/50 rounded-b-2xl flex justify-end items-center gap-4">{children}</div>);
 
@@ -77,11 +101,12 @@ const SuccessToast = ({ show, onDismiss }) => (
     </AnimatePresence>
 );
 
-export default function SuperAdminSettings({ auth, initialSettingsData }) {
+export default function SuperAdminSettings({ auth, initialSettingsData, systemSettings = {}, documentAvailability = [] }) {
     const { data, setData, post, processing, isDirty, reset } = useForm(() => {
         const safeData = initialSettingsData || {};
         const officials = Array.isArray(safeData.officials) ? safeData.officials : [];
         const filledOfficials = Array(3).fill(null).map((_, i) => officials[i] || { name: '', position: '', photo_url: '' });
+        const availability = Array.isArray(documentAvailability) ? documentAvailability : [];
 
         return {
             ...safeData,
@@ -94,6 +119,11 @@ export default function SuperAdminSettings({ auth, initialSettingsData }) {
             officials: filledOfficials,
             footer_logo_file: null,
             officials_files: [null, null, null],
+            email_verification_enabled: Boolean(systemSettings.email_verification_enabled),
+            document_availability: availability.map((document) => ({
+                ...document,
+                is_requestable: Boolean(document.is_requestable),
+            })),
             _method: 'PATCH',
         };
     });
@@ -107,6 +137,17 @@ export default function SuperAdminSettings({ auth, initialSettingsData }) {
     const handleOfficialChange = (index, field, value) => setData('officials', data.officials.map((official, i) => i === index ? { ...official, [field]: value } : official));
     const handleOfficialFileChange = (e, index) => { const file = e.target.files[0]; if (file) { let newFiles = [...data.officials_files]; newFiles[index] = file; setData(data => ({ ...data, officials_files: newFiles, officials: data.officials.map((official, i) => i === index ? { ...official, photo_url: URL.createObjectURL(file) } : official) })); } };
     const handleOfficialFileRemove = (index) => { let newFiles = [...data.officials_files]; newFiles[index] = 'remove'; setData(data => ({ ...data, officials_files: newFiles, officials: data.officials.map((official, i) => i === index ? { ...official, photo_url: null } : official) })); };
+    const handleDocumentAvailabilityChange = (name, isRequestable) => {
+        setData('document_availability', data.document_availability.map((document) => (
+            document.name === name
+                ? {
+                    ...document,
+                    is_requestable: isRequestable,
+                    available_count: isRequestable ? document.total_count : 0,
+                }
+                : document
+        )));
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -125,6 +166,8 @@ export default function SuperAdminSettings({ auth, initialSettingsData }) {
         { id: 'officials', label: 'Officials', icon: Users },
         { id: 'branding', label: 'Branding', icon: Building },
         { id: 'contact', label: 'Contact Info', icon: Contact },
+        { id: 'requests', label: 'Requests', icon: FileText },
+        { id: 'auth', label: 'Auth', icon: ShieldCheck },
     ];
     
     return (
@@ -179,6 +222,46 @@ export default function SuperAdminSettings({ auth, initialSettingsData }) {
                                         <FormRow><FormLabel title="Email" description="The official contact email." /><FormControl><InputField name="footer_email" value={data.footer_email} onChange={handleInputChange} type="email" /></FormControl></FormRow>
                                         <FormRow><FormLabel title="Phone Number" description="The official contact phone number." /><FormControl><InputField name="footer_phone" value={data.footer_phone} onChange={handleInputChange} /></FormControl></FormRow>
                                     </>
+                                )}
+
+                                {activeTab === 'requests' && (
+                                    <FormRow>
+                                        <FormLabel title="Requestable Documents" description="Choose which document types residents can select from the request page." />
+                                        <FormControl>
+                                            <div className="space-y-3">
+                                                {data.document_availability.length > 0 ? (
+                                                    data.document_availability.map((document) => (
+                                                        <ToggleSwitch
+                                                            key={document.name}
+                                                            checked={Boolean(document.is_requestable)}
+                                                            onChange={(checked) => handleDocumentAvailabilityChange(document.name, checked)}
+                                                            label={document.name}
+                                                            description={document.is_requestable ? 'Available for resident requests.' : 'Hidden from resident requests.'}
+                                                            meta={`${document.available_count}/${document.total_count} barangay document entries enabled`}
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    <p className="rounded-md border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                                                        No document types are configured yet.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </FormControl>
+                                    </FormRow>
+                                )}
+
+                                {activeTab === 'auth' && (
+                                    <FormRow>
+                                        <FormLabel title="Email Verification" description="Control whether users must verify their email before using verified routes." />
+                                        <FormControl>
+                                            <ToggleSwitch
+                                                checked={Boolean(data.email_verification_enabled)}
+                                                onChange={(checked) => setData('email_verification_enabled', checked)}
+                                                label="Require Email Verification"
+                                                description={data.email_verification_enabled ? 'New users must verify email before continuing.' : 'New users are marked email-verified automatically.'}
+                                            />
+                                        </FormControl>
+                                    </FormRow>
                                 )}
                             </motion.div>
                         </AnimatePresence>

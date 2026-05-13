@@ -4,6 +4,8 @@ namespace App\Http\Controllers\SuperAdmin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\DocumentType;
+use App\Models\SystemSetting;
 use App\Models\WelcomeContent;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
@@ -44,8 +46,25 @@ class ContentSettingsController extends Controller
     public function show()
     {
         $settings = WelcomeContent::firstOrNew([]);
+
+        $documentAvailability = DocumentType::withoutGlobalScopes()
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_requestable', 'barangay_id'])
+            ->groupBy('name')
+            ->map(fn ($documents, string $name) => [
+                'name' => $name,
+                'is_requestable' => $documents->every(fn (DocumentType $document) => $document->is_requestable),
+                'available_count' => $documents->where('is_requestable', true)->count(),
+                'total_count' => $documents->count(),
+            ])
+            ->values();
+
         return Inertia::render('SuperAdmin/SuperAdminSettings', [
-            'initialSettingsData' => $settings
+            'initialSettingsData' => $settings,
+            'systemSettings' => [
+                'email_verification_enabled' => SystemSetting::emailVerificationEnabled(),
+            ],
+            'documentAvailability' => $documentAvailability,
         ]);
     }
 
@@ -62,9 +81,26 @@ class ContentSettingsController extends Controller
             'officials.*.name' => 'nullable|string|max:255',
             'officials.*.position' => 'nullable|string|max:255',
             'officials_files' => 'nullable|array|size:3',
+            'email_verification_enabled' => 'required',
+            'document_availability' => 'nullable|array',
+            'document_availability.*.name' => 'required|string|max:255',
+            'document_availability.*.is_requestable' => 'required',
         ]);
 
         $settings = WelcomeContent::firstOrCreate([]);
+
+        SystemSetting::setValue(
+            SystemSetting::EMAIL_VERIFICATION_ENABLED,
+            $request->boolean('email_verification_enabled')
+        );
+
+        foreach ($request->input('document_availability', []) as $documentSetting) {
+            DocumentType::withoutGlobalScopes()
+                ->where('name', $documentSetting['name'])
+                ->update([
+                    'is_requestable' => filter_var($documentSetting['is_requestable'], FILTER_VALIDATE_BOOLEAN),
+                ]);
+        }
         
         $dataToUpdate = $request->only(['footer_title', 'footer_subtitle', 'footer_address', 'footer_email', 'footer_phone']);
         $officialsData = $request->input('officials');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Models\User;
+use App\Models\SystemSetting;
 use App\Models\UserProfile;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -44,8 +45,10 @@ class RegisteredUserController extends Controller
      *
      * @throws \Illuminate\Validation\ValidationException
      */
-       public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
+        $emailVerificationEnabled = SystemSetting::emailVerificationEnabled();
+
         $request->merge([
             'phone_number' => UserProfile::normalizePhoneNumber($request->phone_number),
         ]);
@@ -83,7 +86,7 @@ class RegisteredUserController extends Controller
                 'role' => 'resident',
                 'two_factor_enabled' => true,
                 'two_factor_method' => 'email',
-                'email_verified_at' => now(),
+                'email_verified_at' => $emailVerificationEnabled ? null : now(),
                 
             ]);
 
@@ -120,6 +123,10 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
         $request->session()->regenerate();
+
+        if ($emailVerificationEnabled && !$user->hasVerifiedEmail()) {
+            return redirect()->route('verification.notice');
+        }
 
         return redirect()->route('residents.home');
     }
