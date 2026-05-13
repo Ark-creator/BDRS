@@ -79,7 +79,7 @@ class RegisteredUserController extends Controller
             $this->assertRegistrationImagesAreValid($request);
         }
 
-        $user = DB::transaction(function () use ($request) {
+        $user = DB::transaction(function () use ($request, $emailVerificationEnabled) {
             $user = User::create([
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
