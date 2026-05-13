@@ -1,6 +1,35 @@
 import { createWorker } from 'tesseract.js';
+import {
+    loadBdrsWasm,
+    getGoWasmHealth,
+    analyzeImageQualityGo,
+    analyzeDocumentGeometryGo,
+    detectFacesGo,
+    validateDocumentGo,
+    detectDocumentTypeGo,
+    extractFieldsGo,
+    scoreDocumentTypeGo,
+    validateSelfieGo,
+    estimateBarcodeSignalGo,
+    collectBackIDEvidenceGo,
+} from './wasmLoader';
 
 const TESSERACT_BASE = '/vendor/tesseract';
+
+let goWasmAvailable = null;
+
+const isGoWasmReady = async () => {
+    if (goWasmAvailable !== null) {
+        return goWasmAvailable;
+    }
+    try {
+        const api = await loadBdrsWasm();
+        goWasmAvailable = !!api && typeof api.analyzeImageQuality === 'function';
+    } catch {
+        goWasmAvailable = false;
+    }
+    return goWasmAvailable;
+};
 
 const DOCUMENT_TYPES = {
     driver_license: {
@@ -348,6 +377,78 @@ const analyzeImageQuality = async (file, role) => {
     const loaded = await loadCanvas(file);
     const { context, sampleWidth, sampleHeight, width, height } = loaded;
     const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+
+    const useGo = await isGoWasmReady();
+    if (useGo) {
+        try {
+            const rgbaData = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+            const goMetrics = await analyzeImageQualityGo(rgbaData, sampleWidth, sampleHeight);
+            const barcodeSignal = await estimateBarcodeSignalGo(rgbaData, sampleWidth, sampleHeight);
+            const issues = [];
+            const blockingIssues = [];
+            const minWidth = role === 'selfie' ? 360 : 500;
+            const minHeight = role === 'selfie' ? 360 : 280;
+
+            if (width < minWidth || height < minHeight) {
+                blockingIssues.push('image_resolution_too_low');
+            }
+            if (goMetrics.brightness < 28 || goMetrics.shadow_ratio > 0.58) {
+                blockingIssues.push('image_too_dark');
+            } else if (goMetrics.brightness < 35) {
+                issues.push('image_dark_but_recoverable');
+            } else if (goMetrics.brightness < 48) {
+                issues.push('image_slightly_dark');
+            }
+            if (goMetrics.brightness > 240 || goMetrics.glare_ratio > 0.18) {
+                blockingIssues.push('image_overexposed');
+            } else if (goMetrics.glare_ratio > 0.08 || goMetrics.bright_pixel_ratio > 0.20) {
+                issues.push('image_glare_detected');
+            }
+            if (goMetrics.dynamic_range < 28) {
+                blockingIssues.push('image_low_dynamic_range');
+            } else if (goMetrics.contrast < 12 || goMetrics.dynamic_range < 45) {
+                issues.push('image_low_contrast_recoverable');
+            } else if (goMetrics.contrast < 18) {
+                issues.push('image_contrast_low');
+            }
+            if (goMetrics.sharpness < 3.2) {
+                blockingIssues.push('image_blurry');
+            } else if (goMetrics.sharpness < 7) {
+                issues.push('image_soft_focus');
+            }
+            if (file.size < 18000) {
+                issues.push('image_file_very_small');
+            }
+
+            return {
+                ...loaded,
+                quality: {
+                    width,
+                    height,
+                    sample_width: sampleWidth,
+                    sample_height: sampleHeight,
+                    brightness: goMetrics.brightness,
+                    contrast: goMetrics.contrast,
+                    sharpness: goMetrics.sharpness,
+                    edge_density: goMetrics.edge_density,
+                    aspect_ratio: goMetrics.aspect_ratio,
+                    dynamic_range: goMetrics.dynamic_range,
+                    dark_pixel_ratio: goMetrics.dark_pixel_ratio,
+                    bright_pixel_ratio: goMetrics.bright_pixel_ratio,
+                    glare_ratio: goMetrics.glare_ratio,
+                    shadow_ratio: goMetrics.shadow_ratio,
+                    barcode_signal: barcodeSignal,
+                    score: goMetrics.quality_score,
+                    issues,
+                    blocking_issues: blockingIssues,
+                    engine: 'go-wasm',
+                },
+            };
+        } catch {
+            // Fall through to JS implementation
+        }
+    }
+
     const grayscale = new Uint8Array(sampleWidth * sampleHeight);
 
     let sum = 0;
@@ -475,6 +576,7 @@ const analyzeImageQuality = async (file, role) => {
             score: Math.round(clamp(score, 0, 100)),
             issues,
             blocking_issues: blockingIssues,
+            engine: 'js-canvas',
         },
     };
 };
@@ -807,8 +909,23 @@ const runOcrPipeline = async (qualityReport, signal) => {
     return mergeOcrResults(readableResults.length ? readableResults : results);
 };
 
-const scoreDocumentType = (rawText, profile) => {
+const scoreDocumentType = async (rawText, profile) => {
     if (!profile) return 0;
+
+    const useGo = await isGoWasmReady();
+    if (useGo) {
+        try {
+            for (const [docType, p] of Object.entries(DOCUMENT_TYPES)) {
+                if (p === profile || p.label === profile.label) {
+                    const goScore = await scoreDocumentTypeGo(rawText, docType);
+                    return clamp(goScore, 0, 100);
+                }
+            }
+        } catch {
+            // Fall through to JS
+        }
+    }
+
     const normalized = normalizeText(rawText);
     let score = 0;
 
@@ -827,10 +944,30 @@ const scoreDocumentType = (rawText, profile) => {
     return clamp(score, 0, 100);
 };
 
-const detectDocumentType = (rawText) => {
-    const candidates = Object.entries(DOCUMENT_TYPES)
-        .map(([type, profile]) => ({ type, label: profile.label, confidence: scoreDocumentType(rawText, profile) }))
-        .sort((a, b) => b.confidence - a.confidence);
+const detectDocumentType = async (rawText) => {
+    const useGo = await isGoWasmReady();
+    if (useGo) {
+        try {
+            const goResult = await detectDocumentTypeGo(rawText);
+            if (goResult && goResult.confidence >= 24) {
+                const profile = DOCUMENT_TYPES[goResult.type];
+                return {
+                    type: goResult.type,
+                    label: profile?.label || goResult.type,
+                    confidence: goResult.confidence,
+                };
+            }
+            return null;
+        } catch {
+            // Fall through to JS
+        }
+    }
+
+    const candidates = await Promise.all(
+        Object.entries(DOCUMENT_TYPES)
+            .map(async ([type, profile]) => ({ type, label: profile.label, confidence: await scoreDocumentType(rawText, profile) }))
+    );
+    candidates.sort((a, b) => b.confidence - a.confidence);
 
     const best = candidates[0];
     return best?.confidence >= 24 ? best : null;
@@ -841,7 +978,25 @@ const cleanLine = (line) => line
     .replace(/\s+/g, ' ')
     .trim();
 
-const extractFields = (rawText, selectedType) => {
+const extractFields = async (rawText, selectedType) => {
+    const useGo = await isGoWasmReady();
+    if (useGo) {
+        try {
+            const goFields = await extractFieldsGo(rawText, selectedType);
+            if (goFields) {
+                return {
+                    full_name: goFields.full_name || null,
+                    id_number: goFields.id_number || null,
+                    birthdate: goFields.birthdate || null,
+                    address: goFields.address || null,
+                    id_type: DOCUMENT_TYPES[selectedType]?.label || null,
+                };
+            }
+        } catch {
+            // Fall through to JS
+        }
+    }
+
     const profile = DOCUMENT_TYPES[selectedType];
     const lines = rawText.split(/\r?\n/)
         .map(cleanLine)
@@ -935,7 +1090,17 @@ const faceDetectionIsConfident = (faceReport) => {
     return confidence >= 72 && areaRatio >= 0.035 && areaRatio <= 0.62;
 };
 
-const collectBackIdEvidence = (rawText, qualityReport, expectedScore) => {
+const collectBackIdEvidence = async (rawText, qualityReport, expectedScore) => {
+    const useGo = await isGoWasmReady();
+    if (useGo) {
+        try {
+            const goResult = await collectBackIDEvidenceGo(rawText, qualityReport.quality, expectedScore);
+            if (goResult) return goResult;
+        } catch {
+            // Fall through to JS
+        }
+    }
+
     const normalized = normalizeText(rawText);
     const markerHits = BACK_ID_TEXT_MARKERS.filter((marker) => normalized.includes(normalizeText(marker)));
     const serialNumberDetected = /\bserial\s*(?:number|no)?[:\s-]*\d{5,}\b/i.test(rawText)
@@ -1016,9 +1181,9 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     }
 
     const ocrText = ocr.text || '';
-    const detectedType = detectDocumentType(ocrText);
-    const expectedScore = scoreDocumentType(ocrText, DOCUMENT_TYPES[expectedType]);
-    const fields = extractFields(ocrText, expectedType);
+    const detectedType = await detectDocumentType(ocrText);
+    const expectedScore = await scoreDocumentType(ocrText, DOCUMENT_TYPES[expectedType]);
+    const fields = await extractFields(ocrText, expectedType);
 
     diagnostics.ocr = {
         confidence: ocr.confidence,
@@ -1032,7 +1197,7 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     diagnostics.fields = fields;
     diagnostics.confidence = Math.round((qualityReport.quality.score + ocr.confidence + expectedScore) / 3);
     const backIdEvidence = role === 'back_id'
-        ? collectBackIdEvidence(ocrText, qualityReport, expectedScore)
+        ? await collectBackIdEvidence(ocrText, qualityReport, expectedScore)
         : null;
     if (backIdEvidence) {
         diagnostics.back_side_evidence = backIdEvidence;
@@ -1209,6 +1374,31 @@ const estimateFacesBySkinAndGeometry = async (file) => {
 };
 
 const detectFaces = async (file) => {
+    const useGo = await isGoWasmReady();
+
+    if (useGo) {
+        try {
+            const loaded = await loadCanvas(file, 720);
+            const { context, sampleWidth, sampleHeight } = loaded;
+            const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+            const rgbaData = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+            const goResult = await detectFacesGo(rgbaData, sampleWidth, sampleHeight, 'selfie');
+
+            if (goResult && goResult.face_count > 0) {
+                return {
+                    supported: false,
+                    fallback: 'skin_tone_wasm_go',
+                    face_count: goResult.face_count,
+                    faces: goResult.faces,
+                    confidence: goResult.faces?.[0]?.confidence || 0,
+                    engine: 'go-wasm',
+                };
+            }
+        } catch {
+            // Fall through to JS detection
+        }
+    }
+
     if ('FaceDetector' in window) {
         const detector = new window.FaceDetector({ fastMode: false, maxDetectedFaces: 3 });
         const bitmap = await createImageBitmap(file);
@@ -1331,6 +1521,8 @@ export const getWasmIdentityHealth = async () => {
 
     const missing = checks.filter((check) => !check.ok);
 
+    const goHealth = await getGoWasmHealth().catch(() => null);
+
     if (missing.length > 0) {
         return {
             status: 'unavailable',
@@ -1339,6 +1531,7 @@ export const getWasmIdentityHealth = async () => {
                 mode: 'browser_wasm',
                 api_calls: 'disabled',
                 missing_assets: missing,
+                go_wasm: goHealth,
             },
         };
     }
@@ -1353,6 +1546,7 @@ export const getWasmIdentityHealth = async () => {
             ocr_pipeline: 'multi_pass_canvas_preprocessing',
             ocr_assets: checks,
             face_detector: 'FaceDetector' in window ? 'available' : 'skin_geometry_wasm_fallback',
+            go_wasm: goHealth,
         },
     };
 };
