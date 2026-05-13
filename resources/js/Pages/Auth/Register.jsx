@@ -116,6 +116,7 @@ const CameraDiagnosticsPanel = ({ isOpen, aiHealth, onRunHealthCheck, data, idFr
 };
 const CameraIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
 const IdCardIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v1m-4 0h4m-9 4h2m-2 4h4m6-4v4m-2-2h4"></path></svg>;
+const UploadIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>;
 
 
 const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
@@ -756,7 +757,7 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
     </div>
 );
 
-const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, agreeToTerms, setAgreeToTerms, setIsTermsModalOpen, idFrontValidation, idBackValidation, selfieValidation }) => {
+const Step4_Verification = ({ data, setData, errors, clearErrors, setError, termsViewed, agreeToTerms, setAgreeToTerms, setIsTermsModalOpen, idFrontValidation, idBackValidation, selfieValidation }) => {
     const [idFrontPreview, setIdFrontPreview] = useState(null);
     const [idBackPreview, setIdBackPreview] = useState(null);
     const [faceImagePreview, setFaceImagePreview] = useState(null);
@@ -765,6 +766,51 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
 
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [cameraTarget, setCameraTarget] = useState(null);
+    const idFrontInputRef = useRef(null);
+    const idBackInputRef = useRef(null);
+    const faceInputRef = useRef(null);
+
+    const handleFileUpload = (target, event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        const fieldMap = { id_front: 'valid_id_front_image', id_back: 'valid_id_back_image', face: 'face_image' };
+        const fieldName = fieldMap[target];
+
+        if (!validTypes.includes(file.type)) {
+            setError(fieldName, 'Please upload a valid image file (JPEG, PNG, or WebP).');
+            event.target.value = '';
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            setError(fieldName, 'File size must be less than 10MB.');
+            event.target.value = '';
+            return;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+        clearErrors('images');
+        clearErrors(fieldName);
+
+        switch (target) {
+            case 'id_front':
+                setIdFrontPreview(previewUrl);
+                setData('valid_id_front_image', file);
+                break;
+            case 'id_back':
+                setIdBackPreview(previewUrl);
+                setData('valid_id_back_image', file);
+                break;
+            case 'face':
+                setFaceImagePreview(previewUrl);
+                setData('face_image', file);
+                break;
+        }
+
+        event.target.value = '';
+    };
 
     const handleCapture = (file) => {
         const previewUrl = URL.createObjectURL(file);
@@ -857,7 +903,11 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                         <div className="w-full h-32 bg-slate-100 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
                             {idFrontPreview ? <img src={idFrontPreview} alt="ID Front Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Front Preview</span>}
                         </div>
-                        <SecondaryButton type="button" onClick={() => { setCameraTarget('id_front'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Front</SecondaryButton>
+                        <div className="grid grid-cols-2 gap-2">
+                            <SecondaryButton type="button" onClick={() => { setCameraTarget('id_front'); setIsCameraOpen(true); }} className="!py-2 !text-sm"><CameraIcon /> Capture</SecondaryButton>
+                            <SecondaryButton type="button" onClick={() => idFrontInputRef.current?.click()} className="!py-2 !text-sm"><UploadIcon /> Upload</SecondaryButton>
+                        </div>
+                        <input ref={idFrontInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFileUpload('id_front', e)} />
                         <IdPrecheckMessage validation={idFrontValidation} />
                         <InputError message={errors.valid_id_front_image} className="mt-2" />
                     </div>
@@ -866,7 +916,11 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                         <div className="w-full h-32 bg-slate-100 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
                             {idBackPreview ? <img src={idBackPreview} alt="ID Back Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Back Preview</span>}
                         </div>
-                        <SecondaryButton type="button" onClick={() => { setCameraTarget('id_back'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Back</SecondaryButton>
+                        <div className="grid grid-cols-2 gap-2">
+                            <SecondaryButton type="button" onClick={() => { setCameraTarget('id_back'); setIsCameraOpen(true); }} className="!py-2 !text-sm"><CameraIcon /> Capture</SecondaryButton>
+                            <SecondaryButton type="button" onClick={() => idBackInputRef.current?.click()} className="!py-2 !text-sm"><UploadIcon /> Upload</SecondaryButton>
+                        </div>
+                        <input ref={idBackInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFileUpload('id_back', e)} />
                         <IdPrecheckMessage validation={idBackValidation} />
                         <InputError message={errors.valid_id_back_image} className="mt-2" />
                     </div>
@@ -877,7 +931,11 @@ const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, a
                     <div className="w-full h-48 bg-slate-100 rounded-lg border-2 border-dashed flex items-center justify-center overflow-hidden">
                         {faceImagePreview ? <img src={faceImagePreview} alt="Face Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-sm">Face Preview</span>}
                     </div>
-                    <SecondaryButton type="button" onClick={() => { setCameraTarget('face'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Take Picture of Face</SecondaryButton>
+                    <div className="grid grid-cols-2 gap-2">
+                        <SecondaryButton type="button" onClick={() => { setCameraTarget('face'); setIsCameraOpen(true); }} className="!py-2 !text-sm"><CameraIcon /> Capture</SecondaryButton>
+                        <SecondaryButton type="button" onClick={() => faceInputRef.current?.click()} className="!py-2 !text-sm"><UploadIcon /> Upload</SecondaryButton>
+                    </div>
+                    <input ref={faceInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => handleFileUpload('face', e)} />
                     <IdPrecheckMessage validation={selfieValidation} />
                     <InputError message={errors.face_image} className="mt-2" />
                 </div>
@@ -1194,7 +1252,7 @@ export default function App({ footerData }) {
             case 1: return <Step1_BasicInfo data={data} setData={setData} errors={errors} />;
             case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} />;
             case 3: return <Step3_AccountCredentials data={data} setData={setData} errors={errors} passwordVisible={passwordVisible} setPasswordVisible={setPasswordVisible} confirmPasswordVisible={confirmPasswordVisible} setConfirmPasswordVisible={setConfirmPasswordVisible} passwordsDoNotMatch={passwordsDoNotMatch} emailValidation={emailValidation} />;
-            case 4: return <Step4_Verification data={data} setData={setData} errors={errors} clearErrors={clearErrors} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} idFrontValidation={idFrontValidation} idBackValidation={idBackValidation} selfieValidation={selfieValidation} />;
+            case 4: return <Step4_Verification data={data} setData={setData} errors={errors} clearErrors={clearErrors} setError={setError} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} idFrontValidation={idFrontValidation} idBackValidation={idBackValidation} selfieValidation={selfieValidation} />;
             default: return null;
         }
     };
