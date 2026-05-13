@@ -2,45 +2,46 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Events\DocumentRequestStatusUpdated;
+use App\Http\Controllers\Controller;
+use App\Models\DocumentRequest;
+use App\Models\ImmutableDocumentsArchiveHistory;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use App\Models\DocumentRequest;
-use Illuminate\Validation\Rule;
-use App\Http\Controllers\Controller;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
-use App\Events\DocumentRequestStatusUpdated;
-use App\Models\ImmutableDocumentsArchiveHistory;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RequestDocumentsController extends Controller
 {
-  public function index(Request $request): Response
+    public function index(Request $request): Response
     {
         $filters = $request->only('search', 'status');
         $documentRequests = DocumentRequest::query()
+            ->select(['id', 'user_id', 'document_type_id', 'status', 'payment_amount', 'payment_status', 'admin_remarks', 'claim_voucher_code', 'created_at', 'updated_at'])
             ->whereNotIn('status', ['Claimed', 'Rejected'])
             ->when($filters['search'] ?? null, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->whereHas('user.profile', function ($subQuery) use ($search) {
                         $subQuery->where('first_name', 'like', "%{$search}%")
-                                 ->orWhere('last_name', 'like', "%{$search}%");
+                            ->orWhere('last_name', 'like', "%{$search}%");
                     })
-                    ->orWhereHas('documentType', function ($subQuery) use ($search) {
-                        $subQuery->where('name', 'like', "%{$search}%");
-                    });
+                        ->orWhereHas('documentType', function ($subQuery) use ($search) {
+                            $subQuery->where('name', 'like', "%{$search}%");
+                        });
                 });
             })
             ->when(($filters['status'] ?? 'All') !== 'All', function ($query) use ($filters) {
                 $query->where('status', $filters['status']);
             })
-            ->with(['user.profile', 'documentType'])
+            ->with(['user.profile:user_id,first_name,middle_name,last_name', 'documentType:id,name'])
             ->latest()
             ->paginate(10)
             ->withQueryString();
-            
+
         return Inertia::render('Admin/Request', [
             'documentRequests' => $documentRequests,
             'filters' => $filters,
@@ -67,17 +68,18 @@ class RequestDocumentsController extends Controller
         return back()->with('success', 'Payment amount has been set. The user will be notified.');
     }
 
-
-     public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
+    public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
     {
         $disk = Storage::disk(config('filesystems.private_uploads_disk', 's3-private'));
 
-        if (!$documentRequest->payment_receipt_path || !$disk->exists($documentRequest->payment_receipt_path)) {
+        if (! $documentRequest->payment_receipt_path || ! $disk->exists($documentRequest->payment_receipt_path)) {
             abort(404, 'Receipt file not found.');
         }
+
         return $disk->response($documentRequest->payment_receipt_path);
     }
-  public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
+
+    public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
         // --- REFINED VALIDATION ---
         // This is a cleaner way to validate. 'admin_remarks' is now explicitly required ONLY IF the status is 'Rejected'.
@@ -101,19 +103,20 @@ class RequestDocumentsController extends Controller
 
         // --- VOUCHER GENERATION LOGIC (unchanged) ---
         if ($status === 'Ready to Pickup' && is_null($documentRequest->claim_voucher_code)) {
-            $documentRequest->claim_voucher_code = 'VOUCHER-' . Str::upper(Str::random(8));
+            $documentRequest->claim_voucher_code = 'VOUCHER-'.Str::upper(Str::random(8));
         }
-        
+
         // Handle all other status updates (unchanged)
         $documentRequest->status = $status;
         $documentRequest->admin_remarks = $remarks;
         $documentRequest->processed_by = auth()->id();
         $documentRequest->save();
-        
+
         DocumentRequestStatusUpdated::dispatch($documentRequest);
-        
+
         return back()->with('success', 'Request status updated successfully.');
     }
+
     /**
      * --- MODIFIED ---
      * The logic to claim by voucher now correctly archives the request.
@@ -126,7 +129,7 @@ class RequestDocumentsController extends Controller
 
         $documentRequest = DocumentRequest::where('claim_voucher_code', $validated['voucher_code'])->first();
 
-        if (!$documentRequest) {
+        if (! $documentRequest) {
             return back()->withErrors(['voucher_code' => 'Invalid or unknown voucher code.']);
         }
 
@@ -142,8 +145,6 @@ class RequestDocumentsController extends Controller
         return redirect()->route('admin.request')->with('success', "Success! Document for {$documentRequest->user->profile->full_name} has been marked as claimed and archived.");
     }
 
-  
-    
     /**
      * --- NEW HELPER METHOD ---
      * A private method to handle the archiving of a document request.

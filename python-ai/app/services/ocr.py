@@ -62,8 +62,15 @@ BACK_ID_MARKERS = [
     "return to",
     "emergency contact",
     "organ donor",
+    "serial number",
+    "dl codes",
+    "lto codes",
     "restrictions",
+    "restriction",
     "conditions",
+    "corrective lenses",
+    "daylight driving",
+    "no hearing aid",
     "barcode",
     "qr",
     "magnetic stripe",
@@ -71,6 +78,10 @@ BACK_ID_MARKERS = [
     "terms and conditions",
     "this card",
     "issued by",
+    "motorcycle",
+    "vehicle",
+    "gross",
+    "gvw",
 ]
 
 DOCUMENT_PROFILES: dict[str, dict[str, Any]] = {
@@ -90,7 +101,14 @@ DOCUMENT_PROFILES: dict[str, dict[str, Any]] = {
             "license no",
             "licence no",
             "agency code",
+            "serial number",
+            "dl codes",
+            "lto codes",
             "restrictions",
+            "conditions",
+            "corrective lenses",
+            "motorcycle",
+            "vehicle",
         ],
         "id_patterns": [
             r"\b[A-Z]\d{2}\s*[- ]\s*\d{2}\s*[- ]\s*\d{5,7}\b",
@@ -260,11 +278,12 @@ def extract_ocr(
 
     if engine is not None:
         engine_name = "paddleocr"
-        raw_text, line_confidences, engine_issue = _extract_text_with_paddle(engine, contents)
+        raw_text, line_confidences, engine_issue, preprocessing_profiles = _extract_text_with_paddle(engine, contents)
     else:
         raw_text = []
         line_confidences = []
         engine_issue = "id_ocr_engine_unavailable"
+        preprocessing_profiles = []
 
     fields = _extract_fields(raw_text)
     validation = _validate_document(raw_text, expected_document_type, engine_issue, document_side)
@@ -292,39 +311,122 @@ def extract_ocr(
         "issues": sorted(set(issues)),
         "metadata": {
             "line_confidences": line_confidences,
+            "preprocessing_profiles": preprocessing_profiles,
             "paddle_import_error": _paddle_import_error,
             "paddle_runtime_error": _paddle_runtime_error,
         },
     }
 
 
-def _extract_text_with_paddle(engine: Any, contents: bytes) -> tuple[list[str], list[float], str | None]:
-    try:
-        result = engine.ocr(_preprocess_for_ocr(contents), cls=True)
-    except Exception:  # pragma: no cover - model/runtime specific.
-        return [], [], "id_ocr_engine_failed"
+def _extract_text_with_paddle(engine: Any, contents: bytes) -> tuple[list[str], list[float], str | None, list[dict[str, Any]]]:
+    candidates: list[dict[str, Any]] = []
+    runtime_errors: list[str] = []
 
-    raw_text, confidences = _flatten_paddle_result(result)
-    if not raw_text:
-        return raw_text, confidences, "id_no_readable_text"
+    for profile_name, image in _preprocess_for_ocr(contents):
+        try:
+            result = engine.ocr(image, cls=True)
+        except Exception as exc:  # pragma: no cover - model/runtime specific.
+            runtime_errors.append(f"{profile_name}:{exc}")
+            continue
 
-    return raw_text, confidences, None
+        raw_text, confidences = _flatten_paddle_result(result)
+        average_confidence = mean(confidences) if confidences else 0.0
+        text_length = sum(len(line) for line in raw_text)
+        candidate_score = (
+            average_confidence * 0.60
+            + min(100.0, text_length / 3.0) * 0.25
+            + min(100.0, len(raw_text) * 8.0) * 0.15
+        )
+        candidates.append(
+            {
+                "profile": profile_name,
+                "lines": raw_text,
+                "confidences": confidences,
+                "line_count": len(raw_text),
+                "average_confidence": round(average_confidence, 2),
+                "score": round(candidate_score, 2),
+            }
+        )
+
+    if not candidates:
+        return [], [], "id_ocr_engine_failed" if runtime_errors else "id_no_readable_text", []
+
+    readable_candidates = [candidate for candidate in candidates if candidate["lines"]]
+    profiles = [
+        {
+            "profile": candidate["profile"],
+            "line_count": candidate["line_count"],
+            "average_confidence": candidate["average_confidence"],
+            "score": candidate["score"],
+        }
+        for candidate in sorted(candidates, key=lambda item: item["score"], reverse=True)
+    ]
+
+    if not readable_candidates:
+        return [], [], "id_no_readable_text", profiles
+
+    raw_text, confidences = _merge_ocr_candidates(readable_candidates)
+    return raw_text, confidences, None, profiles
 
 
-def _preprocess_for_ocr(contents: bytes) -> np.ndarray:
+def _preprocess_for_ocr(contents: bytes) -> list[tuple[str, np.ndarray]]:
     image = open_rgb_image(contents)
     width, height = image.size
-    scale = max(1.0, 1200.0 / float(max(width, height)))
+    scale = max(1.0, 1500.0 / float(max(width, height)))
     if scale > 1.0:
         image = image.resize((int(width * scale), int(height * scale)))
 
     rgb = np.asarray(image)
     if cv2 is None:
-        return rgb
+        return [("rgb_upscaled", rgb)]
 
     bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    clahe = cv2.createCLAHE(clipLimit=2.2, tileGridSize=(8, 8)).apply(gray)
+    denoised = cv2.fastNlMeansDenoising(clahe, None, 9, 7, 21)
     blurred = cv2.GaussianBlur(bgr, (0, 0), 1.0)
-    return cv2.addWeighted(bgr, 1.5, blurred, -0.5, 0)
+    sharpened = cv2.addWeighted(bgr, 1.65, blurred, -0.65, 0)
+    adaptive = cv2.adaptiveThreshold(
+        denoised,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        31,
+        9,
+    )
+    otsu = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+    return [
+        ("color_sharpened", sharpened),
+        ("contrast_gray", clahe),
+        ("denoised_gray", denoised),
+        ("adaptive_threshold", adaptive),
+        ("otsu_threshold", otsu),
+    ]
+
+
+def _merge_ocr_candidates(candidates: list[dict[str, Any]]) -> tuple[list[str], list[float]]:
+    merged_lines: list[str] = []
+    merged_confidences: list[float] = []
+    seen: set[str] = set()
+
+    for candidate in sorted(candidates, key=lambda item: item["score"], reverse=True):
+        confidences = candidate["confidences"]
+        for index, line in enumerate(candidate["lines"]):
+            key = _line_key(line)
+            if not key or key in seen:
+                continue
+
+            seen.add(key)
+            merged_lines.append(_clean_text(line))
+            if index < len(confidences):
+                merged_confidences.append(confidences[index])
+
+    return merged_lines, merged_confidences
+
+
+def _line_key(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", _normalize(value))
 
 
 def _flatten_paddle_result(result: Any) -> tuple[list[str], list[float]]:
@@ -364,7 +466,10 @@ def _flatten_paddle_result(result: Any) -> tuple[list[str], list[float]]:
 
 def _extract_fields(lines: list[str]) -> dict[str, str | None]:
     full_name = _extract_full_name(lines)
-    birthdate = _extract_date_near(lines, ["date of birth", "birthdate", "dob"])
+    birthdate = _extract_date_near(lines, ["date of birth", "birthdate", "birth date", "dob"]) or _extract_date_near(
+        lines,
+        ["born"],
+    )
     expiration_date = _extract_date_near(lines, ["expiration", "expiry", "valid until", "expires"])
 
     return {
@@ -379,7 +484,7 @@ def _extract_fields(lines: list[str]) -> dict[str, str | None]:
 
 def _extract_full_name(lines: list[str]) -> str | None:
     for index, line in enumerate(lines):
-        if "last name" in _normalize(line) and index + 1 < len(lines):
+        if any(marker in _normalize(line) for marker in ["last name", "first name", "full name", "name"]) and index + 1 < len(lines):
             candidate = _clean_text(lines[index + 1])
             if _looks_like_person_name(candidate):
                 return candidate
@@ -389,7 +494,11 @@ def _extract_full_name(lines: list[str]) -> str | None:
         if "," in candidate and _looks_like_person_name(candidate):
             return candidate
 
-    return None
+    candidates = [_clean_text(line) for line in lines if _looks_like_person_name(line)]
+    if not candidates:
+        return None
+
+    return max(candidates, key=lambda value: (len(value.split()), sum(1 for character in value if character.isalpha())))
 
 
 def _extract_address(lines: list[str]) -> str | None:
@@ -415,7 +524,7 @@ def _extract_address(lines: list[str]) -> str | None:
 
 def _extract_date_near(lines: list[str], keywords: list[str]) -> str | None:
     for index, line in enumerate(lines):
-        nearby = " ".join(lines[index : index + 2])
+        nearby = " ".join(lines[max(0, index - 1) : index + 3])
         normalized = _normalize(nearby)
         if not any(keyword in normalized for keyword in keywords):
             continue
@@ -625,9 +734,19 @@ def _confidence(
 
 def _normalize(value: str) -> str:
     value = value.lower().replace("'", "")
+    value = value.replace("identificati0n", "identification")
+    value = value.replace("philipp1ne", "philippine")
+    value = value.replace("ph1lippine", "philippine")
+    value = value.replace("licen5e", "license")
+    value = value.replace("licence", "license")
+    value = value.replace("0ffice", "office")
+    value = value.replace("dr1ver", "driver")
+    value = value.replace("1d", "id")
+    value = value.replace("lt0", "lto")
+    value = value.replace("0cr", "ocr")
     value = re.sub(r"[^a-z0-9]+", " ", value)
     value = re.sub(r"\bdriver s license\b", "drivers license", value)
-    value = re.sub(r"\bdriver s licence\b", "drivers licence", value)
+    value = re.sub(r"\bdriver s licence\b", "drivers license", value)
     return re.sub(r"\s+", " ", value).strip()
 
 
@@ -637,9 +756,14 @@ def _clean_text(value: str) -> str:
 
 def _looks_like_person_name(value: str) -> bool:
     normalized = _normalize(value)
-    if any(marker in normalized for marker in ["republic", "department", "office", "license", "address"]):
+    if any(marker in normalized for marker in ["republic", "department", "office", "license", "address", "birth", "valid", "signature"]):
         return False
-    return len(normalized.split()) >= 2 and any(character.isalpha() for character in value)
+    alpha_words = [word for word in re.findall(r"[A-Za-z]{2,}", value) if len(word) >= 2]
+    if len(alpha_words) < 2:
+        return False
+    if sum(character.isdigit() for character in value) > 2:
+        return False
+    return 5 <= len(" ".join(alpha_words)) <= 80
 
 
 def _to_iso_date(value: str) -> str:

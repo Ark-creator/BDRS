@@ -254,6 +254,9 @@ class IdDocumentPrecheckService
             'id_low_quality',
             'id_blurry',
             'id_bad_lighting',
+            'id_low_dynamic_range',
+            'id_glare',
+            'id_heavy_shadow',
         ]));
     }
 
@@ -300,7 +303,15 @@ class IdDocumentPrecheckService
             return "The whole {$this->roleLabel($imageRole)} is not clearly inside the frame. Please retake the photo.";
         }
 
-        if (array_intersect($issues, ['id_low_resolution', 'id_low_quality', 'id_blurry', 'id_bad_lighting'])) {
+        if (array_intersect($issues, [
+            'id_low_resolution',
+            'id_low_quality',
+            'id_blurry',
+            'id_bad_lighting',
+            'id_low_dynamic_range',
+            'id_glare',
+            'id_heavy_shadow',
+        ])) {
             return "The {$this->roleLabel($imageRole)} photo is blurry, dark, or low quality. Please retake it.";
         }
 
@@ -325,7 +336,15 @@ class IdDocumentPrecheckService
             return 'The selfie must be a face photo, not an ID photo. Please retake it.';
         }
 
-        if (array_intersect($issues, ['selfie_low_resolution', 'selfie_low_quality', 'selfie_blurry', 'selfie_bad_lighting'])) {
+        if (array_intersect($issues, [
+            'selfie_low_resolution',
+            'selfie_low_quality',
+            'selfie_blurry',
+            'selfie_bad_lighting',
+            'selfie_low_dynamic_range',
+            'selfie_glare',
+            'selfie_heavy_shadow',
+        ])) {
             return 'The selfie is blurry, dark, or low quality. Please retake a clearer face photo.';
         }
 

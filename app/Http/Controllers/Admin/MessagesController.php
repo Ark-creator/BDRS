@@ -17,19 +17,16 @@ use Inertia\Response;
 
 class MessagesController extends Controller
 {
-    /**
-     * Display the main messages inbox page.
-     */
     public function index(): Response
     {
         return Inertia::render('Admin/Messages', [
-            'messages' => ContactMessage::with(['user', 'replies.user'])->latest()->get(),
+            'messages' => ContactMessage::select(['id', 'user_id', 'subject', 'message', 'status', 'created_at'])
+                ->with(['user.profile:user_id,first_name,middle_name,last_name', 'replies.user.profile:user_id,first_name,middle_name,last_name'])
+                ->latest()
+                ->get(),
         ]);
     }
 
-    /**
-     * Store a new reply from the admin.
-     */
     public function storeReply(Request $request, ContactMessage $message): JsonResponse
     {
         $validated = $request->validate([
@@ -46,41 +43,31 @@ class MessagesController extends Controller
         $newReply->load('user');
         broadcast(new AdminMessageSent($newReply));
 
-        // Notify resident about new reply
         if ($message->user_id) {
-            $unreadReplies = Reply::whereHas('contactMessage', function ($query) use ($message) {
-                    $query->where('user_id', $message->user_id);
-                })
+            $unreadReplies = Reply::select(['id', 'contact_message_id', 'user_id', 'message', 'status'])
+                ->whereHas('contactMessage', fn ($query) => $query->where('user_id', $message->user_id))
                 ->where('user_id', '!=', $message->user_id)
                 ->where('status', 'unread')
                 ->with('contactMessage:id,subject')
                 ->latest()
                 ->limit(5)
                 ->get()
-                ->map(function ($reply) {
-                    return [
-                        'id' => $reply->id,
-                        'subject' => $reply->contactMessage->subject ?? 'Reply to your message',
-                        'message' => $reply->message,
-                    ];
-                });
+                ->map(fn ($reply) => [
+                    'id' => $reply->id,
+                    'subject' => $reply->contactMessage->subject ?? 'Reply to your message',
+                    'message' => $reply->message,
+                ]);
 
-            $unreadCount = $unreadReplies->count();
-            
-            broadcast(new UnreadMessageCountUpdated($message->user_id, $unreadCount, $unreadReplies->toArray()));
+            broadcast(new UnreadMessageCountUpdated($message->user_id, $unreadReplies->count(), $unreadReplies->toArray()));
         }
 
         return response()->json(['status' => 'success']);
     }
 
-    /**
-     * Get the unread messages count and list for the notification bubble.
-     * (Moved from MessagesCounterController)
-     */
     public function getUnreadMessages(): JsonResponse
     {
         $user = auth()->user();
-        if (!$user || !in_array($user->role, ['admin', 'super_admin'])) {
+        if (! $user || ! in_array($user->role, ['admin', 'super_admin'])) {
             return response()->json(['messages' => [], 'count' => 0]);
         }
 
@@ -89,15 +76,11 @@ class MessagesController extends Controller
         );
     }
 
-    /**
-     * Mark a conversation thread as read by the admin.
-     * (Moved from MessageReaderController)
-     */
     public function markAsRead(ContactMessage $contactMessage): RedirectResponse
     {
         $user = Auth::user();
 
-        if (!$user || !in_array($user->role, ['admin', 'super_admin'])) {
+        if (! $user || ! in_array($user->role, ['admin', 'super_admin'])) {
             return back();
         }
 
@@ -106,11 +89,10 @@ class MessagesController extends Controller
         }
 
         Reply::where('contact_message_id', $contactMessage->id)
-             ->where('user_id', '!=', $user->id) 
-             ->where('status', 'unread')
-             ->update(['status' => 'read']);
+            ->where('user_id', '!=', $user->id)
+            ->where('status', 'unread')
+            ->update(['status' => 'read']);
 
-        // Broadcast updated unread count to admins
         $this->broadcastUnreadCountToAdmins();
 
         return redirect()->route('admin.messages');

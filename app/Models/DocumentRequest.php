@@ -2,20 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Traits\BelongsToTenant;
 use Illuminate\Support\Facades\Storage; // <-- Import the Storage facade
 
 class DocumentRequest extends Model
 {
-    use HasFactory, BelongsToTenant;
+    use BelongsToTenant, HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'user_id',
         'document_type_id',
@@ -29,33 +24,40 @@ class DocumentRequest extends Model
         'paid_at',
         'claim_voucher_code',
         'barangay_id',
-
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'form_data' => 'array',
         'payment_amount' => 'decimal:2',
         'paid_at' => 'datetime',
     ];
 
-    /**
-     * The accessors to append to the model's array form.
-     *
-     * @var array
-     */
     protected $appends = [
         'payment_receipt_url',
     ];
 
+    public function scopePending($query)
+    {
+        return $query->where('status', 'Pending');
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->whereNotIn('status', ['Claimed', 'Rejected']);
+    }
+
+    public function scopeForUser($query, int $userId)
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->where('payment_status', 'Paid');
+    }
+
     /**
      * Get the full URL for the payment receipt.
-     *
-     * @return string|null
      */
     public function getPaymentReceiptUrlAttribute(): ?string
     {

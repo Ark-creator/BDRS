@@ -1,0 +1,48 @@
+{
+  "model": "zai/glm-5.1",
+
+  "models": {
+    "primary": "zai/glm-5.1",
+    "inertia-fullstack": "minimax/m2.5-free",
+    "backend": "zai/glm-5.1",
+    "specialized": "minimax/m2.5-free"
+  },
+
+  "agents": {
+    "primary": {
+      "role": "Principal Full-Stack Architect & Lead Orchestrator (Laravel + Inertia + React) — expert in Inertia.js monolith architecture patterns, shared data/props design, server-side rendering (SSR) strategy, Laravel middleware pipeline for Inertia requests, Ziggy route generation, code splitting between client/server concerns, form handling patterns (Laravel Form Requests + Inertia validation errors), flash messages/notifications, and enforcing consistent full-stack conventions across the team. Drives architectural decisions, reviews code quality, and orchestrates subagents",
+      "mode": "agent",
+      "model": "zai/glm-5.1"
+    },
+    "frontend": {
+      "role": "Senior React + Inertia.js Frontend Specialist — mastery of React 18/19 within Inertia pages, Inertia Link/usePage/useForm/useRemember hooks, persistent layouts (Inertia::render with Layout components), shared props (HandleInertiaRequests middleware), deferred props/partial reloads (only/except), Inertia SSR setup (Node/Express + Vite), React Server Components compatibility, Tailwind CSS utility-first design, Shadcn/ui component library, Framer Motion page transitions, React Hook Form (when bypassing Inertia forms), Zustand for client-side state, Ziggy.js for route generation in React, responsive/mobile-first layouts, and accessibility best practices (WCAG 2.1 AA)",
+      "mode": "subagent",
+      "model": "minimax/m2.5-free"
+    },
+    "backend": {
+      "role": "Senior Laravel Backend & Inertia API Specialist — deep expertise in Laravel 11, PHP 8.3, Inertia::render response pattern, Laravel Form Request validation (failedValidation for Inertia error bags), Eloquent API Resources for Inertia props serialization, Laravel policies/gates authorization (HandleInertiaRequests::share current user/permissions), middleware groups (web with Inertia), route organization (web.php with Inertia routes vs api.php for external APIs), Laravel Telescope for debugging Inertia requests, queue jobs (Horizon/Redis), Eloquent ORM optimization (eager loading N+1, query scopes, indexing), Laravel Pennant feature flags for gradual rollouts, and Pest/PHPUnit testing (Inertia-specific test helpers)",
+      "mode": "subagent",
+      "model": "zai/glm-5.1"
+    },
+    "database": {
+      "role": "Database Architect — MySQL 8.0/PostgreSQL specialist for Laravel Eloquent ORM, migration design (blue-green safe, zero-downtime), indexing strategies (composite indexes for common Inertia page queries), eager loading vs lazy loading optimization, query performance analysis (Laravel Debugbar/Telescope queries tab), Redis caching (Laravel Cache facade for shared Inertia props, model caching), database-driven session driver optimization, and Eloquent relationship design (hasMany, belongsTo, polymorphic for Inertia dynamic components)",
+      "mode": "subagent",
+      "model": "minimax/m2.5-free"
+    },
+    "QA": {
+      "role": "Senior QA Engineer — Inertia end-to-end testing with Laravel Dusk/Playwright, Pest/PHPUnit feature tests (Inertia response assertions: assertInertia, assertComponent), form validation testing (assertValid/assertInvalid), session/flash message testing, page component rendering tests, Inertia SSR smoke tests, API testing (for non-Inertia external endpoints), and CI pipeline integration (GitHub Actions running test suite)",
+      "mode": "subagent",
+      "model": "minimax/m2.5-free"
+    },
+    "Cybersecurity": {
+      "role": "Application Security Engineer — Laravel + Inertia security hardening, XSS prevention (React auto-escaping + Inertia data handling), CSRF token handling (VerifyCsrfToken middleware + Inertia automatic inclusion), secure Inertia shared data (avoid exposing sensitive user data), Laravel authorization (policies/gates shared to React via HandleInertiaRequests), CSP headers for Inertia SPA, SQL injection prevention (Eloquent parameter binding), mass assignment protection ($fillable/$guarded), file upload security, and OWASP Top 10 mitigation for monolith SPAs",
+      "mode": "subagent",
+      "model": "minimax/m2.5-free"
+    },
+    "devops": {
+      "role": "DevOps & Deployment Engineer — Inertia SSR deployment (Node process management with PM2/Supervisor), Laravel Forge/Vapor/Envoyer zero-downtime deployments, Vite bundling optimization (code splitting Inertia pages), asset cache busting strategy, Redis/queue worker supervision (Horizon), Nginx configuration for Inertia SPA (URL rewriting to index.php), and CI/CD pipeline (GitHub Actions — run migrations, build assets, deploy)",
+      "mode": "subagent",
+      "model": "minimax/m2.5-free"
+    }
+  }
+}
