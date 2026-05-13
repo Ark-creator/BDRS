@@ -7,9 +7,40 @@ use Illuminate\Http\Request;
 use App\Models\WelcomeContent;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use App\Services\ImageCompressionService;
 
 class ContentSettingsController extends Controller
 {
+    public function __construct(
+        private ImageCompressionService $compressionService
+    ) {}
+
+    private function publicDisk(): string
+    {
+        return config('filesystems.public_uploads_disk', 's3');
+    }
+
+    private function storedPathFromUrl(?string $url): ?string
+    {
+        if (!$url) {
+            return null;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        $storagePrefix = '/storage/';
+
+        if (str_starts_with($path, $storagePrefix)) {
+            return ltrim(substr($path, strlen($storagePrefix)), '/');
+        }
+
+        $diskUrl = config("filesystems.disks.{$this->publicDisk()}.url");
+        if ($diskUrl && str_starts_with($url, rtrim($diskUrl, '/') . '/')) {
+            return ltrim(substr($url, strlen(rtrim($diskUrl, '/') . '/')), '/');
+        }
+
+        return ltrim($path, '/');
+    }
+
     public function show()
     {
         $settings = WelcomeContent::firstOrNew([]);
@@ -41,15 +72,15 @@ class ContentSettingsController extends Controller
         for ($i = 0; $i < 3; $i++) {
             $currentPhotoPath = $settings->officials[$i]['photo_url'] ?? null;
             if (($request->input("officials_files.{$i}") ?? null) === 'remove' && $currentPhotoPath) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $currentPhotoPath));
+                Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($currentPhotoPath));
                 $officialsData[$i]['photo_url'] = null;
             } 
             elseif ($request->hasFile("officials_files.{$i}")) {
                 if ($currentPhotoPath) {
-                    Storage::disk('public')->delete(str_replace('/storage/', '', $currentPhotoPath));
+                    Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($currentPhotoPath));
                 }
-                $path = $request->file("officials_files.{$i}")->store('officials', 'public');
-                $officialsData[$i]['photo_url'] = Storage::url($path);
+                $path = $this->compressionService->compress($request->file("officials_files.{$i}"), 'officials', 80);
+                $officialsData[$i]['photo_url'] = Storage::disk($this->publicDisk())->url($path);
             } else {
                  $officialsData[$i]['photo_url'] = $currentPhotoPath;
             }
@@ -57,12 +88,12 @@ class ContentSettingsController extends Controller
         $dataToUpdate['officials'] = $officialsData;
 
         if ($request->hasFile('footer_logo_file')) {
-            if ($settings->footer_logo_url) { Storage::disk('public')->delete(str_replace('/storage/', '', $settings->footer_logo_url)); }
-            $path = $request->file('footer_logo_file')->store('site_logos', 'public');
-            $dataToUpdate['footer_logo_url'] = Storage::url($path);
+            if ($settings->footer_logo_url) { Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($settings->footer_logo_url)); }
+            $path = $this->compressionService->compress($request->file('footer_logo_file'), 'site_logos', 85);
+            $dataToUpdate['footer_logo_url'] = Storage::disk($this->publicDisk())->url($path);
         } elseif ($request->input('footer_logo_file') === 'remove') {
             if ($settings->footer_logo_url) {
-                Storage::disk('public')->delete(str_replace('/storage/', '', $settings->footer_logo_url));
+                Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($settings->footer_logo_url));
                 $dataToUpdate['footer_logo_url'] = null;
             }
         }

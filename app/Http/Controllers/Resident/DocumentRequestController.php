@@ -12,9 +12,13 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Events\DocumentRequestCreated;
 use App\Models\ImmutableDocumentsArchiveHistory;
+use App\Services\ImageCompressionService;
 
 class DocumentRequestController extends Controller
 {
+    public function __construct(
+        private ImageCompressionService $compressionService
+    ) {}
     /**
      * Display a listing of the user's active and past document requests.
      */
@@ -198,14 +202,24 @@ class DocumentRequestController extends Controller
             $fileName = 'signature_' . auth()->id() . '_' . uniqid() . '.png';
             $signaturePath = 'private/signatures/' . $fileName;
 
-            Storage::disk('local')->put($signaturePath, $imageData);
+            Storage::disk(config('filesystems.private_uploads_disk', 's3-private'))->put($signaturePath, $imageData);
             $formData['signature_path'] = $signaturePath;
         }
 
         // 4. Save document request
+        $barangayId = $user->barangay_id;
+        if (!$barangayId && $user->profile && $user->profile->barangay) {
+            $barangay = \App\Models\Barangay::where('name', $user->profile->barangay)->first();
+            $barangayId = $barangay?->id;
+        }
+
+        if (!$barangayId) {
+            return back()->with('error', 'Unable to determine your barangay. Please contact support.');
+        }
+
         $newRequest = DocumentRequest::create([
             'user_id'          => $user->id,
-            'barangay_id'      => $user->barangay_id,
+            'barangay_id'      => $barangayId,
             'document_type_id' => $commonValidated['document_type_id'],
             'status'           => 'Pending',
             'form_data'        => $formData,
@@ -233,10 +247,10 @@ class DocumentRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'receipt' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+            'receipt' => 'required|image|mimes:jpg,jpeg,png|max:5120',
         ]);
 
-        $path = $validated['receipt']->store('receipts', 'local');
+        $path = $this->compressionService->compress($validated['receipt'], 'receipts', 80);
 
         $documentRequest->update([
             'payment_receipt_path' => $path,

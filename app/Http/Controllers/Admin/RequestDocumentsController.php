@@ -70,10 +70,12 @@ class RequestDocumentsController extends Controller
 
      public function showReceipt(DocumentRequest $documentRequest): StreamedResponse
     {
-        if (!$documentRequest->payment_receipt_path || !Storage::disk('local')->exists($documentRequest->payment_receipt_path)) {
+        $disk = Storage::disk(config('filesystems.private_uploads_disk', 's3-private'));
+
+        if (!$documentRequest->payment_receipt_path || !$disk->exists($documentRequest->payment_receipt_path)) {
             abort(404, 'Receipt file not found.');
         }
-        return Storage::disk('local')->response($documentRequest->payment_receipt_path);
+        return $disk->response($documentRequest->payment_receipt_path);
     }
   public function update(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
@@ -119,7 +121,7 @@ class RequestDocumentsController extends Controller
     public function claimByVoucher(Request $request)
     {
         $validated = $request->validate([
-            'voucher_code' => 'required|string',
+            'voucher_code' => ['required', 'string', 'regex:/^VOUCHER-[A-Z0-9]{8}$/'],
         ]);
 
         $documentRequest = DocumentRequest::where('claim_voucher_code', $validated['voucher_code'])->first();
@@ -177,5 +179,8 @@ class RequestDocumentsController extends Controller
             'admin_remarks' => $remarks,
             'processed_by' => auth()->id(),
         ]);
+
+        // 3. Dispatch event for real-time update
+        DocumentRequestStatusUpdated::dispatch($documentRequest);
     }
 }

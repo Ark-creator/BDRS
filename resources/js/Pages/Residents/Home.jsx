@@ -7,6 +7,14 @@ import { motion } from 'framer-motion';
 import { FileText, ArrowRight, Clock, XCircle } from 'lucide-react'; 
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
+import {
+    normalizeAnnouncements,
+    prependAnnouncement,
+    removeAnnouncement,
+    updateAnnouncement,
+} from '@/utils/announcementList';
+
+const ANNOUNCEMENT_LIMIT = 5;
 
 const DocumentIcon = ({ documentName }) => {
     const icons = {};
@@ -94,6 +102,7 @@ const VerificationStatusBanner = ({ status }) => {
 
 export default function Home({ auth, documentTypes = [], announcements = [] }) {
     const [showRequestCards, setShowRequestCards] = useState(false);
+    const [announcementList, setAnnouncementList] = useState(() => normalizeAnnouncements(announcements, ANNOUNCEMENT_LIMIT));
     const documentsSectionRef = useRef(null);
     const { url } = usePage();
     const { user } = auth; 
@@ -109,6 +118,31 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
             documentsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
         }, 100);
     };
+
+    useEffect(() => {
+        setAnnouncementList(normalizeAnnouncements(announcements, ANNOUNCEMENT_LIMIT));
+    }, [announcements]);
+
+    useEffect(() => {
+        if (!window.Echo) return;
+
+        const channel = window.Echo.channel('announcements');
+
+        channel.listen('.AnnouncementUpdated', (event) => {
+            if (event.action === 'created') {
+                setAnnouncementList(prev => prependAnnouncement(prev, event.announcement, ANNOUNCEMENT_LIMIT));
+            } else if (event.action === 'deleted') {
+                setAnnouncementList(prev => removeAnnouncement(prev, event.announcement.id));
+            } else if (event.action === 'updated') {
+                setAnnouncementList(prev => updateAnnouncement(prev, event.announcement));
+            }
+        });
+
+        return () => {
+            channel.stopListening('.AnnouncementUpdated');
+            window.Echo.leave('announcements');
+        };
+    }, []);
 
     useEffect(() => {
         const queryParams = new URLSearchParams(window.location.search);
@@ -146,7 +180,7 @@ export default function Home({ auth, documentTypes = [], announcements = [] }) {
                     <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
                     
                         <VerificationStatusBanner status={user.verification_status} />
-                        <Announcements announcements={announcements} />
+                        <Announcements announcements={announcementList} />
 
 
                         <div className="py-16 sm:py-24">

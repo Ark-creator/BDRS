@@ -5,11 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class UserProfile extends Model
 {
     use HasFactory;
-    protected $appends = ['full_address'];
+    protected $appends = [
+        'full_address',
+        'valid_id_front_url',
+        'valid_id_back_url',
+        'face_image_url',
+    ];
     /**
      * The attributes that are mass assignable.
      *
@@ -48,6 +54,35 @@ class UserProfile extends Model
         'birthday' => 'date',
     ];
 
+    public static function normalizePhoneNumber(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $digits = preg_replace('/\D+/', '', $value);
+        if ($digits === '') {
+            return null;
+        }
+
+        if (str_starts_with($digits, '0')) {
+            $digits = substr($digits, 1);
+        }
+
+        if (!str_starts_with($digits, '63')) {
+            $digits = '63'.$digits;
+        }
+
+        return '+'.$digits;
+    }
+
+    protected function phoneNumber(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => static::normalizePhoneNumber($value),
+        );
+    }
+
     /**
      * Get the user that owns the profile.
      */
@@ -83,6 +118,26 @@ class UserProfile extends Model
         ], fn($value) => !empty($value));
 
         return implode(', ', $parts);
+    }
+
+    public function getValidIdFrontUrlAttribute(): ?string
+    {
+        return $this->publicUploadUrl($this->valid_id_front_path);
+    }
+
+    public function getValidIdBackUrlAttribute(): ?string
+    {
+        return $this->publicUploadUrl($this->valid_id_back_path);
+    }
+
+    public function getFaceImageUrlAttribute(): ?string
+    {
+        return $this->publicUploadUrl($this->face_image_path);
+    }
+
+    private function publicUploadUrl(?string $path): ?string
+    {
+        return $path ? route('images.profile', ['path' => $path]) : null;
     }
     
 }

@@ -9,12 +9,15 @@
         "php": "^8.2",
         "dompdf/dompdf": "*",
         "inertiajs/inertia-laravel": "^2.0",
+        "intervention/image": "*",
         "laravel/framework": "^12.0",
         "laravel/reverb": "*",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "league/flysystem-aws-s3-v3": "^3.32",
         "mpdf/mpdf": "^8.2",
         "phpoffice/phpword": "^1.4",
+        "pusher/pusher-php-server": "^7.2",
         "tightenco/ziggy": "^2.5"
     },
     "require-dev": {

@@ -31,7 +31,8 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_expires_at', 
         'verification_status', 
         'barangay_id',
-                'two_factor_method', // Add this
+        'two_factor_method',
+        'email_verified_at',
 
 
     ];
@@ -57,6 +58,7 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'two_factor_expires_at' => 'datetime',
         ];
     }
 
@@ -94,6 +96,11 @@ class User extends Authenticatable implements MustVerifyEmail
     public function documentRequests(): HasMany
     {
         return $this->hasMany(DocumentRequest::class);
+    }
+
+    public function verifications(): HasMany
+    {
+        return $this->hasMany(Verification::class);
     }
 
     public function barangay(): BelongsTo
@@ -143,4 +150,3 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 }
     
-

@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import axios from 'axios';
 import InputError from '@/Components/InputError';
+import axios from 'axios';
+import { getWasmIdentityHealth, validateRegistrationImageWasm } from '@/Services/identityWasmValidator';
 
 // --- HELPER & UI COMPONENTS ---
 const CloseIcon = () => ( <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg> );
@@ -27,6 +28,90 @@ const MapPinIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" str
 const getPasswordValidationState = (password) => { const hasUpperCase = /[A-Z]/.test(password); const hasLowerCase = /[a-z]/.test(password); const hasNumber = /[0-9]/.test(password); const hasSpecialChar = /[^A-Za-z0-9]/.test(password); const hasValidLength = password.length >= 8 && password.length <= 16; const checks = { 'Uppercase letter': hasUpperCase, 'Lowercase letter': hasLowerCase, 'Number': hasNumber, 'Special character': hasSpecialChar, '8-16 characters': hasValidLength, }; const strength = Object.values(checks).filter(Boolean).length; const isValid = strength === 5; return { strength, checks, isValid }; };
 const PasswordStrengthIndicator = ({ password }) => { const { strength, checks } = useMemo(() => getPasswordValidationState(password), [password]); if (!password) return null; const strengthColors = [ 'bg-slate-200', 'bg-red-500', 'bg-red-500', 'bg-yellow-500', 'bg-yellow-500', 'bg-green-500' ]; return ( <div className="mt-3 space-y-2 p-3 bg-slate-50/75 rounded-lg border border-slate-200"> <div className="flex items-center gap-3"> <p className="text-sm font-medium text-slate-600 shrink-0">Strength:</p> <div className="w-full bg-slate-200 rounded-full h-2.5"> <div className={`h-2.5 rounded-full transition-all duration-300 ${strengthColors[strength]}`} style={{ width: `${(strength / 5) * 100}%` }}></div> </div> </div> <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pt-1"> {Object.entries(checks).map(([requirement, isMet]) => ( <div key={requirement} className="flex items-center gap-2"> {isMet ? <CheckIcon /> : <CrossIcon />} <span className={`text-xs ${isMet ? 'text-slate-700' : 'text-slate-500'}`}>{requirement}</span> </div> ))} </div> </div> ); };
 const ValidationIndicator = ({ status }) => { const iconContainer = "absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none"; if (status === 'checking') { return ( <div className={iconContainer}> <svg className="animate-spin h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle> <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path> </svg> </div> ); } if (status === 'valid') { return ( <div className={iconContainer}> <CheckIcon /> </div> ); } if (status === 'invalid') { return ( <div className={iconContainer}> <CrossIcon /> </div> ); } return null; };
+const IdPrecheckMessage = ({ validation }) => {
+    if (!validation || validation.status === 'idle') return null;
+    const styles = {
+        checking: 'border-blue-200 bg-blue-50 text-blue-700',
+        valid: 'border-green-200 bg-green-50 text-green-700',
+        invalid: 'border-red-200 bg-red-50 text-red-700',
+        unchecked: 'border-amber-200 bg-amber-50 text-amber-700',
+    };
+    return (
+        <div className={`flex items-start gap-2 rounded-md border px-3 py-2 text-xs font-medium ${styles[validation.status] || styles.unchecked}`}>
+            {validation.status === 'checking' ? (
+                <svg className="mt-0.5 h-4 w-4 shrink-0 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            ) : validation.status === 'valid' ? (
+                <CheckIcon />
+            ) : validation.status === 'unchecked' ? (
+                <svg className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+            ) : (
+                <CrossIcon />
+            )}
+            <span>{validation.message}</span>
+        </div>
+    );
+};
+const formatBytes = (bytes) => {
+    if (!bytes && bytes !== 0) return 'n/a';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
+const imageSummary = (file) => file ? `${file.type || 'image'} / ${formatBytes(file.size)}` : 'not captured';
+const ValidationDebugDetails = ({ label, file, validation }) => {
+    const diagnostics = validation?.diagnostics || {};
+    const upload = validation?.upload_diagnostics || {};
+    const dimensions = upload.dimensions || diagnostics.quality || {};
+    const issues = validation?.issues || diagnostics.issues || [];
+    return (
+        <div className="rounded-md border border-slate-200 bg-white p-3 text-xs text-slate-700">
+            <div className="flex items-center justify-between gap-2">
+                <span className="font-semibold text-slate-800">{label}</span>
+                <span className={`rounded px-2 py-0.5 font-medium ${validation?.status === 'valid' ? 'bg-green-50 text-green-700' : validation?.status === 'invalid' ? 'bg-red-50 text-red-700' : validation?.status === 'checking' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'}`}>{validation?.status || 'idle'}</span>
+            </div>
+            <div className="mt-2 grid grid-cols-1 gap-1">
+                <div>File: {imageSummary(file)}</div>
+                {(dimensions.width || dimensions.height) && <div>Size: {dimensions.width}x{dimensions.height}</div>}
+                {(validation?.confidence || validation?.score) && <div>Score: {validation.confidence || validation.score}</div>}
+                {diagnostics.mode && <div>Mode: {diagnostics.mode}</div>}
+                {diagnostics.engine && <div>Engine: {diagnostics.engine}</div>}
+                {diagnostics.endpoint && <div>Endpoint: {diagnostics.endpoint}</div>}
+                {diagnostics.document_type && <div>Expected: {diagnostics.document_type}</div>}
+                {diagnostics.detected_document_type && <div>Detected: {diagnostics.detected_document_type}</div>}
+                {diagnostics.ocr?.confidence !== undefined && <div>OCR confidence: {diagnostics.ocr.confidence}</div>}
+                {diagnostics.ocr?.preview && <div>OCR: {diagnostics.ocr.preview}</div>}
+                {issues.length > 0 && <div>Issues: {issues.join(', ')}</div>}
+                {validation?.message && <div>Message: {validation.message}</div>}
+                {diagnostics.error && <div className="text-red-700">Error: {diagnostics.error}</div>}
+            </div>
+        </div>
+    );
+};
+const CameraDiagnosticsPanel = ({ isOpen, aiHealth, onRunHealthCheck, data, idFrontValidation, idBackValidation, selfieValidation }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="space-y-3 rounded-lg border border-slate-300 bg-slate-50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <p className="text-sm font-semibold text-slate-800">Camera Diagnostics</p>
+                    <p className="text-xs text-slate-500">Selected ID: {data.valid_id_type || 'none'}</p>
+                </div>
+                <SecondaryButton type="button" onClick={onRunHealthCheck} className="!w-auto !py-1.5 !px-3 !text-xs">Check WASM</SecondaryButton>
+            </div>
+            {aiHealth && (
+                <div className={`rounded-md border px-3 py-2 text-xs ${aiHealth.status === 'ok' ? 'border-green-200 bg-green-50 text-green-700' : aiHealth.status === 'checking' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                    <div>{aiHealth.message}</div>
+                    {aiHealth.diagnostics?.mode && <div>Mode: {aiHealth.diagnostics.mode}</div>}
+                    {aiHealth.diagnostics?.api_calls && <div>API calls: {aiHealth.diagnostics.api_calls}</div>}
+                    {aiHealth.diagnostics?.error && <div>Error: {aiHealth.diagnostics.error}</div>}
+                </div>
+            )}
+            <ValidationDebugDetails label="Front ID" file={data.valid_id_front_image} validation={idFrontValidation} />
+            <ValidationDebugDetails label="Back ID" file={data.valid_id_back_image} validation={idBackValidation} />
+            <ValidationDebugDetails label="Selfie" file={data.face_image} validation={selfieValidation} />
+        </div>
+    );
+};
 const CameraIcon = () => <svg className="h-5 w-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>;
 const IdCardIcon = () => <svg className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 012-2h2a2 2 0 012 2v1m-4 0h4m-9 4h2m-2 4h4m6-4v4m-2-2h4"></path></svg>;
 
@@ -50,12 +135,14 @@ const AuthLayout = ({ title, mainTitle, description, logoUrl }) => (
         </div>
     </div>
 );
+
 // --- CAMERA MODAL COMPONENT ---
-const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
+const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title, captureTarget, debugMode = false, idealVideoWidth = 1280, idealVideoHeight = 720, maxCaptureWidth = 1000, maxCaptureHeight = 1000 }) => {
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
     const [stream, setStream] = useState(null);
     const [error, setError] = useState(null);
+    const [videoInfo, setVideoInfo] = useState(null);
 
     const stopCamera = () => {
         if (stream) {
@@ -64,14 +151,29 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
         }
     };
 
+    const refreshVideoInfo = () => {
+        const video = videoRef.current;
+        const track = stream?.getVideoTracks?.()[0];
+        const settings = track?.getSettings?.() || {};
+        if (!video) return;
+
+        setVideoInfo({
+            width: video.videoWidth || settings.width,
+            height: video.videoHeight || settings.height,
+            deviceWidth: settings.width,
+            deviceHeight: settings.height,
+            facingMode: settings.facingMode || facingMode,
+        });
+    };
+
     useEffect(() => {
         if (isOpen) {
             setError(null);
             navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: facingMode,
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: idealVideoWidth },
+                    height: { ideal: idealVideoHeight }
                 }
             })
             .then(mediaStream => {
@@ -92,7 +194,7 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
         return () => {
             stopCamera();
         };
-    }, [isOpen, facingMode]);
+    }, [isOpen, facingMode, idealVideoWidth, idealVideoHeight]);
 
     const handleCapture = () => {
         if (videoRef.current && canvasRef.current) {
@@ -108,8 +210,8 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
             }
             context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
 
-            const maxWidth = 800;
-            const maxHeight = 600;
+            const maxWidth = maxCaptureWidth;
+            const maxHeight = maxCaptureHeight;
             let newWidth = canvas.width;
             let newHeight = canvas.height;
 
@@ -128,10 +230,10 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
             resizedContext.drawImage(canvas, 0, 0, newWidth, newHeight);
 
             resizedCanvas.toBlob(blob => {
-                const file = new File([blob], `${title.replace(/\s/g, '_')}.png`, { type: 'image/png' });
+                const file = new File([blob], `${title.replace(/\s/g, '_')}.jpg`, { type: 'image/jpeg' });
                 onCapture(file);
                 onClose();
-            }, 'image/png', 0.9);
+            }, 'image/jpeg', 0.92);
         }
     };
 
@@ -152,8 +254,20 @@ const CameraModal = ({ isOpen, onClose, onCapture, facingMode, title }) => {
                             ref={videoRef}
                             autoPlay
                             playsInline
+                            onLoadedMetadata={refreshVideoInfo}
+                            onPlaying={refreshVideoInfo}
                             className={`w-full h-full object-contain rounded-md ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
                         ></video>
+                    )}
+                    {debugMode && !error && (
+                        <>
+                            <div className={`pointer-events-none absolute left-1/2 top-1/2 ${captureTarget === 'face' ? 'h-[58%] w-[46%] rounded-full' : 'h-[48%] w-[78%] rounded-md'} -translate-x-1/2 -translate-y-1/2 border-2 border-dashed border-emerald-400 shadow-[0_0_0_9999px_rgba(15,23,42,0.20)]`}></div>
+                            <div className="absolute left-6 top-6 rounded bg-slate-900/80 px-3 py-2 text-xs text-white">
+                                <div>{captureTarget === 'face' ? 'Face calibration' : 'ID calibration'}</div>
+                                <div>{videoInfo?.width || '?'}x{videoInfo?.height || '?'}</div>
+                                <div>{videoInfo?.facingMode || facingMode}</div>
+                            </div>
+                        </>
                     )}
                     <canvas ref={canvasRef} className="hidden"></canvas>
                 </div>
@@ -206,100 +320,65 @@ const Step1_BasicInfo = ({ data, setData, errors }) => {
     );
 };
 
-const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locations, isLoadingLocations }) => {
+const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation }) => {
 
-    const provinces = useMemo(() => (locations ? Object.keys(locations).sort() : []), [locations]);
-    const cities = useMemo(() => (data.province && locations ? Object.keys(locations[data.province]).sort() : []), [data.province, locations]);
-    const barangays = useMemo(() => (
-        data.province && data.city && locations && locations[data.province] && locations[data.province][data.city] 
-        ? locations[data.province][data.city].sort() 
-        : []
-    ), [data.province, data.city, locations]);
-    const handlePhoneChange = (e) => {
-        const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
-        setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
-    };
-    
-    return (
-        <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
+    const handlePhoneChange = (e) => {
+        const input = e.target.value.replace(/\D/g, ''); // Remove all non-digit characters
+        setData('phone_number', input.substring(0, 10)); // Limit to 10 digits (e.g., 9171234567)
+    };
+    
+    return (
+        <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
 
-            {/* Address Dropdowns */}
-            <div>
-                <label htmlFor="province" className="font-medium text-slate-700 text-sm mb-2 block">Province</label>
-                <CustomSelect id="province" name="province" icon={<MapPinIcon />} value={data.province} onChange={(e) => setData({ ...data, province: e.target.value, city: '', barangay: '' })} required error={errors.province} disabled={true}>
-                    <option value="">{isLoadingLocations ? 'Loading...' : 'Select Province...'}</option>
-                    {provinces.map(prov => <option key={prov} value={prov}>{prov}</option>)}
-                </CustomSelect>
-                <InputError message={errors.province} className="mt-2" />
-            </div>
+            {/* Province and city are set automatically behind the scenes. */}
 
-            <div>
-                <label htmlFor="city" className="font-medium text-slate-700 text-sm mb-2 block">City / Municipality</label>
-                <CustomSelect id="city" name="city" icon={<MapPinIcon />} value={data.city} onChange={(e) => setData({ ...data, city: e.target.value, barangay: '' })} required error={errors.city} disabled={true}>
-                    <option value="">Select City / Municipality...</option>
-                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
-                </CustomSelect>
-                <InputError message={errors.city} className="mt-2" />
-            </div>
+            <div>
+                <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
+                <CustomTextInput id="street_address" name="street_address" icon={<HomeIcon />} value={data.street_address} onChange={(e) => setData('street_address', e.target.value)} required error={errors.street_address} />
+                <InputError message={errors.street_address} className="mt-2" />
+            </div>
+            
+             <div>
+                <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <PhoneIcon />
+                        <span className="text-slate-500 ml-2">+63</span>
+                    </div>
+                    <input
+                        id="phone_number"
+                        name="phone_number"
+                        type="tel"
+                        value={data.phone_number}
+                        onChange={handlePhoneChange}
+                        placeholder="9XX-XXX-XXXX"
+                        required
+                        className={`w-full pl-24 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ (errors.phone_number || phoneValidation.status === 'invalid') ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' }`}
+                    />
+                    {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
+                </div>
+                {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
+                <InputError message={errors.phone_number} className="mt-2" />
+            </div>
 
-            <div>
-                <label htmlFor="barangay" className="font-medium text-slate-700 text-sm mb-2 block">Barangay</label>
-                <CustomSelect id="barangay" name="barangay" icon={<MapPinIcon />} value={data.barangay} onChange={(e) => setData('barangay', e.target.value)} required error={errors.barangay} disabled={!data.city}>
-                    <option value="">Select Barangay...</option>
-                    {barangays.map(brgy => <option key={brgy} value={brgy}>{brgy}</option>)}
-                </CustomSelect>
-                <InputError message={errors.barangay} className="mt-2" />
-            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
+                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="text-sm h-12" error={errors.birthday} />
+                    <InputError message={errors.birthday} className="mt-2" />
+                </div>
+                <div>
+                    <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
+                    <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
+                        <option value="">Select...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </CustomSelect>
+                     <InputError message={errors.gender} className="mt-2" />
+                </div>
+            </div>
 
-            <div>
-                <label htmlFor="street_address" className="font-medium text-slate-700 text-sm mb-2 block">Street Address, House No.</label>
-                <CustomTextInput id="street_address" name="street_address" icon={<HomeIcon />} value={data.street_address} onChange={(e) => setData('street_address', e.target.value)} required error={errors.street_address} />
-                <InputError message={errors.street_address} className="mt-2" />
-            </div>
-            
-             <div>
-                <label htmlFor="phone_number" className="font-medium text-slate-700 text-sm mb-2 block">Phone Number</label>
-                <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <PhoneIcon />
-                        <span className="text-slate-500 ml-2">+63</span>
-                    </div>
-                    <input
-                        id="phone_number"
-                        name="phone_number"
-                        type="tel"
-                        value={data.phone_number}
-                        onChange={handlePhoneChange}
-                        placeholder="9XX-XXX-XXXX"
-                        required
-                        className={`w-full pl-24 pr-4 py-3 border rounded-lg shadow-sm transition-all duration-300 bg-slate-50 hover:bg-white ${ (errors.phone_number || phoneValidation.status === 'invalid') ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50' : 'border-slate-300 focus:border-blue-500 focus:ring-blue-500/50' }`}
-                    />
-                    {!errors.phone_number && <ValidationIndicator status={phoneValidation.status} />}
-                </div>
-                {phoneValidation.status === 'invalid' && <InputError message={phoneValidation.message} className="mt-2" />}
-                <InputError message={errors.phone_number} className="mt-2" />
-            </div>
-
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label htmlFor="birthday" className="font-medium text-slate-700 text-sm mb-2 block">Birthday</label>
-                    <CustomTextInput id="birthday" name="birthday" type="date" icon={<CalendarIcon />} value={data.birthday} onChange={(e) => setData('birthday', e.target.value)} required className="text-sm h-12" error={errors.birthday} />
-                    <InputError message={errors.birthday} className="mt-2" />
-                </div>
-                <div>
-                    <label htmlFor="gender" className="font-medium text-slate-700 text-sm mb-2 block">Gender</label>
-                    <CustomSelect id="gender" name="gender" icon={<GenderIcon />} value={data.gender} onChange={(e) => setData('gender', e.target.value)} required error={errors.gender}>
-                        <option value="">Select...</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </CustomSelect>
-                     <InputError message={errors.gender} className="mt-2" />
-                </div>
-            </div>
-
-            {/* --- NEW FIELD ADDED HERE --- */}
             <div>
                 <label htmlFor="place_of_birth" className="font-medium text-slate-700 text-sm mb-2 block">Place of Birth</label>
                 <CustomTextInput 
@@ -314,21 +393,20 @@ const Step2_PersonalDetails = ({ data, setData, errors, phoneValidation, locatio
                 />
                 <InputError message={errors.place_of_birth} className="mt-2" />
             </div>
-            {/* --- END OF NEW FIELD --- */}
             
-            <div>
-                <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
-                <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
-                    <option value="">Select...</option>
-                    <option value="Single">Single</option>
-      _              <option value="Married">Married</option>
-                    <option value="Widowed">Widowed</option>
-                    <option value="Separated">Separated</option>
-                </CustomSelect>
-                <InputError message={errors.civil_status} className="mt-2" />
-            </div>
-        </div>
-    );
+            <div>
+                <label htmlFor="civil_status" className="font-medium text-slate-700 text-sm mb-2 block">Civil Status</label>
+                <CustomSelect id="civil_status" name="civil_status" icon={<StatusIcon />} value={data.civil_status} onChange={(e) => setData('civil_status', e.target.value)} required error={errors.civil_status}>
+                    <option value="">Select...</option>
+                    <option value="Single">Single</option>
+                    <option value="Married">Married</option>
+                    <option value="Widowed">Widowed</option>
+                    <option value="Separated">Separated</option>
+                </CustomSelect>
+                <InputError message={errors.civil_status} className="mt-2" />
+            </div>
+        </div>
+    );
 };
 
 const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setPasswordVisible, confirmPasswordVisible, setConfirmPasswordVisible, passwordsDoNotMatch, emailValidation }) => (
@@ -374,30 +452,35 @@ const Step3_AccountCredentials = ({ data, setData, errors, passwordVisible, setP
     </div>
 );
 
-const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, setAgreeToTerms, setIsTermsModalOpen }) => {
+const Step4_Verification = ({ data, setData, errors, clearErrors, termsViewed, agreeToTerms, setAgreeToTerms, setIsTermsModalOpen, idFrontValidation, idBackValidation, selfieValidation }) => {
     const [idFrontPreview, setIdFrontPreview] = useState(null);
     const [idBackPreview, setIdBackPreview] = useState(null);
     const [faceImagePreview, setFaceImagePreview] = useState(null);
+    const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+    const [aiHealth, setAiHealth] = useState(null);
 
     const [isCameraOpen, setIsCameraOpen] = useState(false);
     const [cameraTarget, setCameraTarget] = useState(null);
 
     const handleCapture = (file) => {
         const previewUrl = URL.createObjectURL(file);
-        if (errors.images) delete errors.images;
+        clearErrors('images');
 
         switch (cameraTarget) {
             case 'id_front':
                 setIdFrontPreview(previewUrl);
                 setData('valid_id_front_image', file);
+                clearErrors('valid_id_front_image');
                 break;
             case 'id_back':
                 setIdBackPreview(previewUrl);
                 setData('valid_id_back_image', file);
+                clearErrors('valid_id_back_image');
                 break;
             case 'face':
                 setFaceImagePreview(previewUrl);
                 setData('face_image', file);
+                clearErrors('face_image');
                 break;
             default:
                 break;
@@ -408,6 +491,17 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
         "Philippine Identification (PhilID / ePhilID)", "Passport", "Driver's License", "UMID Card",
         "PhilHealth ID", "Postal ID", "Voter's ID", "PRC ID",
     ];
+    const isIdCapture = cameraTarget === 'id_front' || cameraTarget === 'id_back';
+    const runHealthCheck = () => {
+        setAiHealth({ status: 'checking', message: 'Checking local WASM validator...' });
+        getWasmIdentityHealth()
+            .then((result) => setAiHealth(result))
+            .catch((error) => setAiHealth({
+                status: 'unavailable',
+                message: 'Local WASM validator is not ready.',
+                diagnostics: { mode: 'browser_wasm', error: error.message },
+            }));
+    };
 
     return (
         <>
@@ -417,9 +511,30 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
                 onCapture={handleCapture}
                 facingMode={cameraTarget === 'face' ? 'user' : 'environment'}
                 title={`Take Picture of ${cameraTarget?.replace('_', ' ')?.replace('id', 'ID') || ''}`}
+                captureTarget={cameraTarget}
+                debugMode={diagnosticsOpen}
+                idealVideoWidth={isIdCapture ? 1920 : 1280}
+                idealVideoHeight={isIdCapture ? 1080 : 720}
+                maxCaptureWidth={isIdCapture ? 1600 : 1000}
+                maxCaptureHeight={isIdCapture ? 1200 : 1000}
             />
             <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-slate-700 border-b pb-2">Identity Verification</h3>
+                <div className="flex items-center justify-between gap-3 border-b pb-2">
+                    <h3 className="text-lg font-semibold text-slate-700">Identity Verification</h3>
+                    <SecondaryButton type="button" onClick={() => setDiagnosticsOpen((value) => !value)} className="!w-auto !py-1.5 !px-3 !text-xs">
+                        {diagnosticsOpen ? 'Hide Diagnostics' : 'Diagnostics'}
+                    </SecondaryButton>
+                </div>
+
+                <CameraDiagnosticsPanel
+                    isOpen={diagnosticsOpen}
+                    aiHealth={aiHealth}
+                    onRunHealthCheck={runHealthCheck}
+                    data={data}
+                    idFrontValidation={idFrontValidation}
+                    idBackValidation={idBackValidation}
+                    selfieValidation={selfieValidation}
+                />
 
                 <InputError message={errors.images} className="mt-2" />
 
@@ -439,6 +554,8 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
                             {idFrontPreview ? <img src={idFrontPreview} alt="ID Front Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Front Preview</span>}
                         </div>
                         <SecondaryButton type="button" onClick={() => { setCameraTarget('id_front'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Front</SecondaryButton>
+                        <IdPrecheckMessage validation={idFrontValidation} />
+                        <InputError message={errors.valid_id_front_image} className="mt-2" />
                     </div>
                     <div className="space-y-2">
                         <label className="font-medium text-slate-700 text-sm">Back of ID</label>
@@ -446,6 +563,8 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
                             {idBackPreview ? <img src={idBackPreview} alt="ID Back Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-xs">Back Preview</span>}
                         </div>
                         <SecondaryButton type="button" onClick={() => { setCameraTarget('id_back'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Capture Back</SecondaryButton>
+                        <IdPrecheckMessage validation={idBackValidation} />
+                        <InputError message={errors.valid_id_back_image} className="mt-2" />
                     </div>
                 </div>
 
@@ -455,6 +574,8 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
                         {faceImagePreview ? <img src={faceImagePreview} alt="Face Preview" className="h-full w-full object-contain" /> : <span className="text-slate-500 text-sm">Face Preview</span>}
                     </div>
                     <SecondaryButton type="button" onClick={() => { setCameraTarget('face'); setIsCameraOpen(true); }} className="w-full !py-2 !text-sm"><CameraIcon /> Take Picture of Face</SecondaryButton>
+                    <IdPrecheckMessage validation={selfieValidation} />
+                    <InputError message={errors.face_image} className="mt-2" />
                 </div>
 
                 <div className={`pt-2 flex items-start ${!termsViewed ? 'opacity-60' : ''}`} title={!termsViewed ? 'Please view the Terms and Conditions first to enable this.' : ''}>
@@ -471,7 +592,7 @@ const Step4_Verification = ({ data, setData, errors, termsViewed, agreeToTerms, 
 };
 
 // --- MAIN REGISTER COMPONENT ---
-export default function Register({ footerData }) {
+export default function App({ footerData }) {
     const [step, setStep] = useState(1);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
@@ -480,13 +601,13 @@ export default function Register({ footerData }) {
     const [termsViewed, setTermsViewed] = useState(false);
     const formContainerRef = useRef(null);
     const formRef = useRef(null);
-    const [locations, setLocations] = useState(null);
-    const [isLoadingLocations, setIsLoadingLocations] = useState(true);
+    const validationQueueRef = useRef(Promise.resolve());
 
-    const { data, setData, post, processing, errors, reset, clearErrors, setError } = useForm({
+    // Initialize with default values directly in useForm so we don't need to load the json!
+    const { data, setData, transform, post, processing, errors, reset, clearErrors, setError } = useForm({
         first_name: '', last_name: '', middle_name: '', suffix: '',
-        province: '', city: '', barangay: '', street_address: '',
-        phone_number: '', birthday: '', gender: '', civil_status: '',
+        province: 'Nueva Ecija', city: 'City of Gapan',
+        street_address: '', phone_number: '', birthday: '', gender: '', civil_status: '', place_of_birth: '',
         email: '', password: '', password_confirmation: '',
         valid_id_type: '',
         valid_id_front_image: null,
@@ -494,43 +615,29 @@ export default function Register({ footerData }) {
         face_image: null,
     });
 
-    // --- Fetch Location Data ---
-    useEffect(() => {
-    fetch('/ph_locations.json')
-        .then(response => response.json())
-        .then(locationData => {
-            setLocations(locationData);
-            setIsLoadingLocations(false);
-            setData(prevData => ({
-                ...prevData,
-                province: 'Nueva Ecija',
-                city: 'General Tinio'
-            }));
-        })
-        .catch(error => {
-            console.error("Failed to load location data:", error);
-            setIsLoadingLocations(false);
-        });
-}, []);
-
     // --- Validations ---
     const passwordValidation = useMemo(() => getPasswordValidationState(data.password), [data.password]);
     const passwordsDoNotMatch = data.password_confirmation && data.password !== data.password_confirmation;
     const [phoneValidation, setPhoneValidation] = useState({ status: 'idle', message: '' });
     const [emailValidation, setEmailValidation] = useState({ status: 'idle', message: '' });
+    const [idFrontValidation, setIdFrontValidation] = useState({ status: 'idle', message: '' });
+    const [idBackValidation, setIdBackValidation] = useState({ status: 'idle', message: '' });
+    const [selfieValidation, setSelfieValidation] = useState({ status: 'idle', message: '' });
 
-    const ageValidation = useMemo(() => {
-        return { isValid: true, message: '' };
-    }, [data.birthday]);
+    const enqueueValidation = (task) => {
+        const nextTask = validationQueueRef.current.catch(() => {}).then(task);
+        validationQueueRef.current = nextTask.catch(() => {});
+        return nextTask;
+    };
 
     const stepFields = {
         1: ['first_name', 'last_name'],
-        2: ['province', 'city', 'barangay', 'street_address', 'phone_number', 'birthday', 'gender', 'civil_status'],
+        // Added 'place_of_birth' and removed province/city since they are defaulted
+        2: ['street_address', 'phone_number', 'birthday', 'gender', 'place_of_birth', 'civil_status'],
         3: ['email', 'password', 'password_confirmation'],
         4: ['valid_id_type', 'valid_id_front_image', 'valid_id_back_image', 'face_image', 'terms']
     };
 
-   
     const submit = (e) => {
         e.preventDefault();
         clearErrors();
@@ -547,13 +654,31 @@ export default function Register({ footerData }) {
             return;
         }
 
-        const formData = {
-            ...data,
-            phone_number: `+63${data.phone_number}`
-        };
+        const imageChecks = [
+            { field: 'valid_id_front_image', label: 'Front of ID', validation: idFrontValidation },
+            { field: 'valid_id_back_image', label: 'Back of ID', validation: idBackValidation },
+            { field: 'face_image', label: 'Selfie', validation: selfieValidation },
+        ];
+
+        for (const check of imageChecks) {
+            if (check.validation.status === 'checking') {
+                setError(check.field, `Please wait for the ${check.label} validation to finish.`);
+                return;
+            }
+
+            if (check.validation.status !== 'valid') {
+                setError(check.field, check.validation.message || `${check.label} must pass validation before registration.`);
+                return;
+            }
+        }
+
+        transform((values) => ({
+            ...values,
+            phone_number: `+63${values.phone_number}`,
+            terms: agreeToTerms ? '1' : '0',
+        }));
 
         post(route('register'), {
-            data: formData,
             forceFormData: true,
             onSuccess: () => {
                 reset('password', 'password_confirmation');
@@ -627,6 +752,103 @@ export default function Register({ footerData }) {
         return () => clearTimeout(handler);
     }, [data.email]);
 
+    const validateRegistrationImage = (role, fieldName, file, setValidation, controller) => {
+        return validateRegistrationImageWasm({
+            role,
+            file,
+            validIdType: data.valid_id_type,
+            signal: controller.signal,
+        })
+            .then((response) => {
+                const result = response || {};
+                const nextStatus = result.status || (result.is_valid ? 'valid' : 'invalid');
+                const fallbackValidMessage = role === 'selfie' ? 'Selfie looks valid.' : role === 'back_id' ? 'Back of ID looks valid.' : 'ID looks valid.';
+                const fallbackInvalidMessage = role === 'selfie' ? 'The selfie is not valid. Please retake the photo.' : 'The ID is not valid. Please retake the photo.';
+                const nextMessage = result.message || (nextStatus === 'valid' ? fallbackValidMessage : fallbackInvalidMessage);
+
+                setValidation({ ...result, status: nextStatus, message: nextMessage });
+
+                if (nextStatus === 'invalid') {
+                    setError(fieldName, nextMessage);
+                } else {
+                    clearErrors(fieldName);
+                }
+            })
+            .catch((error) => {
+                if (error.name === 'AbortError') return;
+
+                const message = error.message || 'The image could not be checked. Please retake a clear photo.';
+                const status = 'unchecked';
+
+                setValidation({ status, message, error: error.message, diagnostics: { mode: 'browser_wasm', error: error.message } });
+                if (status === 'invalid') {
+                    setError(fieldName, message);
+                } else {
+                    clearErrors(fieldName);
+                }
+            });
+    };
+
+    useEffect(() => {
+        if (!data.valid_id_front_image || !data.valid_id_type) {
+            setIdFrontValidation({ status: 'idle', message: '' });
+            return;
+        }
+
+        setIdFrontValidation({ status: 'checking', message: 'Checking front ID photo...' });
+        clearErrors('valid_id_front_image');
+
+        const controller = new AbortController();
+        const handler = setTimeout(() => {
+            enqueueValidation(() => validateRegistrationImage('front_id', 'valid_id_front_image', data.valid_id_front_image, setIdFrontValidation, controller));
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+            controller.abort();
+        };
+    }, [data.valid_id_front_image, data.valid_id_type]);
+
+    useEffect(() => {
+        if (!data.valid_id_back_image || !data.valid_id_type) {
+            setIdBackValidation({ status: 'idle', message: '' });
+            return;
+        }
+
+        setIdBackValidation({ status: 'checking', message: 'Checking back ID photo...' });
+        clearErrors('valid_id_back_image');
+
+        const controller = new AbortController();
+        const handler = setTimeout(() => {
+            enqueueValidation(() => validateRegistrationImage('back_id', 'valid_id_back_image', data.valid_id_back_image, setIdBackValidation, controller));
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+            controller.abort();
+        };
+    }, [data.valid_id_back_image, data.valid_id_type]);
+
+    useEffect(() => {
+        if (!data.face_image) {
+            setSelfieValidation({ status: 'idle', message: '' });
+            return;
+        }
+
+        setSelfieValidation({ status: 'checking', message: 'Checking selfie...' });
+        clearErrors('face_image');
+
+        const controller = new AbortController();
+        const handler = setTimeout(() => {
+            enqueueValidation(() => validateRegistrationImage('selfie', 'face_image', data.face_image, setSelfieValidation, controller));
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+            controller.abort();
+        };
+    }, [data.face_image]);
+
     useEffect(() => {
         if (formContainerRef.current) {
             formContainerRef.current.scrollTop = 0;
@@ -636,9 +858,9 @@ export default function Register({ footerData }) {
     const renderStep = () => {
         switch (step) {
             case 1: return <Step1_BasicInfo data={data} setData={setData} errors={errors} />;
-            case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} locations={locations} isLoadingLocations={isLoadingLocations}/>;
+            case 2: return <Step2_PersonalDetails data={data} setData={setData} errors={errors} phoneValidation={phoneValidation} />;
             case 3: return <Step3_AccountCredentials data={data} setData={setData} errors={errors} passwordVisible={passwordVisible} setPasswordVisible={setPasswordVisible} confirmPasswordVisible={confirmPasswordVisible} setConfirmPasswordVisible={setConfirmPasswordVisible} passwordsDoNotMatch={passwordsDoNotMatch} emailValidation={emailValidation} />;
-            case 4: return <Step4_Verification data={data} setData={setData} errors={errors} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} />;
+            case 4: return <Step4_Verification data={data} setData={setData} errors={errors} clearErrors={clearErrors} termsViewed={termsViewed} agreeToTerms={agreeToTerms} setAgreeToTerms={setAgreeToTerms} setIsTermsModalOpen={setIsTermsModalOpen} idFrontValidation={idFrontValidation} idBackValidation={idBackValidation} selfieValidation={selfieValidation} />;
             default: return null;
         }
     };
@@ -648,6 +870,12 @@ export default function Register({ footerData }) {
         setTermsViewed(true);
         setAgreeToTerms(true);
     };
+
+    const imageValidationBlocksSubmit =
+        processing
+        || (data.valid_id_front_image && idFrontValidation.status !== 'valid')
+        || (data.valid_id_back_image && idBackValidation.status !== 'valid')
+        || (data.face_image && selfieValidation.status !== 'valid');
 
     return (
         <>
@@ -693,7 +921,7 @@ export default function Register({ footerData }) {
                                         {step === 4 && (
                                             <div className="flex gap-4">
                                                  <SecondaryButton onClick={prevStep} disabled={processing}>Back</SecondaryButton>
-                                                 <PrimaryButton type="submit" disabled={processing}>Register</PrimaryButton>
+                                                 <PrimaryButton type="submit" disabled={imageValidationBlocksSubmit}>Register</PrimaryButton>
                                             </div>
                                         )}
                                     </div>
@@ -701,7 +929,7 @@ export default function Register({ footerData }) {
                             </div>
 
                             <div className="mt-auto pt-16 text-center">
-                                <p className="text-sm text-slate-600">Already have an account?{' '} <Link href={route('login')} className="font-medium text-blue-600 hover:text-blue-500 hover:underline">Sign in here</Link></p>
+                                <p className="text-sm text-slate-600">Already have an account?{' '} <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500 hover:underline">Sign in here</Link></p>
                             </div>
                         </div>
                     </div>
