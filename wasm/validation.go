@@ -8,6 +8,16 @@ import (
 	"unicode"
 )
 
+var (
+	reNonAlphaNum  = regexp.MustCompile(`[^a-z0-9]+`)
+	reMultiSpace   = regexp.MustCompile(`\s+`)
+	reAddressLabel = regexp.MustCompile(`(?i)\baddress\b\s*[:#-]?\s*`)
+	reGender       = regexp.MustCompile(`(?i)\b(?:sex|gender)\s*[:#-]?\s*(male|female|m|f)\b`)
+	reWord1d       = regexp.MustCompile(`\b1d\b`)
+	reSerialNumber = regexp.MustCompile(`(?i)\bserial\s*(?:number|no)?[:\s-]*\d{5,}\b`)
+	reDigits       = regexp.MustCompile(`\b\d{7,12}\b`)
+)
+
 type DocumentProfile struct {
 	Labels     []string
 	IDPatterns []*regexp.Regexp
@@ -153,6 +163,8 @@ type FieldExtraction struct {
 
 func normalizeText(value string) string {
 	value = strings.ToLower(value)
+	value = strings.ReplaceAll(value, "\u2019", "'")
+	value = strings.ReplaceAll(value, "`", "")
 	value = strings.ReplaceAll(value, "'", "")
 	value = strings.ReplaceAll(value, "identificati0n", "identification")
 	value = strings.ReplaceAll(value, "philipp1ne", "philippine")
@@ -161,13 +173,11 @@ func normalizeText(value string) string {
 	value = strings.ReplaceAll(value, "licence", "license")
 	value = strings.ReplaceAll(value, "0ffice", "office")
 	value = strings.ReplaceAll(value, "dr1ver", "driver")
-	value = strings.ReplaceAll(value, "1d", "id")
+	value = reWord1d.ReplaceAllString(value, "id")
 	value = strings.ReplaceAll(value, "lt0", "lto")
-	reg := regexp.MustCompile(`[^a-z0-9]+`)
-	value = reg.ReplaceAllString(value, " ")
+	value = reNonAlphaNum.ReplaceAllString(value, " ")
 	value = strings.ReplaceAll(value, "driver s license", "drivers license")
-	space := regexp.MustCompile(`\s+`)
-	value = space.ReplaceAllString(value, " ")
+	value = reMultiSpace.ReplaceAllString(value, " ")
 	return strings.TrimSpace(value)
 }
 
@@ -345,7 +355,7 @@ func ValidateDocument(rawText, expectedType, documentSide string, hasOcrEngine b
 		Status:              status,
 		IsIdentityDocument:  &isIdentityDoc,
 		IsSupportedDocument: &isSupported,
-		DetectedType:        strPtrSafe(detectedType),
+		DetectedType:        strPtr(detectedType),
 		ExpectedType:        strPtr(expectedType),
 		DocumentSide:        documentSide,
 		MatchesExpected:     matchesExpected,
@@ -424,8 +434,7 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 	for i, norm := range normalizedLines {
 		if strings.Contains(norm, "address") {
 			fragments := []string{}
-			re := regexp.MustCompile(`(?i)\baddress\b\s*[:#-]?\s*`)
-			remainder := strings.TrimSpace(re.ReplaceAllString(lines[i], ""))
+			remainder := strings.TrimSpace(reAddressLabel.ReplaceAllString(lines[i], ""))
 			if remainder != "" {
 				fragments = append(fragments, remainder)
 			}
@@ -447,8 +456,7 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 	}
 
 	var gender *string
-	genderRe := regexp.MustCompile(`(?i)\b(?:sex|gender)\s*[:#-]?\s*(male|female|m|f)\b`)
-	if match := genderRe.FindStringSubmatch(rawText); len(match) >= 2 {
+	if match := reGender.FindStringSubmatch(rawText); len(match) >= 2 {
 		v := strings.ToUpper(match[1])
 		if v == "MALE" {
 			v = "M"
@@ -469,12 +477,12 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 	}
 
 	return FieldExtraction{
-		FullName: fullName,
-		Address:  address,
+		FullName:  fullName,
+		Address:   address,
 		Birthdate: birthdate,
-		IDNumber: idNumber,
-		Gender:   gender,
-		IDType:   idType,
+		IDNumber:  idNumber,
+		Gender:    gender,
+		IDType:    idType,
 	}
 }
 
@@ -525,13 +533,13 @@ func EstimateBarcodeSignal(rgba []byte, width, height int) map[string]interface{
 	barcodeLike := transitionDensity >= 0.045 && rowDensity >= 0.18
 
 	return map[string]interface{}{
-		"transition_density":       round4(transitionDensity),
+		"transition_density":        round4(transitionDensity),
 		"high_transition_row_ratio": round4(rowDensity),
-		"barcode_like":             barcodeLike,
+		"barcode_like":              barcodeLike,
 	}
 }
 
-func CollectBackIDEvidence(rawText string, quality QualityMetrics, expectedScore int) map[string]interface{} {
+func CollectBackIDEvidence(rawText string, quality QualityMetrics, barcodeLike bool, expectedScore int) map[string]interface{} {
 	normalized := normalizeText(rawText)
 	markerHits := []string{}
 	for _, m := range backIDMarkers {
@@ -540,32 +548,24 @@ func CollectBackIDEvidence(rawText string, quality QualityMetrics, expectedScore
 		}
 	}
 
-	serialRe := regexp.MustCompile(`(?i)\bserial\s*(?:number|no)?[:\s-]*\d{5,}\b`)
-	digitsRe := regexp.MustCompile(`\b\d{7,12}\b`)
-	serialNumberDetected := serialRe.MatchString(rawText) || digitsRe.MatchString(rawText)
+	serialNumberDetected := reSerialNumber.MatchString(rawText) || reDigits.MatchString(rawText)
 
 	cardLikeFrame := quality.AspectRatio >= 1.20 && quality.AspectRatio <= 2.40 && quality.EdgeDensity >= 0.01
-	acceptsLowOcr := false
+	acceptsLowOcr := barcodeLike && cardLikeFrame
 
 	isValid := expectedScore >= 12 || len(markerHits) >= 2 || (len(markerHits) >= 1 && serialNumberDetected) || (acceptsLowOcr && len(strings.TrimSpace(rawText)) >= 8) || (acceptsLowOcr && quality.QualityScore >= 58)
 
 	return map[string]interface{}{
-		"marker_hits":           markerHits,
+		"marker_hits":            markerHits,
 		"serial_number_detected": serialNumberDetected,
-		"card_like_frame":       cardLikeFrame,
-		"accepts_low_ocr":       acceptsLowOcr,
-		"is_valid":              isValid,
+		"barcode_like":           barcodeLike,
+		"card_like_frame":        cardLikeFrame,
+		"accepts_low_ocr":        acceptsLowOcr,
+		"is_valid":               isValid,
 	}
 }
 
 func strPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-func strPtrSafe(s string) *string {
 	if s == "" {
 		return nil
 	}

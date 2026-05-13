@@ -11,14 +11,14 @@ type LivenessResult struct {
 func CheckLiveness(metrics QualityMetrics) LivenessResult {
 	issues := QualityIssues(metrics, "selfie")
 	screenAttackPenalty := 0.0
-	if metrics.Contrast < 18 || metrics.Sharpness < 30 {
+	if metrics.Contrast < 18 || metrics.Sharpness < SharpnessLivenessThreshold {
 		screenAttackPenalty = 15
 	}
 	score := metrics.QualityScore - screenAttackPenalty
 	score = clampf(score, 0, 98)
 
 	printedRisk := "low"
-	if metrics.Sharpness < 30 {
+	if metrics.Sharpness < SharpnessLivenessThreshold {
 		printedRisk = "medium"
 	}
 	screenRisk := "low"

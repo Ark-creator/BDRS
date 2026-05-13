@@ -3,11 +3,11 @@ package main
 import "math"
 
 type GeometryResult struct {
-	BoundaryDetected   bool     `json:"boundary_detected"`
-	BoundaryScore      float64  `json:"boundary_score"`
-	DocumentAreaRatio  float64  `json:"document_area_ratio"`
+	BoundaryDetected    bool     `json:"boundary_detected"`
+	BoundaryScore       float64  `json:"boundary_score"`
+	DocumentAreaRatio   float64  `json:"document_area_ratio"`
 	DocumentAspectRatio *float64 `json:"document_aspect_ratio"`
-	CroppedRisk        string   `json:"cropped_risk"`
+	CroppedRisk         string   `json:"cropped_risk"`
 }
 
 func AnalyzeDocumentGeometry(rgba []byte, width, height int) GeometryResult {
@@ -28,40 +28,34 @@ func AnalyzeDocumentGeometry(rgba []byte, width, height int) GeometryResult {
 		grayscale[i] = uint8(clampf(0.299*r+0.587*g+0.114*b, 0, 255))
 	}
 
-	edgeMag := make([]float64, pixelCount)
+	edgeBinary := make([]bool, pixelCount)
 	for y := 1; y < height-1; y++ {
 		for x := 1; x < width-1; x++ {
 			idx := y*width + x
 			gx := float64(grayscale[idx+1]) - float64(grayscale[idx-1])
 			gy := float64(grayscale[idx+width]) - float64(grayscale[idx-width])
-			edgeMag[idx] = math.Sqrt(gx*gx + gy*gy)
+			edgeBinary[idx] = (gx*gx + gy*gy) > 900
 		}
 	}
 
-	edgeThreshold := 30.0
-	edgeBinary := make([]bool, pixelCount)
-	for i, m := range edgeMag {
-		edgeBinary[i] = m > edgeThreshold
-	}
-
-	dilate := make([]bool, pixelCount)
 	radius := 2
+	dilate := edgeBinary
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			if !edgeBinary[y*width+x] {
-				found := false
-				for dy := -radius; dy <= radius && !found; dy++ {
-					for dx := -radius; dx <= radius && !found; dx++ {
-						ny, nx := y+dy, x+dx
-						if ny >= 0 && ny < height && nx >= 0 && nx < width {
-							found = edgeBinary[ny*width+nx]
-						}
+			idx := y*width + x
+			if dilate[idx] {
+				continue
+			}
+			for dy := -radius; dy <= radius; dy++ {
+				for dx := -radius; dx <= radius; dx++ {
+					ny, nx := y+dy, x+dx
+					if ny >= 0 && ny < height && nx >= 0 && nx < width && edgeBinary[ny*width+nx] {
+						dilate[idx] = true
+						goto nextPixel
 					}
 				}
-				dilate[y*width+x] = found
-			} else {
-				dilate[y*width+x] = true
 			}
+		nextPixel:
 		}
 	}
 
@@ -141,8 +135,6 @@ func AnalyzeDocumentGeometry(rgba []byte, width, height int) GeometryResult {
 			looksLikeCard := (aspectRatio >= 1.20 && aspectRatio <= 2.35) || (aspectRatio >= 0.42 && aspectRatio <= 0.85)
 			hasCardShape := looksLikeCard && rectangularity >= 0.42
 
-			_ = bx1 + bx2 + by1 + by2
-
 			score := math.Min(100, areaRatio*125+rectangularity*32)
 			if hasCardShape {
 				score += 22
@@ -169,14 +161,13 @@ func AnalyzeDocumentGeometry(rgba []byte, width, height int) GeometryResult {
 	ar := round3(float64(bw) / float64(bh))
 	touchesEdge := bestBox.x1 <= 8 || bestBox.y1 <= 8 || bestBox.x2 >= width-8 || bestBox.y2 >= height-8
 
-	_ = touchesEdge
 	croppedRisk := "low"
 	if touchesEdge {
 		croppedRisk = "medium"
 	}
 
 	return GeometryResult{
-		BoundaryDetected:   true,
+		BoundaryDetected:    true,
 		BoundaryScore:      round2(bestScore),
 		DocumentAreaRatio:  round3(bestArea),
 		DocumentAspectRatio: &ar,

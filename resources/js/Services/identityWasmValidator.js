@@ -26,7 +26,7 @@ const isGoWasmReady = async () => {
         const api = await loadBdrsWasm();
         goWasmAvailable = !!api && typeof api.analyzeImageQuality === 'function';
     } catch {
-        goWasmAvailable = false;
+        goWasmAvailable = null;
     }
     return goWasmAvailable;
 };
@@ -1094,7 +1094,8 @@ const collectBackIdEvidence = async (rawText, qualityReport, expectedScore) => {
     const useGo = await isGoWasmReady();
     if (useGo) {
         try {
-            const goResult = await collectBackIDEvidenceGo(rawText, qualityReport.quality, expectedScore);
+            const barcodeLike = Boolean(qualityReport.quality.barcode_signal?.barcode_like);
+            const goResult = await collectBackIDEvidenceGo(rawText, qualityReport.quality, barcodeLike, expectedScore);
             if (goResult) return goResult;
         } catch {
             // Fall through to JS

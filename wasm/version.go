@@ -1,25 +1,32 @@
 package main
 
+import "strconv"
+
 const (
 	Major         = 1
 	Minor         = 0
-	Patch         = 0
+	Patch         = 1
 	BuildMetadata = "go-wasm"
 )
 
+var buildVersion string
+
 func VersionString() string {
-	return "1.0.0"
+	if buildVersion != "" {
+		return buildVersion
+	}
+	return strconv.Itoa(Major) + "." + strconv.Itoa(Minor) + "." + strconv.Itoa(Patch)
 }
 
 func FullVersion() map[string]interface{} {
 	return map[string]interface{}{
-		"version":       VersionString(),
-		"major":         Major,
-		"minor":         Minor,
-		"patch":         Patch,
+		"version":        VersionString(),
+		"major":          Major,
+		"minor":          Minor,
+		"patch":          Patch,
 		"build_metadata": BuildMetadata,
-		"engine":        "bdrs-go-wasm-validator",
-		"language":      "go",
-		"target":        "js/wasm",
+		"engine":         "bdrs-go-wasm-validator",
+		"language":       "go",
+		"target":         "js/wasm",
 	}
 }

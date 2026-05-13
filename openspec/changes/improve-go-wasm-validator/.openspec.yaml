@@ -1,0 +1,14 @@
+schema: spec-driven
+change: improve-go-wasm-validator
+status: proposed
+artifacts:
+  proposal:
+    status: pending
+  design:
+    status: pending
+    dependsOn: [proposal]
+  tasks:
+    status: pending
+    dependsOn: [design]
+apply:
+  requires: [tasks]

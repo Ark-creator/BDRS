@@ -99,8 +99,8 @@ func DetectFaces(rgba []byte, width, height int, role string) FaceDetectionResul
 				areaRatio := float64(bw*bh) / math.Max(1, imageArea)
 				centerX := float64(minX) + float64(bw)/2.0
 				centerY := float64(minY) + float64(bh)/2.0
-				centered := 1.0 - math.Min(1, math.Abs(centerX/float64(width)-0.5)+math.Abs(centerY/float64(height)-0.42))
-				confidence := math.Min(92, areaRatio*230+centered*45)
+				centered := 1.0 - math.Min(1, math.Abs(centerX/float64(width)-0.5)+math.Abs(centerY/float64(height)-0.45))
+				confidence := math.Min(100.0, 45.0+areaRatio*260.0+centered*28.0)
 
 				components = append(components, FaceBox{
 					X:          minX,
@@ -108,7 +108,7 @@ func DetectFaces(rgba []byte, width, height int, role string) FaceDetectionResul
 					Width:      bw,
 					Height:     bh,
 					AreaRatio:  round4(areaRatio),
-					Confidence: math.Round(clampf(confidence, 0, 92)),
+					Confidence: math.Round(clampf(confidence, 0, 100)),
 					Detector:   "skin_tone_wasm_go",
 				})
 			}

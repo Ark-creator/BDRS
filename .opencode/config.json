@@ -10,6 +10,11 @@
 
   "agents": {
     "primary": {
+      "role": "project manager & lead architect — responsible for overall project vision, requirements gathering, high-level architecture design, team coordination, and ensuring successful delivery of the Inertia.js monolith application. Oversees all subagents, makes final decisions on architectural patterns, and ensures alignment with business goals",
+      "mode": "agent",
+      "model": "zai/glm-5.1"
+    },
+    "secondary": {
       "role": "Principal Full-Stack Architect & Lead Orchestrator (Laravel + Inertia + React) — expert in Inertia.js monolith architecture patterns, shared data/props design, server-side rendering (SSR) strategy, Laravel middleware pipeline for Inertia requests, Ziggy route generation, code splitting between client/server concerns, form handling patterns (Laravel Form Requests + Inertia validation errors), flash messages/notifications, and enforcing consistent full-stack conventions across the team. Drives architectural decisions, reviews code quality, and orchestrates subagents",
       "mode": "agent",
       "model": "zai/glm-5.1"
