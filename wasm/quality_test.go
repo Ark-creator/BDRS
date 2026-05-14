@@ -54,7 +54,7 @@ func TestAnalyzeImageQuality_Empty(t *testing.T) {
 }
 
 func TestQualityIssues_SharpnessThreshold(t *testing.T) {
-	m := QualityMetrics{Sharpness: 6.5, QualityScore: 80, Width: 600, Height: 400, DynamicRange: 200}
+	m := QualityMetrics{Sharpness: 2.5, QualityScore: 80, Width: 600, Height: 400, DynamicRange: 200}
 	issues := QualityIssues(m, "test")
 	found := false
 	for _, iss := range issues {
@@ -63,20 +63,20 @@ func TestQualityIssues_SharpnessThreshold(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("expected test_blurry for sharpness < 7")
+		t.Error("expected test_blurry for sharpness < 3.0")
 	}
 
-	m.Sharpness = 8.0
+	m.Sharpness = 4.0
 	issues = QualityIssues(m, "test")
 	for _, iss := range issues {
 		if iss == "test_blurry" {
-			t.Error("should not flag blurry at sharpness 8")
+			t.Error("should not flag blurry at sharpness 4.0")
 		}
 	}
 }
 
 func TestQualityIssues_LowResolution(t *testing.T) {
-	m := QualityMetrics{Width: 300, Height: 200, QualityScore: 80, Sharpness: 10, DynamicRange: 200}
+	m := QualityMetrics{Width: 250, Height: 150, QualityScore: 80, Sharpness: 10, DynamicRange: 200}
 	issues := QualityIssues(m, "id")
 	found := false
 	for _, iss := range issues {
@@ -90,7 +90,7 @@ func TestQualityIssues_LowResolution(t *testing.T) {
 }
 
 func TestBrowserQualityChecks_BlocksBlurry(t *testing.T) {
-	m := QualityMetrics{Width: 600, Height: 400, Sharpness: 2.0, Brightness: 128, DynamicRange: 200}
+	m := QualityMetrics{Width: 600, Height: 400, Sharpness: 1.0, Brightness: 128, DynamicRange: 200}
 	_, blocking := BrowserQualityChecks(m, "id")
 	found := false
 	for _, b := range blocking {
@@ -99,16 +99,16 @@ func TestBrowserQualityChecks_BlocksBlurry(t *testing.T) {
 		}
 	}
 	if !found {
-		t.Error("expected image_blurry blocking for sharpness < 3.2")
+		t.Error("expected image_blurry blocking for sharpness < 1.8")
 	}
 }
 
 func TestBrowserQualityChecks_SelfieMinDimensions(t *testing.T) {
-	m := QualityMetrics{Width: 400, Height: 400, Sharpness: 10, Brightness: 128, DynamicRange: 200}
+	m := QualityMetrics{Width: 300, Height: 300, Sharpness: 10, Brightness: 128, DynamicRange: 200}
 	_, blocking := BrowserQualityChecks(m, "selfie")
 	for _, b := range blocking {
 		if b == "image_resolution_too_low" {
-			t.Error("400x400 should pass selfie min 360x360 check")
+			t.Error("300x300 should pass selfie min 280x280 check")
 		}
 	}
 }

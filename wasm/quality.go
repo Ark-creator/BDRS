@@ -122,23 +122,23 @@ func AnalyzeImageQuality(rgba []byte, width, height int) QualityMetrics {
 	aspectRatio := float64(width) / math.Max(1, float64(height))
 
 	canvasScore := 100.0
-	canvasScore -= math.Max(0, 48-brightness) * 1.2
-	canvasScore -= math.Max(0, brightness-225) * 1.2
-	canvasScore -= math.Max(0, 22-contrast) * 1.8
-	canvasScore -= math.Max(0, 8-sharpness) * 4
-	canvasScore -= math.Max(0, float64(42-dynamicRange)) * 1.1
-	canvasScore -= glareRatio * 110
-	canvasScore -= shadowRatio * 80
-	canvasScore -= math.Max(0, float64(500-width)) * 0.04
-	canvasScore -= math.Max(0, float64(280-height)) * 0.04
+	canvasScore -= math.Max(0, 38-brightness) * 0.8
+	canvasScore -= math.Max(0, brightness-230) * 0.8
+	canvasScore -= math.Max(0, 18-contrast) * 1.2
+	canvasScore -= math.Max(0, 5-sharpness) * 2.5
+	canvasScore -= math.Max(0, float64(35-dynamicRange)) * 0.7
+	canvasScore -= glareRatio * 80
+	canvasScore -= shadowRatio * 55
+	canvasScore -= math.Max(0, float64(400-width)) * 0.03
+	canvasScore -= math.Max(0, float64(240-height)) * 0.03
 	canvasScore = clampf(canvasScore, 0, 100)
 
 	resolutionScore := math.Min(100.0, float64(width*height)/(900*600)*100)
 	brightnessScore := math.Max(0.0, 100.0-absf(brightness-128)/128*100)
-	contrastScore := math.Min(100.0, contrast/64*100)
+	contrastScore := math.Min(100.0, contrast/50*100)
 	sharpnessScore := math.Min(100.0, sharpness/SharpnessTypicalMax*100)
-	exposureScore := math.Max(0.0, 100.0-darkRatio*110-brightRatio*90-math.Max(0, float64(40-dynamicRange))*1.35)
-	qualityScore := round2(resolutionScore*0.25 + brightnessScore*0.18 + contrastScore*0.20 + sharpnessScore*0.27 + exposureScore*0.10)
+	exposureScore := math.Max(0.0, 100.0-darkRatio*80-brightRatio*70-math.Max(0, float64(35-dynamicRange))*0.9)
+	qualityScore := round2(resolutionScore*0.20 + brightnessScore*0.22 + contrastScore*0.18 + sharpnessScore*0.22 + exposureScore*0.18)
 
 	h := fnv.New128a()
 	h.Write(rgba)
@@ -171,25 +171,25 @@ func AnalyzeImageQuality(rgba []byte, width, height int) QualityMetrics {
 
 func QualityIssues(m QualityMetrics, prefix string) []string {
 	var issues []string
-	if m.Width < 400 || m.Height < 250 {
+	if m.Width < 320 || m.Height < 200 {
 		issues = append(issues, prefix+"_low_resolution")
 	}
-	if m.QualityScore < 45 {
+	if m.QualityScore < 28 {
 		issues = append(issues, prefix+"_low_quality")
 	}
-	if m.Sharpness < SharpnessBlurryThreshold {
+	if m.Sharpness < 3.0 {
 		issues = append(issues, prefix+"_blurry")
 	}
-	if m.Brightness < 45 || m.Brightness > 215 {
+	if m.Brightness < 30 || m.Brightness > 230 {
 		issues = append(issues, prefix+"_bad_lighting")
 	}
-	if m.DynamicRange < 35 {
+	if m.DynamicRange < 22 {
 		issues = append(issues, prefix+"_low_dynamic_range")
 	}
-	if m.GlareRatio > 0.10 {
+	if m.GlareRatio > 0.18 {
 		issues = append(issues, prefix+"_glare")
 	}
-	if m.ShadowRatio > 0.42 {
+	if m.ShadowRatio > 0.55 {
 		issues = append(issues, prefix+"_heavy_shadow")
 	}
 	return issues
@@ -199,38 +199,38 @@ func BrowserQualityChecks(m QualityMetrics, role string) ([]string, []string) {
 	var issues []string
 	var blocking []string
 
-	minWidth := 500
-	minHeight := 280
+	minWidth := 400
+	minHeight := 240
 	if role == "selfie" {
-		minWidth = 360
-		minHeight = 360
+		minWidth = 280
+		minHeight = 280
 	}
 
 	if m.Width < minWidth || m.Height < minHeight {
 		blocking = append(blocking, "image_resolution_too_low")
 	}
-	if m.Brightness < 28 || m.ShadowRatio > 0.58 {
+	if m.Brightness < 18 || m.ShadowRatio > 0.68 {
 		blocking = append(blocking, "image_too_dark")
-	} else if m.Brightness < 35 {
+	} else if m.Brightness < 25 {
 		issues = append(issues, "image_dark_but_recoverable")
-	} else if m.Brightness < 48 {
+	} else if m.Brightness < 38 {
 		issues = append(issues, "image_slightly_dark")
 	}
-	if m.Brightness > 240 || m.GlareRatio > 0.18 {
+	if m.Brightness > 245 || m.GlareRatio > 0.25 {
 		blocking = append(blocking, "image_overexposed")
-	} else if m.GlareRatio > 0.08 || m.BrightPixelRatio > 0.20 {
+	} else if m.GlareRatio > 0.12 || m.BrightPixelRatio > 0.25 {
 		issues = append(issues, "image_glare_detected")
 	}
-	if m.DynamicRange < 28 {
+	if m.DynamicRange < 18 {
 		blocking = append(blocking, "image_low_dynamic_range")
-	} else if m.Contrast < 12 || m.DynamicRange < 45 {
+	} else if m.Contrast < 8 || m.DynamicRange < 35 {
 		issues = append(issues, "image_low_contrast_recoverable")
-	} else if m.Contrast < 18 {
+	} else if m.Contrast < 14 {
 		issues = append(issues, "image_contrast_low")
 	}
-	if m.Sharpness < 3.2 {
+	if m.Sharpness < 1.8 {
 		blocking = append(blocking, "image_blurry")
-	} else if m.Sharpness < 7 {
+	} else if m.Sharpness < 5 {
 		issues = append(issues, "image_soft_focus")
 	}
 

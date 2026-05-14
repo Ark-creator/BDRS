@@ -13,9 +13,81 @@ type FaceBox struct {
 }
 
 type FaceDetectionResult struct {
-	FaceCount int        `json:"face_count"`
-	Faces     []FaceBox  `json:"faces"`
-	Engine    string     `json:"engine"`
+	FaceCount int       `json:"face_count"`
+	Faces     []FaceBox `json:"faces"`
+	Engine    string    `json:"engine"`
+}
+
+func preProcessForFaceDetection(rgba []byte, width, height int) []byte {
+	pixelCount := width * height
+	if pixelCount == 0 {
+		return rgba
+	}
+
+	enhanced := make([]byte, len(rgba))
+	copy(enhanced, rgba)
+
+	sumLum := 0.0
+	minLum := 255.0
+	maxLum := 0.0
+	for i := 0; i < pixelCount; i++ {
+		r := float64(rgba[i*4])
+		g := float64(rgba[i*4+1])
+		b := float64(rgba[i*4+2])
+		lum := 0.299*r + 0.587*g + 0.114*b
+		sumLum += lum
+		if lum < minLum {
+			minLum = lum
+		}
+		if lum > maxLum {
+			maxLum = lum
+		}
+	}
+
+	avgLum := sumLum / float64(pixelCount)
+	dynRange := maxLum - minLum
+
+	var gamma float64 = 1.0
+	if avgLum < 55 {
+		gamma = 0.55
+	} else if avgLum < 80 {
+		gamma = 0.7
+	} else if avgLum < 110 {
+		gamma = 0.85
+	}
+
+	var contrastScale float64 = 1.0
+	if dynRange < 60 {
+		contrastScale = 1.8
+	} else if dynRange < 100 {
+		contrastScale = 1.4
+	} else if dynRange < 150 {
+		contrastScale = 1.15
+	}
+
+	for i := 0; i < pixelCount; i++ {
+		for c := 0; c < 3; c++ {
+			val := float64(rgba[i*4+c])
+			if gamma != 1.0 {
+				normalized := val / 255.0
+				corrected := math.Pow(normalized, gamma) * 255.0
+				val = corrected
+			}
+			if contrastScale != 1.0 {
+				val = ((val - avgLum) * contrastScale) + avgLum
+			}
+			if val < 0 {
+				val = 0
+			}
+			if val > 255 {
+				val = 255
+			}
+			enhanced[i*4+c] = byte(val)
+		}
+		enhanced[i*4+3] = rgba[i*4+3]
+	}
+
+	return enhanced
 }
 
 func DetectFaces(rgba []byte, width, height int, role string) FaceDetectionResult {
@@ -33,21 +105,23 @@ func DetectFaces(rgba []byte, width, height int, role string) FaceDetectionResul
 		minArea = 120
 	}
 
+	processed := preProcessForFaceDetection(rgba, width, height)
+
 	pixelCount := width * height
 	skinMask := make([]bool, pixelCount)
 
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			i := y*width + x
-			r := float64(rgba[i*4])
-			g := float64(rgba[i*4+1])
-			b := float64(rgba[i*4+2])
+			r := float64(processed[i*4])
+			g := float64(processed[i*4+1])
+			b := float64(processed[i*4+2])
 			maxC := math.Max(r, math.Max(g, b))
 			minC := math.Min(r, math.Min(g, b))
 			lum := 0.299*r + 0.587*g + 0.114*b
 
-			if lum > 35 && lum < 245 && r > 55 && g > 35 && b > 20 &&
-				(maxC-minC) > 12 && (r-g) > -8 && (r-b) > 8 {
+			if lum > 18 && lum < 252 && r > 30 && g > 18 && b > 10 &&
+				(maxC-minC) > 6 && (r-g) > -15 && (r-b) > 2 {
 				skinMask[i] = true
 			}
 		}
@@ -74,10 +148,18 @@ func DetectFaces(rgba []byte, width, height int, role string) FaceDetectionResul
 				stack = stack[:len(stack)-1]
 				area++
 
-				if cx < minX { minX = cx }
-				if cx > maxX { maxX = cx }
-				if cy < minY { minY = cy }
-				if cy > maxY { maxY = cy }
+				if cx < minX {
+					minX = cx
+				}
+				if cx > maxX {
+					maxX = cx
+				}
+				if cy < minY {
+					minY = cy
+				}
+				if cy > maxY {
+					maxY = cy
+				}
 
 				for _, d := range [][2]int{{3, 0}, {-3, 0}, {0, 3}, {0, -3}} {
 					nx, ny := cx+d[0], cy+d[1]
@@ -95,12 +177,17 @@ func DetectFaces(rgba []byte, width, height int, role string) FaceDetectionResul
 			bh := maxY - minY + 1
 			aspect := float64(bw) / math.Max(1, float64(bh))
 
-			if area >= minArea && aspect >= 0.45 && aspect <= 1.25 {
+			if area >= minArea && aspect >= 0.35 && aspect <= 1.55 {
 				areaRatio := float64(bw*bh) / math.Max(1, imageArea)
 				centerX := float64(minX) + float64(bw)/2.0
 				centerY := float64(minY) + float64(bh)/2.0
 				centered := 1.0 - math.Min(1, math.Abs(centerX/float64(width)-0.5)+math.Abs(centerY/float64(height)-0.45))
-				confidence := math.Min(100.0, 45.0+areaRatio*260.0+centered*28.0)
+				confidence := math.Min(100.0, 45.0+areaRatio*280.0+centered*32.0)
+
+				fillRatio := float64(area) / math.Max(1, float64(bw*bh))
+				if fillRatio > 0.25 {
+					confidence += 8
+				}
 
 				components = append(components, FaceBox{
 					X:          minX,

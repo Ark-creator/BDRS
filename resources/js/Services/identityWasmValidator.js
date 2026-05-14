@@ -348,6 +348,97 @@ const loadCanvas = (file, maxSide = 1200) => new Promise((resolve, reject) => {
     image.src = url;
 });
 
+const enhanceCanvas = (canvas, role) => {
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const { width, height } = canvas;
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const { data } = imageData;
+    const pixelCount = width * height;
+
+    let sumLum = 0;
+    let minLum = 255;
+    let maxLum = 0;
+    for (let i = 0; i < pixelCount; i++) {
+        const lum = Math.round(0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]);
+        sumLum += lum;
+        if (lum < minLum) minLum = lum;
+        if (lum > maxLum) maxLum = lum;
+    }
+
+    const avgLum = sumLum / pixelCount;
+    const dynRange = maxLum - minLum;
+
+    let gamma = 1.0;
+    if (avgLum < 50) gamma = 0.5;
+    else if (avgLum < 75) gamma = 0.65;
+    else if (avgLum < 100) gamma = 0.8;
+
+    let contrastScale = 1.0;
+    if (dynRange < 50) contrastScale = 2.0;
+    else if (dynRange < 90) contrastScale = 1.5;
+    else if (dynRange < 140) contrastScale = 1.2;
+
+    if (gamma === 1.0 && contrastScale === 1.0 && avgLum > 30 && dynRange > 40) {
+        return canvas;
+    }
+
+    const enhanced = document.createElement('canvas');
+    enhanced.width = width;
+    enhanced.height = height;
+    const eCtx = enhanced.getContext('2d', { willReadFrequently: true });
+    const outData = eCtx.createImageData(width, height);
+    const out = outData.data;
+
+    for (let i = 0; i < pixelCount; i++) {
+        for (let c = 0; c < 3; c++) {
+            let val = data[i * 4 + c];
+            if (gamma !== 1.0) {
+                val = Math.pow(val / 255, gamma) * 255;
+            }
+            if (contrastScale !== 1.0) {
+                val = (val - avgLum) * contrastScale + avgLum;
+            }
+            out[i * 4 + c] = Math.max(0, Math.min(255, Math.round(val)));
+        }
+        out[i * 4 + 3] = data[i * 4 + 3];
+    }
+
+    eCtx.putImageData(outData, 0, 0);
+
+    if (role === 'selfie' || role === 'id') {
+        const sharpCtx = enhanced.getContext('2d', { willReadFrequently: true });
+        const sharpData = sharpCtx.getImageData(0, 0, width, height);
+        const sd = sharpData.data;
+        const output = new Uint8ClampedArray(sd.length);
+        const strength = 0.5;
+
+        for (let i = 0; i < sd.length; i += 4) {
+            output[i] = sd[i]; output[i + 1] = sd[i + 1];
+            output[i + 2] = sd[i + 2]; output[i + 3] = sd[i + 3];
+        }
+
+        for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+                for (let c = 0; c < 3; c++) {
+                    const idx = (y * width + x) * 4 + c;
+                    const center = sd[idx];
+                    const neighbors = sd[((y - 1) * width + x) * 4 + c]
+                        + sd[((y + 1) * width + x) * 4 + c]
+                        + sd[(y * width + (x - 1)) * 4 + c]
+                        + sd[(y * width + (x + 1)) * 4 + c];
+                    const sharpened = center + strength * (4 * center - neighbors);
+                    output[idx] = Math.max(0, Math.min(255, Math.round(sharpened)));
+                }
+            }
+        }
+
+        sharpData.data.set(output);
+        sharpCtx.putImageData(sharpData, 0, 0);
+    }
+
+    return enhanced;
+};
+
 const estimateBarcodeSignal = (grayscale, width, height) => {
     const yStart = Math.floor(height * 0.32);
     const yEnd = Math.floor(height * 0.92);
@@ -392,7 +483,10 @@ const estimateBarcodeSignal = (grayscale, width, height) => {
 const analyzeImageQuality = async (file, role) => {
     const loaded = await loadCanvas(file);
     const { context, sampleWidth, sampleHeight, width, height } = loaded;
-    const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+
+    const enhanced = enhanceCanvas(loaded.canvas, role);
+    const enhancedCtx = enhanced.getContext('2d', { willReadFrequently: true });
+    const { data } = enhancedCtx.getImageData(0, 0, sampleWidth, sampleHeight);
 
     const useGo = await isGoWasmReady();
     if (useGo) {
@@ -402,34 +496,34 @@ const analyzeImageQuality = async (file, role) => {
             const barcodeSignal = await estimateBarcodeSignalGo(rgbaData, sampleWidth, sampleHeight);
             const issues = [];
             const blockingIssues = [];
-            const minWidth = role === 'selfie' ? 360 : 500;
-            const minHeight = role === 'selfie' ? 360 : 280;
+            const minWidth = role === 'selfie' ? 280 : 400;
+            const minHeight = role === 'selfie' ? 280 : 240;
 
             if (width < minWidth || height < minHeight) {
                 blockingIssues.push('image_resolution_too_low');
             }
-            if (goMetrics.brightness < 28 || goMetrics.shadow_ratio > 0.58) {
+            if (goMetrics.brightness < 18 || goMetrics.shadow_ratio > 0.68) {
                 blockingIssues.push('image_too_dark');
-            } else if (goMetrics.brightness < 35) {
+            } else if (goMetrics.brightness < 25) {
                 issues.push('image_dark_but_recoverable');
-            } else if (goMetrics.brightness < 48) {
+            } else if (goMetrics.brightness < 38) {
                 issues.push('image_slightly_dark');
             }
-            if (goMetrics.brightness > 240 || goMetrics.glare_ratio > 0.18) {
+            if (goMetrics.brightness > 245 || goMetrics.glare_ratio > 0.25) {
                 blockingIssues.push('image_overexposed');
-            } else if (goMetrics.glare_ratio > 0.08 || goMetrics.bright_pixel_ratio > 0.20) {
+            } else if (goMetrics.glare_ratio > 0.12 || goMetrics.bright_pixel_ratio > 0.25) {
                 issues.push('image_glare_detected');
             }
-            if (goMetrics.dynamic_range < 28) {
+            if (goMetrics.dynamic_range < 18) {
                 blockingIssues.push('image_low_dynamic_range');
-            } else if (goMetrics.contrast < 12 || goMetrics.dynamic_range < 45) {
+            } else if (goMetrics.contrast < 8 || goMetrics.dynamic_range < 35) {
                 issues.push('image_low_contrast_recoverable');
-            } else if (goMetrics.contrast < 18) {
+            } else if (goMetrics.contrast < 14) {
                 issues.push('image_contrast_low');
             }
-            if (goMetrics.sharpness < 3.2) {
+            if (goMetrics.sharpness < 1.8) {
                 blockingIssues.push('image_blurry');
-            } else if (goMetrics.sharpness < 7) {
+            } else if (goMetrics.sharpness < 5) {
                 issues.push('image_soft_focus');
             }
             if (file.size < 18000) {
@@ -438,6 +532,7 @@ const analyzeImageQuality = async (file, role) => {
 
             return {
                 ...loaded,
+                enhancedCanvas: enhanced,
                 quality: {
                     width,
                     height,
@@ -521,38 +616,38 @@ const analyzeImageQuality = async (file, role) => {
     const barcodeSignal = estimateBarcodeSignal(grayscale, sampleWidth, sampleHeight);
     const issues = [];
     const blockingIssues = [];
-    const minWidth = role === 'selfie' ? 360 : 500;
-    const minHeight = role === 'selfie' ? 360 : 280;
+    const minWidth = role === 'selfie' ? 280 : 400;
+    const minHeight = role === 'selfie' ? 280 : 240;
 
     if (width < minWidth || height < minHeight) {
         blockingIssues.push('image_resolution_too_low');
     }
 
-    if (brightness < 28 || shadowRatio > 0.58) {
+    if (brightness < 18 || shadowRatio > 0.68) {
         blockingIssues.push('image_too_dark');
-    } else if (brightness < 35) {
+    } else if (brightness < 25) {
         issues.push('image_dark_but_recoverable');
-    } else if (brightness < 48) {
+    } else if (brightness < 38) {
         issues.push('image_slightly_dark');
     }
 
-    if (brightness > 240 || glareRatio > 0.18) {
+    if (brightness > 245 || glareRatio > 0.25) {
         blockingIssues.push('image_overexposed');
-    } else if (glareRatio > 0.08 || brightRatio > 0.20) {
+    } else if (glareRatio > 0.12 || brightRatio > 0.25) {
         issues.push('image_glare_detected');
     }
 
-    if (dynamicRange < 28) {
+    if (dynamicRange < 18) {
         blockingIssues.push('image_low_dynamic_range');
-    } else if (contrast < 12 || dynamicRange < 45) {
+    } else if (contrast < 8 || dynamicRange < 35) {
         issues.push('image_low_contrast_recoverable');
-    } else if (contrast < 18) {
+    } else if (contrast < 14) {
         issues.push('image_contrast_low');
     }
 
-    if (sharpness < 3.2) {
+    if (sharpness < 1.8) {
         blockingIssues.push('image_blurry');
-    } else if (sharpness < 7) {
+    } else if (sharpness < 5) {
         issues.push('image_soft_focus');
     }
 
@@ -561,18 +656,19 @@ const analyzeImageQuality = async (file, role) => {
     }
 
     let score = 100;
-    score -= Math.max(0, 48 - brightness) * 1.2;
-    score -= Math.max(0, brightness - 225) * 1.2;
-    score -= Math.max(0, 22 - contrast) * 1.8;
-    score -= Math.max(0, 8 - sharpness) * 4;
-    score -= Math.max(0, 42 - dynamicRange) * 1.1;
-    score -= glareRatio * 110;
-    score -= shadowRatio * 80;
-    score -= Math.max(0, 500 - width) * 0.04;
-    score -= Math.max(0, 280 - height) * 0.04;
+    score -= Math.max(0, 38 - brightness) * 0.8;
+    score -= Math.max(0, brightness - 230) * 0.8;
+    score -= Math.max(0, 18 - contrast) * 1.2;
+    score -= Math.max(0, 5 - sharpness) * 2.5;
+    score -= Math.max(0, 35 - dynamicRange) * 0.7;
+    score -= glareRatio * 80;
+    score -= shadowRatio * 55;
+    score -= Math.max(0, 400 - width) * 0.03;
+    score -= Math.max(0, 240 - height) * 0.03;
 
     return {
         ...loaded,
+        enhancedCanvas: enhanced,
         quality: {
             width,
             height,
@@ -800,16 +896,18 @@ const thresholdCanvas = (source, mode = 'adaptive') => {
 };
 
 const buildOcrInputs = (qualityReport) => {
-    const source = qualityReport.canvas;
+    const source = qualityReport.enhancedCanvas || qualityReport.canvas;
+    const original = qualityReport.canvas;
     const q = qualityReport.quality;
     const inputs = [
-        { profile: 'camera_original', source },
+        { profile: 'camera_original', source: original },
+        { profile: 'enhanced_wasm', source },
         { profile: 'contrast_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.65) brightness(1.08)') },
         { profile: 'shadow_recovery_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.35) brightness(1.22)') },
         { profile: 'adaptive_threshold_wasm', source: thresholdCanvas(filteredCanvas(source, 'grayscale(1) contrast(1.45)'), 'adaptive') },
     ];
 
-    if (q.sharpness < 7 || q.score < 65) {
+    if (q.sharpness < 5 || q.score < 50) {
         const grayBase = filteredCanvas(source, 'grayscale(1) contrast(1.3)');
         inputs.push({ profile: 'sharpened_wasm', source: sharpenCanvas(grayBase, 0.8) });
     }
@@ -823,10 +921,10 @@ const buildOcrInputs = (qualityReport) => {
     }
 
     if (q.dark_pixel_ratio > 0.12 || q.brightness < 60) {
-        inputs.push({ profile: 'dark_recovery_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.8) brightness(1.35)') });
+        inputs.push({ profile: 'dark_recovery_wasm', source: filteredCanvas(source, 'grayscale(1) contrast(1.8) brightness(1.55)') });
     }
 
-    if (q.score < 55 && inputs.length < 7) {
+    if (q.score < 55 && inputs.length < 8) {
         const sharpBase = sharpenCanvas(filteredCanvas(source, 'contrast(1.4)'), 1.2);
         inputs.push({ profile: 'aggressive_sharpen_wasm', source: thresholdCanvas(sharpBase, 'adaptive') });
     }
@@ -1103,7 +1201,7 @@ const faceDetectionIsConfident = (faceReport) => {
     const areaRatio = Number(face.area_ratio || 0);
     const confidence = Number(face.confidence || faceReport.confidence || 0);
 
-    return confidence >= 72 && areaRatio >= 0.035 && areaRatio <= 0.62;
+    return confidence >= 45 && areaRatio >= 0.020 && areaRatio <= 0.75;
 };
 
 const collectBackIdEvidence = async (rawText, qualityReport, expectedScore) => {
@@ -1183,7 +1281,7 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
         return invalidResult('Please select a supported ID type before capturing the ID.', diagnostics);
     }
 
-    if (qualityReport.quality.blocking_issues.length > 0 || qualityReport.quality.score < 30) {
+    if (qualityReport.quality.blocking_issues.length > 0 || qualityReport.quality.score < 20) {
         return invalidResult(
             role === 'back_id'
                 ? 'The back of ID photo is not clear enough. Please retake a brighter, sharper photo.'
@@ -1294,10 +1392,12 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     );
 };
 
-const estimateFacesBySkinAndGeometry = async (file) => {
-    const loaded = await loadCanvas(file, 720);
-    const { context, sampleWidth, sampleHeight } = loaded;
-    const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+const estimateFacesBySkinAndGeometry = async (file, enhancedCanvas) => {
+    const source = enhancedCanvas || (await loadCanvas(file, 720)).canvas;
+    const sampleWidth = source.width;
+    const sampleHeight = source.height;
+    const sCtx = source.getContext('2d', { willReadFrequently: true });
+    const { data } = sCtx.getImageData(0, 0, sampleWidth, sampleHeight);
     const components = [];
     const visited = new Uint8Array(sampleWidth * sampleHeight);
     const skinMask = new Uint8Array(sampleWidth * sampleHeight);
@@ -1313,14 +1413,14 @@ const estimateFacesBySkinAndGeometry = async (file) => {
             const rg = r - g;
             const rb = r - b;
             const luminance = (0.299 * r) + (0.587 * g) + (0.114 * b);
-            const likelySkin = luminance > 35
-                && luminance < 245
-                && r > 55
-                && g > 35
-                && b > 20
-                && maxChannel - minChannel > 12
-                && rg > -8
-                && rb > 8;
+            const likelySkin = luminance > 18
+                && luminance < 252
+                && r > 30
+                && g > 18
+                && b > 10
+                && maxChannel - minChannel > 6
+                && rg > -15
+                && rb > 2;
 
             if (likelySkin) {
                 skinMask[y * sampleWidth + x] = 1;
@@ -1329,7 +1429,7 @@ const estimateFacesBySkinAndGeometry = async (file) => {
     }
 
     const queue = [];
-    const minArea = Math.max(120, Math.round(sampleWidth * sampleHeight * 0.012));
+    const minArea = Math.max(120, Math.round(sampleWidth * sampleHeight * 0.008));
     for (let y = 0; y < sampleHeight; y += 3) {
         for (let x = 0; x < sampleWidth; x += 3) {
             const start = y * sampleWidth + x;
@@ -1364,7 +1464,7 @@ const estimateFacesBySkinAndGeometry = async (file) => {
             const boxWidth = maxX - minX + 1;
             const boxHeight = maxY - minY + 1;
             const aspect = boxWidth / Math.max(1, boxHeight);
-            if (area >= minArea && aspect >= 0.45 && aspect <= 1.25) {
+            if (area >= minArea && aspect >= 0.35 && aspect <= 1.55) {
                 const areaRatio = (boxWidth * boxHeight) / Math.max(1, sampleWidth * sampleHeight);
                 const centerX = (minX + (boxWidth / 2)) / sampleWidth;
                 const centerY = (minY + (boxHeight / 2)) / sampleHeight;
@@ -1389,7 +1489,7 @@ const estimateFacesBySkinAndGeometry = async (file) => {
         )))
         .slice(0, 3);
 
-    if (!faces.length || faces[0].confidence < 72) {
+    if (!faces.length || faces[0].confidence < 45) {
         return {
             supported: false,
             fallback: 'skin_geometry_wasm_fallback',
@@ -1408,16 +1508,18 @@ const estimateFacesBySkinAndGeometry = async (file) => {
     };
 };
 
-const detectFaces = async (file) => {
+const detectFaces = async (file, enhancedCanvas) => {
     const useGo = await isGoWasmReady();
 
     if (useGo) {
         try {
-            const loaded = await loadCanvas(file, 720);
-            const { context, sampleWidth, sampleHeight } = loaded;
-            const { data } = context.getImageData(0, 0, sampleWidth, sampleHeight);
+            const source = enhancedCanvas || (await loadCanvas(file, 720)).canvas;
+            const sw = source.width;
+            const sh = source.height;
+            const sCtx = source.getContext('2d', { willReadFrequently: true });
+            const { data } = sCtx.getImageData(0, 0, sw, sh);
             const rgbaData = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
-            const goResult = await detectFacesGo(rgbaData, sampleWidth, sampleHeight, 'selfie');
+            const goResult = await detectFacesGo(rgbaData, sw, sh, 'selfie');
 
             if (goResult && goResult.face_count > 0) {
                 return {
@@ -1460,14 +1562,14 @@ const detectFaces = async (file) => {
             bitmap.close?.();
         }
 
-        const fallback = await estimateFacesBySkinAndGeometry(file);
+        const fallback = await estimateFacesBySkinAndGeometry(file, enhancedCanvas);
         return {
             ...fallback,
             native_error: nativeError?.message,
         };
     }
 
-    return estimateFacesBySkinAndGeometry(file);
+    return estimateFacesBySkinAndGeometry(file, enhancedCanvas);
 };
 
 const validateSelfie = async ({ file, signal }) => {
@@ -1482,13 +1584,13 @@ const validateSelfie = async ({ file, signal }) => {
         issues: [...qualityReport.quality.issues, ...qualityReport.quality.blocking_issues],
     };
 
-    if (qualityReport.quality.blocking_issues.length > 0 || qualityReport.quality.score < 42) {
+    if (qualityReport.quality.blocking_issues.length > 0 || qualityReport.quality.score < 25) {
         return invalidResult('The selfie photo is not clear enough. Please retake a brighter, sharper face photo.', diagnostics);
     }
 
     let faceReport;
     try {
-        faceReport = await detectFaces(file);
+        faceReport = await detectFaces(file, qualityReport.enhancedCanvas);
     } catch (error) {
         faceReport = {
             supported: true,
