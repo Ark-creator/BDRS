@@ -1,1 +1,1 @@
-{"name":"bdrs-validator","version":"1.0.1","engine":"bdrs-go-wasm-validator","language":"go","target":"js/wasm","files":["bdrs-validator.wasm","wasm_loader.js"]}
+{"name":"bdrs-validator","version":"1.0.2","engine":"bdrs-go-wasm-validator","language":"go","target":"js/wasm","files":["bdrs-validator.wasm","wasm_loader.js"]}

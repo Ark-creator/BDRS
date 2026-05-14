@@ -203,6 +203,22 @@ const DOCUMENT_TYPES = {
     },
 };
 
+const FRONT_ID_TEXT_MARKERS = [
+    'last name', 'first name', 'middle name', 'given name', 'surname',
+    'date of birth', 'birthdate', 'dob', 'born on',
+    'sex', 'gender', 'nationality', 'citizenship',
+    'height', 'weight', 'blood type',
+    'license no', 'license number', 'passport no', 'passport number',
+    'id no', 'id number', 'identification number',
+    'photo', 'photograph',
+];
+
+const PERSONAL_INFO_FIELDS = [
+    'last name', 'first name', 'middle name', 'given name', 'surname',
+    'date of birth', 'birthdate', 'dob',
+    'sex', 'gender', 'nationality',
+];
+
 const BACK_ID_TEXT_MARKERS = [
     'back of card',
     'serial number',
@@ -1104,6 +1120,9 @@ const collectBackIdEvidence = async (rawText, qualityReport, expectedScore) => {
 
     const normalized = normalizeText(rawText);
     const markerHits = BACK_ID_TEXT_MARKERS.filter((marker) => normalized.includes(normalizeText(marker)));
+    const frontHits = FRONT_ID_TEXT_MARKERS.filter((marker) => normalized.includes(normalizeText(marker)));
+    const personalInfoHits = PERSONAL_INFO_FIELDS.filter((marker) => normalized.includes(marker)).length;
+    const isFrontNotBack = personalInfoHits >= 2 || frontHits.length >= 4;
     const serialNumberDetected = /\bserial\s*(?:number|no)?[:\s-]*\d{5,}\b/i.test(rawText)
         || /\b\d{7,12}\b/.test(rawText);
     const barcodeLike = Boolean(qualityReport.quality.barcode_signal?.barcode_like);
@@ -1111,14 +1130,19 @@ const collectBackIdEvidence = async (rawText, qualityReport, expectedScore) => {
         && qualityReport.quality.aspect_ratio <= 2.40
         && qualityReport.quality.edge_density >= 0.01;
     const acceptsLowOcr = barcodeLike && cardLikeFrame;
-    const isValid = expectedScore >= 12
+    const isValid = !isFrontNotBack && (
+        expectedScore >= 12
         || markerHits.length >= 2
         || (markerHits.length >= 1 && serialNumberDetected)
         || (acceptsLowOcr && rawText.trim().length >= 8)
-        || (acceptsLowOcr && qualityReport.quality.score >= 58);
+        || (acceptsLowOcr && qualityReport.quality.score >= 58)
+    );
 
     return {
         marker_hits: markerHits,
+        front_id_hits: frontHits,
+        personal_info_hits: personalInfoHits,
+        is_front_not_back: isFrontNotBack,
         serial_number_detected: serialNumberDetected,
         barcode_like: barcodeLike,
         card_like_frame: cardLikeFrame,
@@ -1239,6 +1263,16 @@ const validateIdImage = async ({ role, file, validIdType, signal }) => {
     }
 
     if (role === 'back_id' && !backIdEvidence?.is_valid) {
+        if (backIdEvidence?.is_front_not_back) {
+            return invalidResult('This appears to be the FRONT of the ID, not the back. Please capture the back side of your ID.', {
+                ...diagnostics,
+                issues: [...diagnostics.issues, 'id_front_not_back'],
+            }, {
+                document_type: expectedType,
+                detected_document_type: detectedType?.type || null,
+                fields,
+            });
+        }
         return invalidResult('The back of ID does not look readable. Please retake the back side of the selected ID.', {
             ...diagnostics,
             issues: [...diagnostics.issues, 'id_back_not_confirmed'],

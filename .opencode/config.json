@@ -3,9 +3,15 @@
 
   "models": {
     "primary": "zai/glm-5.1",
-    "inertia-fullstack": "minimax/m2.5-free",
+    "inertia-fullstack": "zai/glm-5.1",
     "backend": "zai/glm-5.1",
-    "specialized": "minimax/m2.5-free"
+    "specialized": "zai/glm-5.1",
+    "wasm": "zai/glm-5.1",
+    "frontend": "zai/glm-5.1",
+    "database": "zai/glm-5.1",
+    "QA": "zai/glm-5.1",
+    "Cybersecurity": "zai/glm-5.1",
+    "devops": "zai/glm-5.1"
   },
 
   "agents": {

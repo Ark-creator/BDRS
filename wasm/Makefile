@@ -1,4 +1,4 @@
-VERSION := 1.0.1
+VERSION := 1.0.2
 WASM_NAME := bdrs-validator
 DIST := dist
 GO_SRC := $(wildcard *.go)

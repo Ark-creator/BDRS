@@ -136,6 +136,16 @@ var backIDMarkers = []string{
 	"motorcycle", "vehicle", "gross", "gvw",
 }
 
+var frontIDMarkers = []string{
+	"last name", "first name", "middle name", "given name", "surname",
+	"date of birth", "birthdate", "dob", "born on",
+	"sex", "gender", "nationality", "citizenship",
+	"height", "weight", "blood type",
+	"license no", "license number", "passport no", "passport number",
+	"id no", "id number", "identification number",
+	"photo", "photograph",
+}
+
 var datePattern = regexp.MustCompile(`(?i)\b(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4})\b`)
 
 type DocumentValidationResult struct {
@@ -548,15 +558,39 @@ func CollectBackIDEvidence(rawText string, quality QualityMetrics, barcodeLike b
 		}
 	}
 
+	frontHits := []string{}
+	for _, m := range frontIDMarkers {
+		if strings.Contains(normalized, normalizeText(m)) {
+			frontHits = append(frontHits, m)
+		}
+	}
+
+	personalInfoFields := []string{
+		"last name", "first name", "middle name", "given name", "surname",
+		"date of birth", "birthdate", "dob",
+		"sex", "gender", "nationality",
+	}
+	personalInfoHits := 0
+	for _, m := range personalInfoFields {
+		if strings.Contains(normalized, m) {
+			personalInfoHits++
+		}
+	}
+
+	isFrontNotBack := personalInfoHits >= 2 || len(frontHits) >= 4
+
 	serialNumberDetected := reSerialNumber.MatchString(rawText) || reDigits.MatchString(rawText)
 
 	cardLikeFrame := quality.AspectRatio >= 1.20 && quality.AspectRatio <= 2.40 && quality.EdgeDensity >= 0.01
 	acceptsLowOcr := barcodeLike && cardLikeFrame
 
-	isValid := expectedScore >= 12 || len(markerHits) >= 2 || (len(markerHits) >= 1 && serialNumberDetected) || (acceptsLowOcr && len(strings.TrimSpace(rawText)) >= 8) || (acceptsLowOcr && quality.QualityScore >= 58)
+	isValid := !isFrontNotBack && (expectedScore >= 12 || len(markerHits) >= 2 || (len(markerHits) >= 1 && serialNumberDetected) || (acceptsLowOcr && len(strings.TrimSpace(rawText)) >= 8) || (acceptsLowOcr && quality.QualityScore >= 58))
 
 	return map[string]interface{}{
 		"marker_hits":            markerHits,
+		"front_id_hits":          frontHits,
+		"personal_info_hits":     personalInfoHits,
+		"is_front_not_back":      isFrontNotBack,
 		"serial_number_detected": serialNumberDetected,
 		"barcode_like":           barcodeLike,
 		"card_like_frame":        cardLikeFrame,
