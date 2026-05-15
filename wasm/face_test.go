@@ -63,3 +63,99 @@ func TestDetectFaces_SkinTone(t *testing.T) {
 		t.Errorf("unexpected engine: %s", result.Engine)
 	}
 }
+
+func TestIsSkinYCbCr_SkinTone(t *testing.T) {
+	tests := []struct {
+		r, g, b float64
+		want    bool
+	}{
+		{200, 150, 100, true},
+		{180, 130, 90, true},
+		{255, 255, 255, false},
+		{0, 0, 255, false},
+	}
+	for _, tt := range tests {
+		got := isSkinYCbCr(tt.r, tt.g, tt.b)
+		if got != tt.want {
+			t.Errorf("isSkinYCbCr(%.0f,%.0f,%.0f) = %v, want %v", tt.r, tt.g, tt.b, got, tt.want)
+		}
+	}
+}
+
+func TestIsSkinHSV_SkinTone(t *testing.T) {
+	tests := []struct {
+		r, g, b float64
+		want    bool
+	}{
+		{200, 150, 100, true},
+		{180, 130, 90, true},
+		{255, 255, 255, false},
+		{0, 0, 255, false},
+	}
+	for _, tt := range tests {
+		got := isSkinHSV(tt.r, tt.g, tt.b)
+		if got != tt.want {
+			t.Errorf("isSkinHSV(%.0f,%.0f,%.0f) = %v, want %v", tt.r, tt.g, tt.b, got, tt.want)
+		}
+	}
+}
+
+func TestIsSkin_Ensemble(t *testing.T) {
+	rgbSkin := isSkinRGB(200, 150, 100)
+	ycbcrSkin := isSkinYCbCr(200, 150, 100)
+	hsvSkin := isSkinHSV(200, 150, 100)
+	votes := 0
+	if rgbSkin {
+		votes++
+	}
+	if ycbcrSkin {
+		votes++
+	}
+	if hsvSkin {
+		votes++
+	}
+	if votes < 2 {
+		t.Errorf("skin tone should get ≥2 votes, got rgb=%v ycbcr=%v hsv=%v", rgbSkin, ycbcrSkin, hsvSkin)
+	}
+	if !isSkin(200, 150, 100) {
+		t.Error("isSkin should return true for skin tone")
+	}
+}
+
+func TestIsSkin_NonSkin(t *testing.T) {
+	if isSkin(0, 0, 255) {
+		t.Error("pure blue should not be skin")
+	}
+	if isSkin(255, 255, 255) {
+		t.Error("white should not be skin")
+	}
+	if isSkin(0, 0, 0) {
+		t.Error("black should not be skin")
+	}
+}
+
+func TestVerifyEyes_NoEyes(t *testing.T) {
+	w, h := 50, 50
+	gray := make([]uint8, w*h)
+	for i := 0; i < w*h; i++ {
+		gray[i] = 128
+	}
+	face := FaceBox{X: 5, Y: 5, Width: 40, Height: 40}
+	found, _ := verifyEyes(gray, w, h, face)
+	if found {
+		t.Error("should not find eyes in uniform gray")
+	}
+}
+
+func TestFaceSymmetry_Uniform(t *testing.T) {
+	w, h := 50, 50
+	gray := make([]uint8, w*h)
+	for i := 0; i < w*h; i++ {
+		gray[i] = 128
+	}
+	face := FaceBox{X: 5, Y: 5, Width: 40, Height: 40}
+	score := faceSymmetry(gray, w, h, face)
+	if score < 0.9 {
+		t.Errorf("expected high symmetry for uniform image, got %f", score)
+	}
+}

@@ -122,7 +122,31 @@ func initWasmBindings() {
 			return js.Null()
 		}
 		metrics := qualityFromJS(args[0])
-		result := CheckLiveness(metrics)
+		var faceBoxPtr *FaceBox
+		var gray []uint8
+		var w, h int
+		if len(args) >= 5 {
+			rgba, w, h := extractRGBA(args)
+			if rgba != nil {
+				pixelCount := w * h
+				gray = make([]uint8, pixelCount)
+				for i := 0; i < pixelCount; i++ {
+					r := float64(rgba[i*4])
+					g := float64(rgba[i*4+1])
+					b := float64(rgba[i*4+2])
+					gray[i] = uint8(0.299*r + 0.587*g + 0.114*b)
+				}
+				faceBoxArg := args[4]
+				if faceBoxArg.Type() == js.TypeObject {
+					fbJSON := js.Global().Get("JSON").Call("stringify", faceBoxArg).String()
+					var fb FaceBox
+					if err := json.Unmarshal([]byte(fbJSON), &fb); err == nil {
+						faceBoxPtr = &fb
+					}
+				}
+			}
+		}
+		result := CheckLiveness(metrics, gray, w, h, faceBoxPtr)
 		data, _ := json.Marshal(result)
 		return parseJSON(string(data))
 	}))

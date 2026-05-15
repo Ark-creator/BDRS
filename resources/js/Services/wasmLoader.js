@@ -134,8 +134,11 @@ export const scoreDocumentTypeGo = async (rawText, documentType) => {
     return api.scoreDocumentType(rawText, documentType);
 };
 
-export const checkLivenessGo = async (qualityMetrics) => {
+export const checkLivenessGo = async (qualityMetrics, rgbaData, width, height, faceBox) => {
     const api = await loadBdrsWasm();
+    if (rgbaData && width && height) {
+        return api.checkLiveness(qualityMetrics, rgbaData, width, height, faceBox || null);
+    }
     return api.checkLiveness(qualityMetrics);
 };
 

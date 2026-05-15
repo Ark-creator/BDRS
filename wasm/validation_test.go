@@ -188,3 +188,145 @@ func TestCollectBackIDEvidence_NoBarcode(t *testing.T) {
 		t.Error("expected accepts_low_ocr=false when no barcode")
 	}
 }
+
+func TestScoreField_SameLineValue(t *testing.T) {
+	lines := []string{"Name: Juan Dela Cruz", "Address: Manila"}
+	candidate := scoreField(lines, 0, "Name", "text")
+	if candidate == nil {
+		t.Fatal("expected candidate")
+	}
+	if candidate.Value != "Juan Dela Cruz" {
+		t.Errorf("expected 'Juan Dela Cruz', got %s", candidate.Value)
+	}
+	if candidate.Score < 30 {
+		t.Errorf("expected high score for same-line value, got %f", candidate.Score)
+	}
+}
+
+func TestScoreField_NoLabel(t *testing.T) {
+	lines := []string{"", ""}
+	candidate := scoreField(lines, 0, "Name", "text")
+	if candidate != nil {
+		t.Errorf("expected nil for empty label with no value, got %+v", candidate)
+	}
+}
+
+func TestParsePHDate_SlashFormat(t *testing.T) {
+	tests := []struct {
+		in      string
+		wantErr bool
+	}{
+		{"01/15/1990", false},
+		{"1/15/1990", false},
+		{"1990-01-15", false},
+		{"January 15, 1990", false},
+		{"Jan 15, 1990", false},
+		{"15 January 1990", false},
+		{"not a date", true},
+	}
+	for _, tt := range tests {
+		_, err := parsePHDate(tt.in)
+		if (err != nil) != tt.wantErr {
+			t.Errorf("parsePHDate(%q) error = %v, wantErr %v", tt.in, err, tt.wantErr)
+		}
+	}
+}
+
+func TestValidateExtractedDates_Valid(t *testing.T) {
+	birthdate := "01/15/1990"
+	expiry := "01/15/2030"
+	extraction := FieldExtraction{
+		Birthdate:      &birthdate,
+		ExpirationDate: &expiry,
+	}
+	issues := validateExtractedDates(extraction)
+	if len(issues) > 0 {
+		t.Errorf("expected no issues for valid dates, got %v", issues)
+	}
+}
+
+func TestValidateExtractedDates_Expired(t *testing.T) {
+	birthdate := "01/15/1990"
+	expiry := "01/15/2020"
+	extraction := FieldExtraction{
+		Birthdate:      &birthdate,
+		ExpirationDate: &expiry,
+	}
+	issues := validateExtractedDates(extraction)
+	found := false
+	for _, iss := range issues {
+		if iss == "id_expired" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected id_expired issue, got %v", issues)
+	}
+}
+
+func TestValidateExtractedDates_FutureBirthdate(t *testing.T) {
+	birthdate := "01/15/2090"
+	extraction := FieldExtraction{
+		Birthdate: &birthdate,
+	}
+	issues := validateExtractedDates(extraction)
+	found := false
+	for _, iss := range issues {
+		if iss == "birthdate_in_future" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected birthdate_in_future issue, got %v", issues)
+	}
+}
+
+func TestCheckFieldConsistency_Gender(t *testing.T) {
+	gender := "X"
+	extraction := FieldExtraction{
+		Gender: &gender,
+	}
+	issues := checkFieldConsistency("", extraction, "")
+	found := false
+	for _, iss := range issues {
+		if iss == "invalid_gender_value" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected invalid_gender_value issue, got %v", issues)
+	}
+}
+
+func TestCheckFieldConsistency_BirthdateAfterExpiry(t *testing.T) {
+	birthdate := "01/15/2025"
+	expiry := "01/15/2020"
+	extraction := FieldExtraction{
+		Birthdate:      &birthdate,
+		ExpirationDate: &expiry,
+	}
+	issues := checkFieldConsistency("", extraction, "")
+	found := false
+	for _, iss := range issues {
+		if iss == "birthdate_after_expiry" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected birthdate_after_expiry issue, got %v", issues)
+	}
+}
+
+func TestExtractFields_ExpirationDate(t *testing.T) {
+	result := ExtractFields("License No A01-23-456789\nExpiry: 12/31/2028\nRepublic of the Philippines", "driver_license")
+	if result.ExpirationDate == nil {
+		t.Fatal("expected non-nil expiration date")
+	}
+	if *result.ExpirationDate != "12/31/2028" {
+		t.Errorf("expected 12/31/2028, got %s", *result.ExpirationDate)
+	}
+}

@@ -16,8 +16,22 @@ type SelfieResult struct {
 
 func ValidateSelfie(rgba []byte, width, height int) SelfieResult {
 	metrics := AnalyzeImageQuality(rgba, width, height)
-	liveness := CheckLiveness(metrics)
 	faceResult := DetectFaces(rgba, width, height, "selfie")
+
+	var faceBoxPtr *FaceBox
+	var gray []uint8
+	if len(faceResult.Faces) > 0 {
+		faceBoxPtr = &faceResult.Faces[0]
+		pixelCount := width * height
+		gray = make([]uint8, pixelCount)
+		for i := 0; i < pixelCount; i++ {
+			r := float64(rgba[i*4])
+			g := float64(rgba[i*4+1])
+			b := float64(rgba[i*4+2])
+			gray[i] = uint8(0.299*r + 0.587*g + 0.114*b)
+		}
+	}
+	liveness := CheckLiveness(metrics, gray, width, height, faceBoxPtr)
 
 	var issues []string
 	issues = append(issues, QualityIssues(metrics, "selfie")...)

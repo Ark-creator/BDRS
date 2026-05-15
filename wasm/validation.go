@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -169,6 +171,13 @@ type FieldExtraction struct {
 	ExpirationDate *string `json:"expiration_date"`
 	Gender         *string `json:"gender"`
 	IDType         *string `json:"id_type"`
+}
+
+type FieldCandidate struct {
+	Value    string
+	LabelIdx int
+	Distance int
+	Score    float64
 }
 
 func normalizeText(value string) string {
@@ -476,6 +485,20 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 		gender = &v
 	}
 
+	var expirationDate *string
+	expPatterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?i)(?:expir(?:y|ation)|valid until|expires?)\s*[:#-]?\s*(.+)`),
+	}
+	for _, pat := range expPatterns {
+		if match := pat.FindStringSubmatch(rawText); len(match) >= 2 {
+			val := strings.TrimSpace(match[1])
+			if len(val) > 3 {
+				expirationDate = &val
+				break
+			}
+		}
+	}
+
 	var idType *string
 	if profile, ok := documentProfiles[selectedType]; ok {
 		for _, label := range profile.Labels {
@@ -487,13 +510,194 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 	}
 
 	return FieldExtraction{
-		FullName:  fullName,
-		Address:   address,
-		Birthdate: birthdate,
-		IDNumber:  idNumber,
-		Gender:    gender,
-		IDType:    idType,
+		FullName:       fullName,
+		Address:        address,
+		Birthdate:      birthdate,
+		IDNumber:       idNumber,
+		ExpirationDate: expirationDate,
+		Gender:         gender,
+		IDType:         idType,
 	}
+}
+
+func scoreField(lines []string, labelIdx int, label string, fieldType string) *FieldCandidate {
+	if labelIdx < 0 || labelIdx >= len(lines) {
+		return nil
+	}
+
+	line := lines[labelIdx]
+	sepIdx := strings.IndexAny(line, ":-#")
+	var value string
+	score := 0.0
+
+	if sepIdx >= 0 {
+		value = strings.TrimSpace(line[sepIdx+1:])
+		score += 20
+		if sepIdx > 0 {
+			score += 15
+		}
+	}
+
+	if value == "" && labelIdx+1 < len(lines) {
+		for j := labelIdx + 1; j < len(lines) && j <= labelIdx+3; j++ {
+			candidate := strings.TrimSpace(lines[j])
+			if candidate == "" {
+				continue
+			}
+			norm := normalizeText(candidate)
+			isLabel := false
+			for _, commonLabel := range []string{"name", "address", "birth", "sex", "gender", "license", "passport", "expiry", "expiration", "signature", "blood", "height", "weight"} {
+				if strings.Contains(norm, commonLabel) {
+					isLabel = true
+					break
+				}
+			}
+			if !isLabel && len(candidate) > 2 {
+				if !isLabel {
+					score += 10
+				}
+				value = candidate
+				break
+			}
+		}
+	}
+
+	if value == "" {
+		return nil
+	}
+
+	normValue := normalizeText(value)
+	isAnotherLabel := false
+	for _, commonLabel := range []string{"name", "address", "birth", "sex", "gender", "license", "passport", "expiry", "expiration", "signature", "blood", "height", "weight", "date of"} {
+		if strings.Contains(normValue, commonLabel) {
+			isAnotherLabel = true
+			break
+		}
+	}
+	if !isAnotherLabel {
+		score += 10
+	}
+
+	if fieldType == "date" && datePattern.MatchString(value) {
+		score += 25
+	}
+
+	return &FieldCandidate{
+		Value:    value,
+		LabelIdx: labelIdx,
+		Distance: sepIdx,
+		Score:    score,
+	}
+}
+
+var phDateFormats = []string{
+	"01/02/2006",
+	"1/2/2006",
+	"01-02-2006",
+	"1-2-2006",
+	"2006-01-02",
+	"2006/01/02",
+	"January 2, 2006",
+	"Jan 2, 2006",
+	"2 January 2006",
+	"2 Jan 2006",
+	"January 2,2006",
+	"Jan 2,2006",
+}
+
+func parsePHDate(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, ".", "/")
+
+	for _, fmt := range phDateFormats {
+		if t, err := time.Parse(fmt, s); err == nil {
+			return t, nil
+		}
+	}
+
+	reMonthDayYear := regexp.MustCompile(`(?i)(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2},?\s+\d{4}`)
+	if reMonthDayYear.MatchString(s) {
+		parts := strings.Fields(s)
+		if len(parts) >= 3 {
+			monthStr := strings.TrimSuffix(parts[0], ",")
+			dayStr := strings.TrimSuffix(parts[1], ",")
+			yearStr := parts[2]
+			clean := monthStr + " " + dayStr + " " + yearStr
+			for _, fmt := range []string{"January 2 2006", "Jan 2 2006"} {
+				if t, err := time.Parse(fmt, clean); err == nil {
+					return t, nil
+				}
+			}
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("unable to parse date: %s", s)
+}
+
+func validateExtractedDates(extraction FieldExtraction) []string {
+	issues := []string{}
+
+	if extraction.Birthdate != nil {
+		parsed, err := parsePHDate(*extraction.Birthdate)
+		if err != nil {
+			issues = append(issues, "birthdate_unparseable")
+		} else {
+			now := time.Now()
+			age := now.Year() - parsed.Year()
+			if parsed.After(now.AddDate(0, 0, 1)) {
+				issues = append(issues, "birthdate_in_future")
+			} else if age > 120 {
+				issues = append(issues, "birthdate_implausible")
+			}
+		}
+	}
+
+	if extraction.ExpirationDate != nil {
+		parsed, err := parsePHDate(*extraction.ExpirationDate)
+		if err != nil {
+			issues = append(issues, "expiry_unparseable")
+		} else if parsed.Before(time.Now()) {
+			issues = append(issues, "id_expired")
+		}
+	}
+
+	return issues
+}
+
+func checkFieldConsistency(rawText string, fieldExtraction FieldExtraction, detectedType string) []string {
+	issues := []string{}
+
+	if detectedType != "" && fieldExtraction.IDNumber != nil {
+		if profile, ok := documentProfiles[detectedType]; ok {
+			matched := false
+			for _, pat := range profile.IDPatterns {
+				if pat.MatchString(*fieldExtraction.IDNumber) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				issues = append(issues, "id_number_pattern_mismatch")
+			}
+		}
+	}
+
+	if fieldExtraction.Gender != nil {
+		g := strings.ToUpper(*fieldExtraction.Gender)
+		if g != "M" && g != "F" && g != "MALE" && g != "FEMALE" {
+			issues = append(issues, "invalid_gender_value")
+		}
+	}
+
+	if fieldExtraction.Birthdate != nil && fieldExtraction.ExpirationDate != nil {
+		birthParsed, bErr := parsePHDate(*fieldExtraction.Birthdate)
+		expParsed, eErr := parsePHDate(*fieldExtraction.ExpirationDate)
+		if bErr == nil && eErr == nil && birthParsed.After(expParsed) {
+			issues = append(issues, "birthdate_after_expiry")
+		}
+	}
+
+	return issues
 }
 
 func EstimateBarcodeSignal(rgba []byte, width, height int) map[string]interface{} {

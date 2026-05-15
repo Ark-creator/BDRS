@@ -4,8 +4,8 @@ import "strconv"
 
 const (
 	Major         = 1
-	Minor         = 0
-	Patch         = 3
+	Minor         = 1
+	Patch         = 0
 	BuildMetadata = "go-wasm"
 )
 
