@@ -26,7 +26,7 @@ export default function FloatingActionButton() {
 
     // State for UI control
     const [isOpen, setIsOpen] = useState(false);
-    const [isChatOpen, setIsChatOpen] = useState(false);
+    // const [isChatOpen, setIsChatOpen] = useState(false); // Temporarily disabled
     const [isMessagesOpen, setIsMessagesOpen] = useState(false);
     
     // State for conversation data
@@ -65,6 +65,7 @@ export default function FloatingActionButton() {
         }
     }, [isMessagesOpen]);
 
+    /* --- TEMPORARILY DISABLED CHATBASE ---
     // Effect to initialize and manage the third-party Chatbase script
     useEffect(() => {
         window.chatbaseConfig = { chatId: "JpK2sH4Fo9CfxCa8CTn70", openOnLoad: false };
@@ -109,6 +110,7 @@ export default function FloatingActionButton() {
         observer.observe(document.body, { childList: true, subtree: true });
         return () => observer.disconnect();
     }, []);
+    -------------------------------------- */
 
     const toggleMenu = () => setIsOpen(!isOpen);
     
@@ -117,6 +119,7 @@ export default function FloatingActionButton() {
         setIsOpen(false);
     };
 
+    /* --- TEMPORARILY DISABLED CHATBASE ---
     const openChatbot = () => {
         if (window.chatbase) {
             window.chatbase('open');
@@ -126,17 +129,22 @@ export default function FloatingActionButton() {
             console.error("Chatbase is not available.");
         }
     };
+    -------------------------------------- */
     
     // Main button handler: Closes any open overlay or toggles the menu
     const handleMainButtonClick = () => {
         if (isMessagesOpen) {
             setIsMessagesOpen(false);
-        } else if (isChatOpen) {
+        } 
+        /* --- TEMPORARILY DISABLED CHATBASE ---
+        else if (isChatOpen) {
             if (window.chatbase) {
                 window.chatbase('close');
             }
             setIsChatOpen(false); // Manually set state for immediate UI feedback
-        } else {
+        } 
+        -------------------------------------- */
+        else {
             toggleMenu();
         }
     };
@@ -168,12 +176,13 @@ export default function FloatingActionButton() {
     const listItemVariants = { opened: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }, closed: { opacity: 0, x: -20, transition: { duration: 0.2 } } };
     
     const actionButtons = [
-        { icon: <Bot size={22} className="text-blue-600 dark:text-blue-400" />, action: openChatbot, title: 'Chat with AI Assistant' },
+        // TEMPORARILY DISABLED: { icon: <Bot size={22} className="text-blue-600 dark:text-blue-400" />, action: openChatbot, title: 'Chat with AI Assistant' },
         ...(isVerified ? [{ icon: <HelpCircle size={22} className="text-blue-600 dark:text-blue-400" />, action: handleTourClick, title: 'How to Request' }] : []),
         { icon: <MessageSquare size={22} className="text-blue-600 dark:text-blue-400" />, action: toggleMessages, title: 'Messages' },
     ];
     
-    const isAnyOverlayOpen = isChatOpen || isMessagesOpen;
+    // Adjusted overlay logic to exclude isChatOpen temporarily
+    const isAnyOverlayOpen = isMessagesOpen; // || isChatOpen;
 
     return (
         <>
