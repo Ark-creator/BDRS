@@ -20,7 +20,7 @@ func AnalyzeFraud(idMetrics, selfieMetrics QualityMetrics, idHash, selfieHash st
 		issues = append(issues, "duplicate_id_and_selfie_image")
 		fakeProbability += 25
 	}
-	if idMetrics.Sha256 == selfieMetrics.Sha256 {
+	if idMetrics.Hash == selfieMetrics.Hash {
 		issues = append(issues, "duplicate_uploaded_binary")
 		fakeProbability += 25
 	}
@@ -34,8 +34,8 @@ func AnalyzeFraud(idMetrics, selfieMetrics QualityMetrics, idHash, selfieHash st
 		FakeProbability: round2(fakeProbability),
 		Issues:          uniqueIssues,
 		Metadata: map[string]interface{}{
-			"id_quality_score":    idMetrics.QualityScore,
-			"selfie_quality_score": selfieMetrics.QualityScore,
+			"id":     idMetrics,
+			"selfie": selfieMetrics,
 			"hashes": map[string]interface{}{
 				"id_image_hash":    idHash,
 				"selfie_image_hash": selfieHash,

@@ -1,21 +1,37 @@
 package main
 
+import "math"
+
 type SelfieResult struct {
-	Engine    string                 `json:"engine"`
-	Status    string                 `json:"status"`
-	Passed    bool                   `json:"passed"`
-	Score     float64                `json:"score"`
-	FaceCount int                    `json:"face_count"`
-	Faces     []FaceBox              `json:"faces"`
-	Quality   QualityMetrics         `json:"quality"`
-	Liveness  LivenessResult         `json:"liveness"`
-	Issues    []string               `json:"issues"`
+	Engine    string         `json:"engine"`
+	Status    string         `json:"status"`
+	Passed    bool           `json:"passed"`
+	Score     float64        `json:"score"`
+	FaceCount int            `json:"face_count"`
+	Faces     []FaceBox      `json:"faces"`
+	Quality   QualityMetrics `json:"quality"`
+	Liveness  LivenessResult `json:"liveness"`
+	Issues    []string       `json:"issues"`
 }
 
 func ValidateSelfie(rgba []byte, width, height int) SelfieResult {
 	metrics := AnalyzeImageQuality(rgba, width, height)
-	liveness := CheckLiveness(metrics)
 	faceResult := DetectFaces(rgba, width, height, "selfie")
+
+	var faceBoxPtr *FaceBox
+	var gray []uint8
+	if len(faceResult.Faces) > 0 {
+		faceBoxPtr = &faceResult.Faces[0]
+		pixelCount := width * height
+		gray = make([]uint8, pixelCount)
+		for i := 0; i < pixelCount; i++ {
+			r := float64(rgba[i*4])
+			g := float64(rgba[i*4+1])
+			b := float64(rgba[i*4+2])
+			gray[i] = uint8(0.299*r + 0.587*g + 0.114*b)
+		}
+	}
+	liveness := CheckLiveness(metrics, gray, width, height, faceBoxPtr)
 
 	var issues []string
 	issues = append(issues, QualityIssues(metrics, "selfie")...)
@@ -26,7 +42,7 @@ func ValidateSelfie(rgba []byte, width, height int) SelfieResult {
 		issues = append(issues, "selfie_multiple_faces_detected")
 	}
 
-	if liveness.Score < 65 {
+	if liveness.Score < 35 {
 		issues = append(issues, "selfie_liveness_failed")
 	}
 
@@ -37,21 +53,25 @@ func ValidateSelfie(rgba []byte, width, height int) SelfieResult {
 				largest = f.AreaRatio
 			}
 		}
-		if largest < 0.035 {
+		if largest < 0.018 {
 			issues = append(issues, "selfie_face_too_small")
 		}
-		if largest > 0.75 {
+		if largest > 0.85 {
 			issues = append(issues, "selfie_face_too_close")
 		}
 	}
 
-	criticalSet := map[string]bool{
+	blockingSet := map[string]bool{
 		"selfie_no_face_detected": true, "selfie_multiple_faces_detected": true,
-		"selfie_low_resolution": true, "selfie_low_quality": true,
-		"selfie_blurry": true, "selfie_bad_lighting": true,
-		"selfie_low_dynamic_range": true, "selfie_glare": true,
-		"selfie_heavy_shadow": true, "selfie_liveness_failed": true,
-		"selfie_face_too_small": true, "selfie_face_too_close": true,
+		"selfie_low_resolution": true,
+	}
+
+	warningSet := map[string]bool{
+		"selfie_low_quality": true, "selfie_blurry": true,
+		"selfie_bad_lighting": true, "selfie_low_dynamic_range": true,
+		"selfie_glare": true, "selfie_heavy_shadow": true,
+		"selfie_liveness_failed": true, "selfie_face_too_small": true,
+		"selfie_face_too_close": true,
 	}
 
 	faceScore := 0.0
@@ -64,18 +84,29 @@ func ValidateSelfie(rgba []byte, width, height int) SelfieResult {
 		faceDetectionScore = faceResult.Faces[0].Confidence
 	}
 
-	score := metrics.QualityScore*0.30 + faceScore*0.35 + faceDetectionScore*0.15 + liveness.Score*0.20
-	score = clampf(score, 0, 98)
+	baseScore := metrics.QualityScore*0.25 + faceScore*0.40 + faceDetectionScore*0.15 + liveness.Score*0.20
 
-	hasCritical := false
+	warningCount := 0
 	for _, iss := range issues {
-		if criticalSet[iss] {
-			hasCritical = true
+		if warningSet[iss] {
+			warningCount++
+		}
+	}
+	if warningCount > 0 {
+		baseScore *= math.Max(0.55, 1.0-float64(warningCount)*0.06)
+	}
+
+	score := clampf(baseScore, 0, 98)
+
+	hasBlocking := false
+	for _, iss := range issues {
+		if blockingSet[iss] {
+			hasBlocking = true
 			break
 		}
 	}
 
-	passed := score >= 75 && !hasCritical
+	passed := score >= 40 && !hasBlocking
 	status := "passed"
 	if !passed {
 		status = "failed"

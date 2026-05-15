@@ -1,4 +1,4 @@
-VERSION := 1.0.0
+VERSION := 1.1.0
 WASM_NAME := bdrs-validator
 DIST := dist
 GO_SRC := $(wildcard *.go)
@@ -8,7 +8,7 @@ GO_SRC := $(wildcard *.go)
 build: $(DIST)/$(WASM_NAME).wasm manifest
 
 $(DIST)/$(WASM_NAME).wasm: $(GO_SRC)
-	GOOS=js GOARCH=wasm go build -ldflags="-s -w -X main.buildVersion=$(VERSION)" -o $@ .
+	GOOS=js GOARCH=wasm go build -ldflags="-s -w -X bdrs-wasm-validator.buildVersion=$(VERSION)" -o $@ .
 
 manifest: $(DIST)/wasm-manifest.json
 

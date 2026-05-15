@@ -423,3 +423,113 @@ export const checkBrowserSupport = () => {
     }
     return { supported: true, message: '' };
 };
+
+export const createFaceCaptureFlow = (options = {}) => {
+    const {
+        blinkDetector = null,
+        enableActiveLiveness = true,
+        onLivenessStatus = () => {},
+    } = options;
+
+    let livenessPhase = enableActiveLiveness ? 'waiting' : 'disabled';
+    let livenessCanvas = null;
+
+    const getLivenessCanvas = () => {
+        if (!livenessCanvas) {
+            livenessCanvas = document.createElement('canvas');
+        }
+        return livenessCanvas;
+    };
+
+    return {
+        async init() {
+            if (enableActiveLiveness && blinkDetector) {
+                const available = await blinkDetector.init();
+                livenessPhase = available ? 'waiting' : 'unavailable';
+                return available;
+            }
+            livenessPhase = 'disabled';
+            return false;
+        },
+
+        analyzeFrame(analysis, video, faceBox) {
+            if (livenessPhase === 'disabled' || livenessPhase === 'unavailable' || livenessPhase === 'complete' || livenessPhase === 'failed') {
+                return {
+                    ...analysis,
+                    livenessPhase,
+                    livenessComplete: livenessPhase === 'complete' || livenessPhase === 'disabled',
+                    livenessMessage: livenessPhase === 'complete' ? 'Face verified' : livenessPhase === 'failed' ? 'Verification skipped' : '',
+                };
+            }
+
+            if (analysis && analysis.status === 'ready' && faceBox) {
+                if (livenessPhase === 'waiting') {
+                    livenessPhase = 'detecting';
+                }
+            }
+
+            if (livenessPhase === 'detecting' && blinkDetector) {
+                const canvas = getLivenessCanvas();
+                const result = blinkDetector.analyzeFrame(video, faceBox, canvas);
+
+                if (result instanceof Promise) {
+                    result.then((r) => {
+                        if (r.complete) {
+                            livenessPhase = 'complete';
+                        } else if (r.phase === 'failed') {
+                            livenessPhase = 'failed';
+                        } else if (r.phase === 'retry') {
+                            livenessPhase = 'waiting';
+                        }
+                        onLivenessStatus(blinkDetector.getStatus());
+                    });
+                } else {
+                    if (result.complete) {
+                        livenessPhase = 'complete';
+                    } else if (result.phase === 'failed') {
+                        livenessPhase = 'failed';
+                    } else if (result.phase === 'retry') {
+                        livenessPhase = 'waiting';
+                    }
+                    onLivenessStatus(blinkDetector.getStatus());
+                }
+            }
+
+            let livenessMessage = '';
+            if (livenessPhase === 'waiting') {
+                livenessMessage = 'Blink twice to confirm';
+            } else if (livenessPhase === 'detecting') {
+                const status = blinkDetector ? blinkDetector.getStatus() : null;
+                const blinks = status ? status.blinksDetected : 0;
+                const required = status ? status.requiredBlinks : 2;
+                livenessMessage = blinks > 0 ? `${blinks}/${required} blinks detected` : 'Blink normally — we\'ll detect it';
+            } else if (livenessPhase === 'complete') {
+                livenessMessage = 'Face verified';
+            } else if (livenessPhase === 'failed') {
+                livenessMessage = 'Verification skipped';
+            }
+
+            return {
+                ...analysis,
+                livenessPhase,
+                livenessComplete: livenessPhase === 'complete',
+                livenessMessage,
+            };
+        },
+
+        getPhase() {
+            return livenessPhase;
+        },
+
+        isComplete() {
+            return livenessPhase === 'complete' || livenessPhase === 'disabled' || livenessPhase === 'unavailable';
+        },
+
+        reset() {
+            livenessPhase = enableActiveLiveness ? 'waiting' : 'disabled';
+            if (blinkDetector) {
+                blinkDetector.reset();
+            }
+        },
+    };
+};

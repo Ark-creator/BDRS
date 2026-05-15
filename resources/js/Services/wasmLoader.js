@@ -40,20 +40,25 @@ export const loadBdrsWasm = async () => {
     }
 
     loadPromise = (async () => {
-        await loadScript(WASM_EXEC_URL);
+        try {
+            await loadScript(WASM_EXEC_URL);
 
-        const go = new globalThis.Go();
-        const response = await fetch(WASM_MODULE_URL);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch WASM module: ${response.status}`);
+            const go = new globalThis.Go();
+            const response = await fetch(WASM_MODULE_URL);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch WASM module: ${response.status}`);
+            }
+
+            const buffer = await response.arrayBuffer();
+            const result = await WebAssembly.instantiate(buffer, go.importObject);
+            go.run(result.instance);
+
+            const api = await waitForReady();
+            return api;
+        } catch (error) {
+            loadPromise = null;
+            throw error;
         }
-
-        const buffer = await response.arrayBuffer();
-        const result = await WebAssembly.instantiate(buffer, go.importObject);
-        go.run(result.instance);
-
-        const api = await waitForReady();
-        return api;
     })();
 
     return loadPromise;
@@ -129,8 +134,11 @@ export const scoreDocumentTypeGo = async (rawText, documentType) => {
     return api.scoreDocumentType(rawText, documentType);
 };
 
-export const checkLivenessGo = async (qualityMetrics) => {
+export const checkLivenessGo = async (qualityMetrics, rgbaData, width, height, faceBox) => {
     const api = await loadBdrsWasm();
+    if (rgbaData && width && height) {
+        return api.checkLiveness(qualityMetrics, rgbaData, width, height, faceBox || null);
+    }
     return api.checkLiveness(qualityMetrics);
 };
 
@@ -159,9 +167,9 @@ export const estimateBarcodeSignalGo = async (rgbaData, width, height) => {
     return api.estimateBarcodeSignal(rgbaData, width, height);
 };
 
-export const collectBackIDEvidenceGo = async (rawText, qualityMetrics, expectedScore) => {
+export const collectBackIDEvidenceGo = async (rawText, qualityMetrics, barcodeLike, expectedScore) => {
     const api = await loadBdrsWasm();
-    return api.collectBackIDEvidence(rawText, qualityMetrics, expectedScore);
+    return api.collectBackIDEvidence(rawText, qualityMetrics, Boolean(barcodeLike), expectedScore);
 };
 
 export const getGoWasmHealth = async () => {

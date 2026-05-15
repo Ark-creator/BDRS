@@ -1,11 +1,23 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
+)
+
+var (
+	reNonAlphaNum  = regexp.MustCompile(`[^a-z0-9]+`)
+	reMultiSpace   = regexp.MustCompile(`\s+`)
+	reAddressLabel = regexp.MustCompile(`(?i)\baddress\b\s*[:#-]?\s*`)
+	reGender       = regexp.MustCompile(`(?i)\b(?:sex|gender)\s*[:#-]?\s*(male|female|m|f)\b`)
+	reWord1d       = regexp.MustCompile(`\b1d\b`)
+	reSerialNumber = regexp.MustCompile(`(?i)\bserial\s*(?:number|no)?[:\s-]*\d{5,}\b`)
+	reDigits       = regexp.MustCompile(`\b\d{7,12}\b`)
 )
 
 type DocumentProfile struct {
@@ -126,6 +138,16 @@ var backIDMarkers = []string{
 	"motorcycle", "vehicle", "gross", "gvw",
 }
 
+var frontIDMarkers = []string{
+	"last name", "first name", "middle name", "given name", "surname",
+	"date of birth", "birthdate", "dob", "born on",
+	"sex", "gender", "nationality", "citizenship",
+	"height", "weight", "blood type",
+	"license no", "license number", "passport no", "passport number",
+	"id no", "id number", "identification number",
+	"photo", "photograph",
+}
+
 var datePattern = regexp.MustCompile(`(?i)\b(\d{4}[/-]\d{1,2}[/-]\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{4})\b`)
 
 type DocumentValidationResult struct {
@@ -151,8 +173,17 @@ type FieldExtraction struct {
 	IDType         *string `json:"id_type"`
 }
 
+type FieldCandidate struct {
+	Value    string
+	LabelIdx int
+	Distance int
+	Score    float64
+}
+
 func normalizeText(value string) string {
 	value = strings.ToLower(value)
+	value = strings.ReplaceAll(value, "\u2019", "'")
+	value = strings.ReplaceAll(value, "`", "")
 	value = strings.ReplaceAll(value, "'", "")
 	value = strings.ReplaceAll(value, "identificati0n", "identification")
 	value = strings.ReplaceAll(value, "philipp1ne", "philippine")
@@ -161,13 +192,11 @@ func normalizeText(value string) string {
 	value = strings.ReplaceAll(value, "licence", "license")
 	value = strings.ReplaceAll(value, "0ffice", "office")
 	value = strings.ReplaceAll(value, "dr1ver", "driver")
-	value = strings.ReplaceAll(value, "1d", "id")
+	value = reWord1d.ReplaceAllString(value, "id")
 	value = strings.ReplaceAll(value, "lt0", "lto")
-	reg := regexp.MustCompile(`[^a-z0-9]+`)
-	value = reg.ReplaceAllString(value, " ")
+	value = reNonAlphaNum.ReplaceAllString(value, " ")
 	value = strings.ReplaceAll(value, "driver s license", "drivers license")
-	space := regexp.MustCompile(`\s+`)
-	value = space.ReplaceAllString(value, " ")
+	value = reMultiSpace.ReplaceAllString(value, " ")
 	return strings.TrimSpace(value)
 }
 
@@ -345,7 +374,7 @@ func ValidateDocument(rawText, expectedType, documentSide string, hasOcrEngine b
 		Status:              status,
 		IsIdentityDocument:  &isIdentityDoc,
 		IsSupportedDocument: &isSupported,
-		DetectedType:        strPtrSafe(detectedType),
+		DetectedType:        strPtr(detectedType),
 		ExpectedType:        strPtr(expectedType),
 		DocumentSide:        documentSide,
 		MatchesExpected:     matchesExpected,
@@ -424,8 +453,7 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 	for i, norm := range normalizedLines {
 		if strings.Contains(norm, "address") {
 			fragments := []string{}
-			re := regexp.MustCompile(`(?i)\baddress\b\s*[:#-]?\s*`)
-			remainder := strings.TrimSpace(re.ReplaceAllString(lines[i], ""))
+			remainder := strings.TrimSpace(reAddressLabel.ReplaceAllString(lines[i], ""))
 			if remainder != "" {
 				fragments = append(fragments, remainder)
 			}
@@ -447,8 +475,7 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 	}
 
 	var gender *string
-	genderRe := regexp.MustCompile(`(?i)\b(?:sex|gender)\s*[:#-]?\s*(male|female|m|f)\b`)
-	if match := genderRe.FindStringSubmatch(rawText); len(match) >= 2 {
+	if match := reGender.FindStringSubmatch(rawText); len(match) >= 2 {
 		v := strings.ToUpper(match[1])
 		if v == "MALE" {
 			v = "M"
@@ -456,6 +483,20 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 			v = "F"
 		}
 		gender = &v
+	}
+
+	var expirationDate *string
+	expPatterns := []*regexp.Regexp{
+		regexp.MustCompile(`(?i)(?:expir(?:y|ation)|valid until|expires?)\s*[:#-]?\s*(.+)`),
+	}
+	for _, pat := range expPatterns {
+		if match := pat.FindStringSubmatch(rawText); len(match) >= 2 {
+			val := strings.TrimSpace(match[1])
+			if len(val) > 3 {
+				expirationDate = &val
+				break
+			}
+		}
 	}
 
 	var idType *string
@@ -469,13 +510,194 @@ func ExtractFields(rawText, selectedType string) FieldExtraction {
 	}
 
 	return FieldExtraction{
-		FullName: fullName,
-		Address:  address,
-		Birthdate: birthdate,
-		IDNumber: idNumber,
-		Gender:   gender,
-		IDType:   idType,
+		FullName:       fullName,
+		Address:        address,
+		Birthdate:      birthdate,
+		IDNumber:       idNumber,
+		ExpirationDate: expirationDate,
+		Gender:         gender,
+		IDType:         idType,
 	}
+}
+
+func scoreField(lines []string, labelIdx int, label string, fieldType string) *FieldCandidate {
+	if labelIdx < 0 || labelIdx >= len(lines) {
+		return nil
+	}
+
+	line := lines[labelIdx]
+	sepIdx := strings.IndexAny(line, ":-#")
+	var value string
+	score := 0.0
+
+	if sepIdx >= 0 {
+		value = strings.TrimSpace(line[sepIdx+1:])
+		score += 20
+		if sepIdx > 0 {
+			score += 15
+		}
+	}
+
+	if value == "" && labelIdx+1 < len(lines) {
+		for j := labelIdx + 1; j < len(lines) && j <= labelIdx+3; j++ {
+			candidate := strings.TrimSpace(lines[j])
+			if candidate == "" {
+				continue
+			}
+			norm := normalizeText(candidate)
+			isLabel := false
+			for _, commonLabel := range []string{"name", "address", "birth", "sex", "gender", "license", "passport", "expiry", "expiration", "signature", "blood", "height", "weight"} {
+				if strings.Contains(norm, commonLabel) {
+					isLabel = true
+					break
+				}
+			}
+			if !isLabel && len(candidate) > 2 {
+				if !isLabel {
+					score += 10
+				}
+				value = candidate
+				break
+			}
+		}
+	}
+
+	if value == "" {
+		return nil
+	}
+
+	normValue := normalizeText(value)
+	isAnotherLabel := false
+	for _, commonLabel := range []string{"name", "address", "birth", "sex", "gender", "license", "passport", "expiry", "expiration", "signature", "blood", "height", "weight", "date of"} {
+		if strings.Contains(normValue, commonLabel) {
+			isAnotherLabel = true
+			break
+		}
+	}
+	if !isAnotherLabel {
+		score += 10
+	}
+
+	if fieldType == "date" && datePattern.MatchString(value) {
+		score += 25
+	}
+
+	return &FieldCandidate{
+		Value:    value,
+		LabelIdx: labelIdx,
+		Distance: sepIdx,
+		Score:    score,
+	}
+}
+
+var phDateFormats = []string{
+	"01/02/2006",
+	"1/2/2006",
+	"01-02-2006",
+	"1-2-2006",
+	"2006-01-02",
+	"2006/01/02",
+	"January 2, 2006",
+	"Jan 2, 2006",
+	"2 January 2006",
+	"2 Jan 2006",
+	"January 2,2006",
+	"Jan 2,2006",
+}
+
+func parsePHDate(s string) (time.Time, error) {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, ".", "/")
+
+	for _, fmt := range phDateFormats {
+		if t, err := time.Parse(fmt, s); err == nil {
+			return t, nil
+		}
+	}
+
+	reMonthDayYear := regexp.MustCompile(`(?i)(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|sept|oct|nov|dec)\s+\d{1,2},?\s+\d{4}`)
+	if reMonthDayYear.MatchString(s) {
+		parts := strings.Fields(s)
+		if len(parts) >= 3 {
+			monthStr := strings.TrimSuffix(parts[0], ",")
+			dayStr := strings.TrimSuffix(parts[1], ",")
+			yearStr := parts[2]
+			clean := monthStr + " " + dayStr + " " + yearStr
+			for _, fmt := range []string{"January 2 2006", "Jan 2 2006"} {
+				if t, err := time.Parse(fmt, clean); err == nil {
+					return t, nil
+				}
+			}
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("unable to parse date: %s", s)
+}
+
+func validateExtractedDates(extraction FieldExtraction) []string {
+	issues := []string{}
+
+	if extraction.Birthdate != nil {
+		parsed, err := parsePHDate(*extraction.Birthdate)
+		if err != nil {
+			issues = append(issues, "birthdate_unparseable")
+		} else {
+			now := time.Now()
+			age := now.Year() - parsed.Year()
+			if parsed.After(now.AddDate(0, 0, 1)) {
+				issues = append(issues, "birthdate_in_future")
+			} else if age > 120 {
+				issues = append(issues, "birthdate_implausible")
+			}
+		}
+	}
+
+	if extraction.ExpirationDate != nil {
+		parsed, err := parsePHDate(*extraction.ExpirationDate)
+		if err != nil {
+			issues = append(issues, "expiry_unparseable")
+		} else if parsed.Before(time.Now()) {
+			issues = append(issues, "id_expired")
+		}
+	}
+
+	return issues
+}
+
+func checkFieldConsistency(rawText string, fieldExtraction FieldExtraction, detectedType string) []string {
+	issues := []string{}
+
+	if detectedType != "" && fieldExtraction.IDNumber != nil {
+		if profile, ok := documentProfiles[detectedType]; ok {
+			matched := false
+			for _, pat := range profile.IDPatterns {
+				if pat.MatchString(*fieldExtraction.IDNumber) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				issues = append(issues, "id_number_pattern_mismatch")
+			}
+		}
+	}
+
+	if fieldExtraction.Gender != nil {
+		g := strings.ToUpper(*fieldExtraction.Gender)
+		if g != "M" && g != "F" && g != "MALE" && g != "FEMALE" {
+			issues = append(issues, "invalid_gender_value")
+		}
+	}
+
+	if fieldExtraction.Birthdate != nil && fieldExtraction.ExpirationDate != nil {
+		birthParsed, bErr := parsePHDate(*fieldExtraction.Birthdate)
+		expParsed, eErr := parsePHDate(*fieldExtraction.ExpirationDate)
+		if bErr == nil && eErr == nil && birthParsed.After(expParsed) {
+			issues = append(issues, "birthdate_after_expiry")
+		}
+	}
+
+	return issues
 }
 
 func EstimateBarcodeSignal(rgba []byte, width, height int) map[string]interface{} {
@@ -525,13 +747,13 @@ func EstimateBarcodeSignal(rgba []byte, width, height int) map[string]interface{
 	barcodeLike := transitionDensity >= 0.045 && rowDensity >= 0.18
 
 	return map[string]interface{}{
-		"transition_density":       round4(transitionDensity),
+		"transition_density":        round4(transitionDensity),
 		"high_transition_row_ratio": round4(rowDensity),
-		"barcode_like":             barcodeLike,
+		"barcode_like":              barcodeLike,
 	}
 }
 
-func CollectBackIDEvidence(rawText string, quality QualityMetrics, expectedScore int) map[string]interface{} {
+func CollectBackIDEvidence(rawText string, quality QualityMetrics, barcodeLike bool, expectedScore int) map[string]interface{} {
 	normalized := normalizeText(rawText)
 	markerHits := []string{}
 	for _, m := range backIDMarkers {
@@ -540,32 +762,48 @@ func CollectBackIDEvidence(rawText string, quality QualityMetrics, expectedScore
 		}
 	}
 
-	serialRe := regexp.MustCompile(`(?i)\bserial\s*(?:number|no)?[:\s-]*\d{5,}\b`)
-	digitsRe := regexp.MustCompile(`\b\d{7,12}\b`)
-	serialNumberDetected := serialRe.MatchString(rawText) || digitsRe.MatchString(rawText)
+	frontHits := []string{}
+	for _, m := range frontIDMarkers {
+		if strings.Contains(normalized, normalizeText(m)) {
+			frontHits = append(frontHits, m)
+		}
+	}
+
+	personalInfoFields := []string{
+		"last name", "first name", "middle name", "given name", "surname",
+		"date of birth", "birthdate", "dob",
+		"sex", "gender", "nationality",
+	}
+	personalInfoHits := 0
+	for _, m := range personalInfoFields {
+		if strings.Contains(normalized, m) {
+			personalInfoHits++
+		}
+	}
+
+	isFrontNotBack := personalInfoHits >= 2 || len(frontHits) >= 4
+
+	serialNumberDetected := reSerialNumber.MatchString(rawText) || reDigits.MatchString(rawText)
 
 	cardLikeFrame := quality.AspectRatio >= 1.20 && quality.AspectRatio <= 2.40 && quality.EdgeDensity >= 0.01
-	acceptsLowOcr := false
+	acceptsLowOcr := barcodeLike && cardLikeFrame
 
-	isValid := expectedScore >= 12 || len(markerHits) >= 2 || (len(markerHits) >= 1 && serialNumberDetected) || (acceptsLowOcr && len(strings.TrimSpace(rawText)) >= 8) || (acceptsLowOcr && quality.QualityScore >= 58)
+	isValid := !isFrontNotBack && (expectedScore >= 12 || len(markerHits) >= 2 || (len(markerHits) >= 1 && serialNumberDetected) || (acceptsLowOcr && len(strings.TrimSpace(rawText)) >= 8) || (acceptsLowOcr && quality.QualityScore >= 58))
 
 	return map[string]interface{}{
-		"marker_hits":           markerHits,
+		"marker_hits":            markerHits,
+		"front_id_hits":          frontHits,
+		"personal_info_hits":     personalInfoHits,
+		"is_front_not_back":      isFrontNotBack,
 		"serial_number_detected": serialNumberDetected,
-		"card_like_frame":       cardLikeFrame,
-		"accepts_low_ocr":       acceptsLowOcr,
-		"is_valid":              isValid,
+		"barcode_like":           barcodeLike,
+		"card_like_frame":        cardLikeFrame,
+		"accepts_low_ocr":        acceptsLowOcr,
+		"is_valid":               isValid,
 	}
 }
 
 func strPtr(s string) *string {
-	if s == "" {
-		return nil
-	}
-	return &s
-}
-
-func strPtrSafe(s string) *string {
 	if s == "" {
 		return nil
 	}
