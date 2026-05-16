@@ -107,13 +107,31 @@ const throwIfAborted = (signal) => {
     }
 };
 
+const DROPDOWN_TO_TYPE = {
+    "philippine identification (philid / ephilid)": "national_id",
+    "passport": "passport",
+    "driver's license": "driver_license",
+    "driver license": "driver_license",
+    "umid card": "umid",
+    "umid": "umid",
+    "philhealth id": "philhealth_id",
+    "postal id": "postal_id",
+    "voter's id": "voter_id",
+    "voters id": "voter_id",
+    "prc id": "prc_id",
+    "school id": "school_id",
+    "government id": "government_id",
+};
+
 const resolveDocumentType = async (selectedType) => {
     const selected = normalizeText(selectedType);
     if (!selected) return null;
 
+    if (DROPDOWN_TO_TYPE[selected]) return DROPDOWN_TO_TYPE[selected];
+
     const types = await getDocumentTypes();
     return Object.entries(types).find(([, profile]) => (
-        profile.dropdown?.some((label) => selected.includes(normalizeText(label)))
+        normalizeText(profile.label) === selected
     ))?.[0] || null;
 };
 
@@ -1085,7 +1103,7 @@ const collectBackIdEvidence = async (rawText, qualityReport, expectedScore) => {
 };
 
 const validateIdImage = async ({ role, file, validIdType, signal }) => {
-    const expectedType = resolveDocumentType(validIdType);
+    const expectedType = await resolveDocumentType(validIdType);
     const qualityReport = await analyzeImageQuality(file, role);
     throwIfAborted(signal);
 
