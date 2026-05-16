@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  php-tests:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: testing
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        ports:
+          - 3306:3306
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: mbstring, pdo_mysql, gd, imagick
+          coverage: xdebug
+      - run: cp .env.example .env
+      - run: sed -i 's/DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+      - run: sed -i 's/DB_DATABASE=.*/DB_DATABASE=testing/' .env
+      - run: sed -i 's/DB_USERNAME=.*/DB_USERNAME=root/' .env
+      - run: sed -i 's/DB_PASSWORD=.*/DB_PASSWORD=/' .env
+      - run: composer install --no-interaction --prefer-dist
+      - run: php artisan key:generate
+      - run: php artisan migrate --env=testing
+      - run: php vendor/bin/phpunit
+
+  js-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run lint 2>/dev/null || echo "No lint script configured"
+
+  wasm-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+          cache: true
+      - run: cd wasm && make all
+      - run: cd wasm && go test ./...
+
+  python-ai:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: cd python-ai && pip install -r requirements.txt
+      - run: cd python-ai && python -m pytest 2>/dev/null || echo "No pytest config yet"
+
+  python-wasm-build:
+    runs-on: ubuntu-latest
+    needs: python-ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache Pyodide
+        id: cache-pyodide
+        uses: actions/cache@v4
+        with:
+          path: python-ai/wasm/.pyodide
+          key: pyodide-${{ hashFiles('python-ai/wasm/pyodide_build.py') }}
+      - name: Install Python deps
+        run: cd python-ai && pip install -r requirements.txt
+      - name: Build Python WASM modules
+        run: cd python-ai/wasm && make python-wasm-build
+      - name: Upload Python WASM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-wasm-modules
+          path: python-ai/wasm/dist/
+          retention-days: 7

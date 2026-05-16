@@ -83,23 +83,29 @@ class IdentityVerificationService
             ]);
         }
 
+        $status = config('identity_verification.wasm_mode', false)
+            ? Verification::STATUS_PROCESSING
+            : Verification::STATUS_QUEUED;
+
         $verification->forceFill([
-            'status' => Verification::STATUS_QUEUED,
+            'status' => $status,
             'submitted_at' => now(),
             'failure_reason' => null,
         ])->save();
 
         $this->repository->recordLog($verification, 'submitted', 'Verification submitted for queued AI processing.', $user, 'info', [], $request);
 
-        Bus::chain([
-            new OCRProcessingJob($verification->id),
-            new FaceVerificationJob($verification->id),
-            new LivenessDetectionJob($verification->id),
-            new FraudAnalysisJob($verification->id),
-            new FinalizeIdentityVerificationJob($verification->id),
-        ])->onQueue((string) config('identity_verification.queues.processing', 'identity-verification'))->dispatch();
+        if (!config('identity_verification.wasm_mode', false)) {
+            Bus::chain([
+                new OCRProcessingJob($verification->id),
+                new FaceVerificationJob($verification->id),
+                new LivenessDetectionJob($verification->id),
+                new FraudAnalysisJob($verification->id),
+                new FinalizeIdentityVerificationJob($verification->id),
+            ])->onQueue((string) config('identity_verification.queues.processing', 'identity-verification'))->dispatch();
 
-        event(new IdentityVerificationSubmitted($verification->refresh(), $user));
+            event(new IdentityVerificationSubmitted($verification->refresh(), $user));
+        }
 
         return $verification->refresh();
     }

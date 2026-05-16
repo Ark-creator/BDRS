@@ -58,6 +58,13 @@ return [
         'circuit_cooldown_seconds' => (int) env('IDENTITY_AI_CIRCUIT_COOLDOWN_SECONDS', 60),
     ],
 
+    'retention' => [
+        'draft_hours' => (int) env('VERIFICATION_DRAFT_RETENTION_HOURS', 24),
+        'completed_days' => (int) env('VERIFICATION_COMPLETED_RETENTION_DAYS', 90),
+    ],
+
+    'wasm_mode' => (bool) env('IDENTITY_VERIFICATION_WASM_MODE', false),
+
     'thresholds' => [
         'face_match_min' => (float) env('IDENTITY_VERIFICATION_FACE_MATCH_MIN', 82),
         'ocr_confidence_min' => (float) env('IDENTITY_VERIFICATION_OCR_MIN', 70),

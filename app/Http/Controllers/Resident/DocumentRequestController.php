@@ -38,7 +38,7 @@ class DocumentRequestController extends Controller
         $pastRequests = ImmutableDocumentsArchiveHistory::query()
             ->where('user_id', $userId)
             ->whereIn('status', ['Claimed', 'Rejected'])
-            ->with(['documentType', 'processor.profile'])
+            ->with(['documentType', 'processor.profile', 'user.profile'])
             ->latest('original_created_at')
             ->paginate(5, ['*'], 'past_page')
             ->withQueryString();

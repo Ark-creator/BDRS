@@ -15,6 +15,11 @@ return [
 
     'default' => env('QUEUE_CONNECTION', 'database'),
 
+    'backlog' => [
+        'warning_threshold' => (int) env('QUEUE_BACKLOG_WARNING', 50),
+        'critical_threshold' => (int) env('QUEUE_BACKLOG_CRITICAL', 200),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Queue Connections
