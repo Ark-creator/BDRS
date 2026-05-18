@@ -51,11 +51,12 @@ class TwoFactorController extends Controller
         
         // Code is valid, log the user in
         Auth::login($user);
-        
+
         // Clear the 2FA session data and code
         $request->session()->forget('two_factor_user_id');
         $user->two_factor_code = null;
         $user->two_factor_expires_at = null;
+        $user->last_2fa_at = now();
         $user->save();
         
         return redirect()->intended(route('residents.home', absolute: false));

@@ -64,20 +64,24 @@ public function store(LoginRequest $request): RedirectResponse
 
     // 3. Check for 2FA and redirect if enabled
     if ($user->two_factor_enabled) {
-        $user->two_factor_code = str_pad(random_int(1, 999999), 6, '0', STR_PAD_LEFT);
-        $user->two_factor_expires_at = now()->addMinutes(10);
-        $user->save();
-        
-        $user->notify(new TwoFactorCode());
-        
-        // This is the key: place the user ID in the session, then log out
-        $request->session()->put('two_factor_user_id', $user->id);
-                $request->session()->flash('two_factor_method', $user->two_factor_method);
+        $graceDays = SystemSetting::twoFactorGracePeriodDays();
+        $withinGrace = $user->last_2fa_at
+            && $user->last_2fa_at->addDays($graceDays)->isFuture();
 
-        Auth::logout();
-        
-        // ✅ The redirect should be the final action for the 2FA flow.
-        return redirect()->route('two_factor.prompt');
+        if (!$withinGrace) {
+            $user->two_factor_code = str_pad(random_int(1, 999999), 6, '0', STR_PAD_LEFT);
+            $user->two_factor_expires_at = now()->addMinutes(10);
+            $user->save();
+
+            $user->notify(new TwoFactorCode());
+
+            $request->session()->put('two_factor_user_id', $user->id);
+            $request->session()->flash('two_factor_method', $user->two_factor_method);
+
+            Auth::logout();
+
+            return redirect()->route('two_factor.prompt');
+        }
     }
 
     // 4. If all checks pass, proceed with normal login based on role.
