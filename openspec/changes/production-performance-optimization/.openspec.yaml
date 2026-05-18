@@ -1,0 +1,21 @@
+schema: spec-driven
+change:
+  id: production-performance-optimization
+  name: Production performance optimization
+  description: |
+    Optimize the BDRS application for production performance.
+    Covers Laravel optimization commands, caching, asset bundling,
+    database query optimization, queue configuration, and frontend
+    bundle size reduction.
+  status: proposed
+artifacts:
+  proposal:
+    status: pending
+  design:
+    status: pending
+    dependencies: [proposal]
+  tasks:
+    status: pending
+    dependencies: [design]
+apply:
+  requires: [tasks]

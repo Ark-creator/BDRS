@@ -1,0 +1,20 @@
+schema: spec-driven
+change:
+  id: add-orphaned-pages-routes
+  name: Add routes for orphaned page components
+  description: |
+    Six page component JSX files exist in the codebase but have no route
+    pointing to them, making them unreachable. This change adds routes for
+    each of these pages so they become accessible.
+  status: proposed
+artifacts:
+  proposal:
+    status: pending
+  design:
+    status: pending
+    dependencies: [proposal]
+  tasks:
+    status: pending
+    dependencies: [design]
+apply:
+  requires: [tasks]

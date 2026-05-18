@@ -1,0 +1,269 @@
+{
+  "driver_license": {
+    "label": "Driver's License",
+    "detection": {
+      "keywords": [
+        "driver license",
+        "drivers license",
+        "driver s license",
+        "driver licence",
+        "drivers licence",
+        "professional driver",
+        "non professional driver",
+        "non professional drivers license",
+        "land transportation office",
+        "land transport",
+        "lto",
+        "license no",
+        "licence no",
+        "agency code",
+        "serial number",
+        "dl codes",
+        "lto codes",
+        "restrictions",
+        "conditions",
+        "corrective lenses",
+        "motorcycle",
+        "vehicle",
+        "non-professional"
+      ],
+      "patterns": [
+        "\\b[A-Z]\\d{2}-\\d{2}-\\d{6}\\b",
+        "\\blicen[cs]e\\s*(?:no|number)\\b",
+        "\\bland\\s+transportation\\s+office\\b"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b[A-Z]\\d{2}\\s*[- ]\\s*\\d{2}\\s*[- ]\\s*\\d{5,7}\\b",
+        "\\blicen[cs]e\\s*(?:no|number)?[\\:\\s-]*([A-Z0-9-]{6,})\\b"
+      ]
+    }
+  },
+  "national_id": {
+    "label": "National ID",
+    "detection": {
+      "keywords": [
+        "philippine identification",
+        "philippine national id",
+        "national id",
+        "philsys",
+        "philid",
+        "pcn",
+        "psn",
+        "ephilid",
+        "pambansang pagkakakilanlan"
+      ],
+      "patterns": [
+        "\\bphil(?:ippine)?\\s+identification\\b",
+        "\\bphilid\\b",
+        "\\bphilsys\\b",
+        "\\b(?:psn|pcn)[\\:\\s-]*\\d{4}"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b\\d{4}\\s*[- ]\\s*\\d{4}\\s*[- ]\\s*\\d{4}\\s*[- ]\\s*\\d{4}\\b",
+        "\\b(?:psn|pcn)[\\:\\s-]*([0-9-]{8,})\\b"
+      ]
+    }
+  },
+  "umid": {
+    "label": "UMID Card",
+    "detection": {
+      "keywords": [
+        "unified multi purpose id",
+        "unified multipurpose id",
+        "umid",
+        "common reference no",
+        "crn",
+        "sss",
+        "gsis",
+        "pag ibig",
+        "philhealth",
+        "pag-ibig"
+      ],
+      "patterns": [
+        "\\bumid\\b",
+        "\\bunified\\s+multi[\\-\\s]?purpose\\s+id\\b",
+        "\\bcrn[\\:\\s-]*\\d"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b\\d{4}\\s*[- ]\\s*\\d{7}\\s*[- ]\\s*\\d\\b",
+        "(?i)\\b\\d{4}\\s*[- ]\\s*\\d{4}\\s*[- ]\\s*\\d{4}\\b",
+        "\\bcrn[\\:\\s-]*([0-9-]{8,})\\b"
+      ]
+    }
+  },
+  "philhealth_id": {
+    "label": "PhilHealth ID",
+    "detection": {
+      "keywords": [
+        "philhealth",
+        "philhealth identification",
+        "philhealth insurance",
+        "pin",
+        "philippine health insurance corporation",
+        "philippine health insurance"
+      ],
+      "patterns": [
+        "\\bphilhealth\\b",
+        "\\bphilippine\\s+health\\s+insurance\\b",
+        "\\bpin[\\:\\s-]*\\d"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b\\d{2}\\s*[- ]\\s*\\d{9}\\s*[- ]\\s*\\d\\b",
+        "\\bpin[\\:\\s-]*([0-9-]{8,})\\b"
+      ]
+    }
+  },
+  "postal_id": {
+    "label": "Postal ID",
+    "detection": {
+      "keywords": [
+        "postal id",
+        "postal identity card",
+        "phlpost",
+        "philippine postal corporation",
+        "philippine postal"
+      ],
+      "patterns": [
+        "\\bpostal\\s+id\\b",
+        "\\bphlpost\\b",
+        "\\bphilippine\\s+postal\\b"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b[A-Z0-9]{3,5}\\s*[- ]\\s*\\d{5,9}\\b",
+        "\\bpostal\\s*(?:id|no|number)?[\\:\\s-]*([A-Z0-9-]{6,})\\b"
+      ]
+    }
+  },
+  "voter_id": {
+    "label": "Voter's ID",
+    "detection": {
+      "keywords": [
+        "voter",
+        "voter id",
+        "voters id",
+        "commission on elections",
+        "comelec",
+        "precinct"
+      ],
+      "patterns": [
+        "\\bvoter'?s?\\s+id\\b",
+        "\\bcommission\\s+on\\s+elections\\b",
+        "\\bcomelec\\b",
+        "\\bprecinct\\b"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b\\d{4}\\s*[- ]\\s*\\d{4}\\s*[- ]\\s*[A-Z0-9]{3,8}\\b",
+        "\\bprecinct[\\:\\s-]*([A-Z0-9-]{4,})\\b"
+      ]
+    }
+  },
+  "prc_id": {
+    "label": "PRC ID",
+    "detection": {
+      "keywords": [
+        "professional regulation commission",
+        "professional identification card",
+        "prc",
+        "registration no",
+        "profession"
+      ],
+      "patterns": [
+        "\\bprofessional\\s+regulation\\s+commission\\b",
+        "\\bprofessional\\s+identification\\s+card\\b",
+        "\\bprc\\b"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b\\d{6,8}\\b",
+        "\\bregistration\\s*(?:no|number)?[\\:\\s-]*([A-Z0-9-]{5,})\\b"
+      ]
+    }
+  },
+  "passport": {
+    "label": "Passport",
+    "detection": {
+      "keywords": [
+        "passport",
+        "pasaporte",
+        "department of foreign affairs",
+        "dfa",
+        "passport no",
+        "issuing authority",
+        "type p",
+        "p<phl"
+      ],
+      "patterns": [
+        "\\bpassport\\b",
+        "\\bpasaporte\\b",
+        "\\bp<phl",
+        "\\bdepartment\\s+of\\s+foreign\\s+affairs\\b"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b[A-Z]{1,2}\\d{6,8}[A-Z]?\\b",
+        "\\bpassport\\s*(?:no|number)?[\\:\\s-]*([A-Z0-9]{7,10})\\b"
+      ]
+    }
+  },
+  "school_id": {
+    "label": "School ID",
+    "detection": {
+      "keywords": [
+        "school id",
+        "student id",
+        "student number",
+        "school year",
+        "university",
+        "college",
+        "institute"
+      ],
+      "patterns": [
+        "\\bschool\\s+id\\b",
+        "\\bstudent\\s+(?:id|number)\\b",
+        "\\binstitute\\b"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b\\d{2,4}\\s*[- ]\\s*\\d{3,8}\\b"
+      ]
+    }
+  },
+  "government_id": {
+    "label": "Government ID",
+    "detection": {
+      "keywords": [
+        "government id",
+        "tin",
+        "senior citizen",
+        "barangay id",
+        "government service",
+        "tax identification"
+      ],
+      "patterns": [
+        "\\bgovernment\\s+id\\b",
+        "\\btax\\s+identification\\b",
+        "\\bsenior\\s+citizen\\b"
+      ]
+    },
+    "validation": {
+      "idPatterns": [
+        "(?i)\\b\\d{2,4}\\s*[- ]\\s*\\d{2,5}\\s*[- ]\\s*\\d{2,8}\\b"
+      ]
+    }
+  }
+}

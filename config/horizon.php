@@ -8,8 +8,8 @@ return [
     'middleware' => ['web'],
 
     'waits' => [
-        'redis:default' => 60,
-        'redis:identity-verification' => 120,
+        'database:default' => 60,
+        'database:identity-verification' => 120,
     ],
 
     'trim' => [
@@ -26,7 +26,7 @@ return [
 
     'defaults' => [
         'identity-verification' => [
-            'connection' => 'redis',
+            'connection' => 'database',
             'queue' => ['identity-verification', 'default'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',

@@ -1,0 +1,55 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PHP dependencies
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: 8.2
+          extensions: mbstring, pdo_mysql, gd, imagick
+      - run: composer install --no-interaction --prefer-dist --no-dev
+
+      - name: Build frontend assets
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci && npm run build
+
+      - name: Build WASM
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - run: cd wasm && make all
+
+      - name: Build Python WASM modules
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: cd python-ai && pip install -r requirements.txt
+      - run: cd python-ai/wasm && make python-wasm-build
+
+      # Deploy steps — customize for your hosting provider
+      # Examples:
+      #   Laravel Forge: https://forge.laravel.com/servers
+      #   SSH + rsync:  rsync -avz --exclude-from=.rsyncignore ./ user@host:/var/www/app
+      #   Deployer:     vendor/bin/dep deploy
+      #
+      # Uncomment and configure for your environment:
+      # - name: Deploy via SSH
+      #   run: |
+      #     rsync -avz --delete \
+      #       --exclude '.env' \
+      #       --exclude 'node_modules' \
+      #       --exclude 'vendor' \
+      #       --exclude '.git' \
+      #       ./ user@production:/var/www/html/
+      #     ssh user@production 'cd /var/www/html && php artisan migrate --force'

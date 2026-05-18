@@ -127,7 +127,7 @@ class RequestDocumentsController extends Controller
             'voucher_code' => ['required', 'string', 'regex:/^VOUCHER-[A-Z0-9]{8}$/'],
         ]);
 
-        $documentRequest = DocumentRequest::where('claim_voucher_code', $validated['voucher_code'])->first();
+        $documentRequest = DocumentRequest::with(['user.profile'])->where('claim_voucher_code', $validated['voucher_code'])->first();
 
         if (! $documentRequest) {
             return back()->withErrors(['voucher_code' => 'Invalid or unknown voucher code.']);

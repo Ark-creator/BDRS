@@ -35,6 +35,7 @@ class HandleInertiaRequests extends Middleware
                     ? $request->user()->load('profile')->append('full_name')
                     : null,
             ],
+            'wasm_mode' => config('identity_verification.wasm_mode', false),
         ]);
     }
 }

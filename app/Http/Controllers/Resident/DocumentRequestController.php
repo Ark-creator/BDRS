@@ -38,7 +38,7 @@ class DocumentRequestController extends Controller
         $pastRequests = ImmutableDocumentsArchiveHistory::query()
             ->where('user_id', $userId)
             ->whereIn('status', ['Claimed', 'Rejected'])
-            ->with(['documentType', 'processor.profile'])
+            ->with(['documentType', 'processor.profile', 'user.profile'])
             ->latest('original_created_at')
             ->paginate(5, ['*'], 'past_page')
             ->withQueryString();
@@ -271,5 +271,21 @@ class DocumentRequestController extends Controller
 
         return redirect()->route('residents.requests.index')
             ->with('success', 'Payment submitted successfully! Your request is now being processed.');
+    }
+
+    public function history()
+    {
+        $userId = Auth::id();
+
+        $requestHistory = ImmutableDocumentsArchiveHistory::query()
+            ->where('user_id', $userId)
+            ->whereIn('status', ['Claimed', 'Rejected'])
+            ->with(['documentType', 'processor.profile'])
+            ->latest('original_created_at')
+            ->paginate(10);
+
+        return Inertia::render('Residents/History', [
+            'requestHistory' => $requestHistory,
+        ]);
     }
 }

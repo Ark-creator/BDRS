@@ -1,0 +1,124 @@
+// BDRS WASM Shared Schema — Go WASM ↔ Python WASM data exchange
+// Flatbuffers schema version 1.0
+
+namespace bdrs.pipeline;
+
+// ── Image Metadata ──
+
+table ImageMetadata {
+    width: uint16;
+    height: uint16;
+    channels: uint8 = 3;
+    file_size_bytes: uint32;
+    hash_sha256: string;
+}
+
+// ── Quality Metrics ──
+
+table QualityMetrics {
+    quality_score: float;
+    brightness: float;
+    contrast: float;
+    sharpness: float;
+    blur_score: float;
+    noise_estimate: float;
+    dynamic_range: float;
+    exposure: float;
+    is_blurry: bool;
+    is_low_light: bool;
+    is_overexposed: bool;
+    face_present: bool;
+}
+
+// ── Face Detection ──
+
+struct FaceBox {
+    x: uint16;
+    y: uint16;
+    width: uint16;
+    height: uint16;
+    confidence: float32;
+}
+
+table FaceDetectionResult {
+    face_count: uint8;
+    faces: [FaceBox];
+    id_quality_metrics: QualityMetrics;
+    selfie_quality_metrics: QualityMetrics;
+}
+
+// ── OCR Result ──
+
+table OcrField {
+    name: string;
+    value: string;
+    confidence: float32;
+}
+
+table OcrResult {
+    status: string;
+    confidence: float;
+    fields: [OcrField];
+    raw_text: [string];
+    document_validation: string;  // JSON-encoded validation object
+    issues: [string];
+    engine: string;
+}
+
+// ── Face Comparison Result ──
+
+table FaceComparisonResult {
+    status: string;
+    similarity: float;
+    matched: bool;
+    id_face_count: uint8;
+    selfie_face_count: uint8;
+    checks_json: string;  // JSON-encoded checks object
+}
+
+// ── Liveness Detection ──
+
+table LivenessResult {
+    status: string;
+    score: float;
+    passed: bool;
+    issues: [string];
+}
+
+// ── Fraud Analysis ──
+
+table FraudAnalysisResult {
+    status: string;
+    fake_probability: float;
+    issues: [string];
+    metadata_json: string;  // JSON-encoded metadata
+}
+
+// ── Pipeline Root ──
+
+enum PipelineStatus : byte { pending, running, completed, failed }
+
+table PipelineStepResult {
+    step_name: string;
+    status: PipelineStatus;
+    started_at_ms: uint64;
+    duration_ms: uint32;
+    error_message: string;
+}
+
+table PipelineResult {
+    id_image: ImageMetadata;
+    selfie_image: ImageMetadata;
+    quality: QualityMetrics;
+    face_detection: FaceDetectionResult;
+    ocr: OcrResult;
+    face_comparison: FaceComparisonResult;
+    liveness: LivenessResult;
+    fraud: FraudAnalysisResult;
+    overall_score: float;
+    final_status: string;
+    steps: [PipelineStepResult];
+    error: string;
+}
+
+root_type PipelineResult;

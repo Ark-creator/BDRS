@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from app.services.document_types import get_document_types
 from app.services.image_quality import cv2
 from app.services.image_quality import document_geometry_metrics
 from app.services.image_quality import issue_for_quality, quality_metrics
@@ -83,156 +84,6 @@ BACK_ID_MARKERS = [
     "gross",
     "gvw",
 ]
-
-DOCUMENT_PROFILES: dict[str, dict[str, Any]] = {
-    "driver_license": {
-        "labels": [
-            "driver license",
-            "drivers license",
-            "driver s license",
-            "driver licence",
-            "drivers licence",
-            "professional driver",
-            "non professional driver",
-            "non professional drivers license",
-            "land transportation office",
-            "land transport",
-            "lto",
-            "license no",
-            "licence no",
-            "agency code",
-            "serial number",
-            "dl codes",
-            "lto codes",
-            "restrictions",
-            "conditions",
-            "corrective lenses",
-            "motorcycle",
-            "vehicle",
-        ],
-        "id_patterns": [
-            r"\b[A-Z]\d{2}\s*[- ]\s*\d{2}\s*[- ]\s*\d{5,7}\b",
-        ],
-    },
-    "national_id": {
-        "labels": [
-            "philippine identification",
-            "philippine national id",
-            "national id",
-            "philsys",
-            "philid",
-            "pcn",
-            "psn",
-        ],
-        "id_patterns": [
-            r"\b\d{4}\s*[- ]\s*\d{4}\s*[- ]\s*\d{4}\s*[- ]\s*\d{4}\b",
-        ],
-    },
-    "umid": {
-        "labels": [
-            "unified multi purpose id",
-            "unified multipurpose id",
-            "umid",
-            "common reference no",
-            "crn",
-            "sss",
-            "gsis",
-            "pag ibig",
-            "philhealth",
-        ],
-        "id_patterns": [
-            r"\b\d{4}\s*[- ]\s*\d{7}\s*[- ]\s*\d\b",
-            r"\b\d{4}\s*[- ]\s*\d{4}\s*[- ]\s*\d{4}\b",
-        ],
-    },
-    "philhealth_id": {
-        "labels": [
-            "philhealth",
-            "philhealth identification",
-            "philhealth insurance",
-            "pin",
-            "philippine health insurance corporation",
-        ],
-        "id_patterns": [
-            r"\b\d{2}\s*[- ]\s*\d{9}\s*[- ]\s*\d\b",
-        ],
-    },
-    "postal_id": {
-        "labels": [
-            "postal id",
-            "postal identity card",
-            "phlpost",
-            "philippine postal corporation",
-        ],
-        "id_patterns": [
-            r"\b[A-Z0-9]{3,5}\s*[- ]\s*\d{5,9}\b",
-        ],
-    },
-    "voter_id": {
-        "labels": [
-            "voter",
-            "voter id",
-            "commission on elections",
-            "comelec",
-            "precinct",
-        ],
-        "id_patterns": [
-            r"\b\d{4}\s*[- ]\s*\d{4}\s*[- ]\s*[A-Z0-9]{3,8}\b",
-        ],
-    },
-    "prc_id": {
-        "labels": [
-            "professional regulation commission",
-            "professional identification card",
-            "prc",
-            "registration no",
-            "profession",
-        ],
-        "id_patterns": [
-            r"\b\d{6,8}\b",
-        ],
-    },
-    "passport": {
-        "labels": [
-            "passport",
-            "pasaporte",
-            "department of foreign affairs",
-            "dfa",
-            "passport no",
-            "issuing authority",
-        ],
-        "id_patterns": [
-            r"\b[A-Z]{1,2}\d{6,8}[A-Z]?\b",
-        ],
-    },
-    "school_id": {
-        "labels": [
-            "school id",
-            "student id",
-            "student number",
-            "school year",
-            "university",
-            "college",
-            "institute",
-        ],
-        "id_patterns": [
-            r"\b\d{2,4}\s*[- ]\s*\d{3,8}\b",
-        ],
-    },
-    "government_id": {
-        "labels": [
-            "government id",
-            "tin",
-            "senior citizen",
-            "barangay id",
-            "government service",
-            "tax identification",
-        ],
-        "id_patterns": [
-            r"\b\d{2,4}\s*[- ]\s*\d{2,5}\s*[- ]\s*\d{2,8}\b",
-        ],
-    },
-}
 
 DATE_PATTERN = re.compile(
     r"\b("
@@ -552,7 +403,7 @@ def _extract_gender(lines: list[str]) -> str | None:
 
 def _extract_id_number(lines: list[str]) -> str | None:
     text = " ".join(lines)
-    for profile in DOCUMENT_PROFILES.values():
+    for profile in get_document_types().values():
         for pattern in profile["id_patterns"]:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
@@ -624,8 +475,9 @@ def _validate_document(
     if date_signal_count:
         signals.append("date_fields")
 
+    profiles = get_document_types()
     profile_scores: dict[str, int] = {}
-    for document_type, profile in DOCUMENT_PROFILES.items():
+    for document_type, profile in profiles.items():
         label_hits = [label for label in profile["labels"] if label in normalized_text]
         pattern_hits = [
             pattern for pattern in profile["id_patterns"] if re.search(pattern, raw_text, re.IGNORECASE)
@@ -665,7 +517,7 @@ def _validate_document(
     is_supported_document = is_identity_document and detected_document_type is not None
 
     if document_side == "back" and is_identity_document and detected_document_type is None and expected_document_type:
-        expected_profile = DOCUMENT_PROFILES.get(expected_document_type)
+        expected_profile = profiles.get(expected_document_type)
         if expected_profile:
             expected_label_hits = [label for label in expected_profile["labels"] if label in normalized_text]
             expected_pattern_hits = [

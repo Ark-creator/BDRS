@@ -1,0 +1,14 @@
+schema: spec-driven
+change: codebase-optimization-automation
+status: proposed
+artifacts:
+  proposal:
+    status: done
+  design:
+    status: done
+    dependsOn: [proposal]
+  tasks:
+    status: done
+    dependsOn: [design]
+apply:
+  requires: [tasks]
