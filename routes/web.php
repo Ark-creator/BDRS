@@ -54,6 +54,14 @@ Route::get('/images/announcements/{path}', [ImageProxyController::class, 'showPu
     ->where('path', '.*')
     ->name('images.announcements');
 
+Route::get('/images/site-logos/{path}', [ImageProxyController::class, 'showSiteLogo'])
+    ->where('path', '.*')
+    ->name('images.site-logos');
+
+Route::get('/images/officials/{path}', [ImageProxyController::class, 'showOfficialPhoto'])
+    ->where('path', '.*')
+    ->name('images.officials');
+
 // --- PUBLIC ROUTES ---
 // Route::get('/', function () {
 //     return Inertia::render('Welcome', [

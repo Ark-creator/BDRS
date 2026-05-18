@@ -118,30 +118,35 @@ class ContentSettingsController extends Controller
         $officialsData = $request->input('officials');
         
         for ($i = 0; $i < 3; $i++) {
-            $currentPhotoPath = $settings->officials[$i]['photo_url'] ?? null;
+            $currentPhotoPath = $settings->officials[$i]['photo_path'] ?? null;
             if (($request->input("officials_files.{$i}") ?? null) === 'remove' && $currentPhotoPath) {
-                Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($currentPhotoPath));
+                Storage::disk($this->publicDisk())->delete($currentPhotoPath);
+                $officialsData[$i]['photo_path'] = null;
                 $officialsData[$i]['photo_url'] = null;
             } 
             elseif ($request->hasFile("officials_files.{$i}")) {
                 if ($currentPhotoPath) {
-                    Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($currentPhotoPath));
+                    Storage::disk($this->publicDisk())->delete($currentPhotoPath);
                 }
                 $path = $this->compressionService->compress($request->file("officials_files.{$i}"), 'officials', 80);
-                $officialsData[$i]['photo_url'] = Storage::disk($this->publicDisk())->url($path);
+                $officialsData[$i]['photo_path'] = $path;
+                $officialsData[$i]['photo_url'] = route('images.officials', ['path' => $path]);
             } else {
-                 $officialsData[$i]['photo_url'] = $currentPhotoPath;
+                 $officialsData[$i]['photo_path'] = $currentPhotoPath;
+                 $officialsData[$i]['photo_url'] = $currentPhotoPath ? route('images.officials', ['path' => $currentPhotoPath]) : null;
             }
         }
         $dataToUpdate['officials'] = $officialsData;
 
         if ($request->hasFile('footer_logo_file')) {
-            if ($settings->footer_logo_url) { Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($settings->footer_logo_url)); }
+            if ($settings->footer_logo_path) { Storage::disk($this->publicDisk())->delete($settings->footer_logo_path); }
             $path = $this->compressionService->compress($request->file('footer_logo_file'), 'site_logos', 85);
-            $dataToUpdate['footer_logo_url'] = Storage::disk($this->publicDisk())->url($path);
+            $dataToUpdate['footer_logo_path'] = $path;
+            $dataToUpdate['footer_logo_url'] = route('images.site-logos', ['path' => $path]);
         } elseif ($request->input('footer_logo_file') === 'remove') {
-            if ($settings->footer_logo_url) {
-                Storage::disk($this->publicDisk())->delete($this->storedPathFromUrl($settings->footer_logo_url));
+            if ($settings->footer_logo_path) {
+                Storage::disk($this->publicDisk())->delete($settings->footer_logo_path);
+                $dataToUpdate['footer_logo_path'] = null;
                 $dataToUpdate['footer_logo_url'] = null;
             }
         }

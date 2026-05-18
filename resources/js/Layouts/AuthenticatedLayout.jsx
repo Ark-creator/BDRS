@@ -30,7 +30,7 @@ import "react-toastify/dist/ReactToastify.css";
 //================================================================
 // SIDEBAR COMPONENT (Included for context)
 //================================================================
-function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileOpen, isMobile, setShowAdminSidebarMobile }) {
+function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileOpen, isMobile, setShowAdminSidebarMobile, logoUrl }) {
     const [openSections, setOpenSections] = useState({
         Main: true,
         Management: true,
@@ -115,7 +115,7 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
             className={clsx("fixed top-0 z-40 flex h-full flex-col bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 shadow-lg transition-all duration-300 ease-in-out", isMobile ? (mobileOpen ? 'w-64 left-0' : 'w-0 -left-full') : (isCollapsed ? 'w-[5.5rem] left-0' : 'w-64 left-0'))}
         >
             <div id="sidebar-header" className="flex items-center justify-between p-4 border-b border-slate-200/80 dark:border-slate-800 h-16 shrink-0">
-                {!(isCollapsed && !mobileOpen) && (<Link href="/" className="flex items-center gap-3"><img className="w-8 h-8 rounded-md" src="/images/gapanlogo.png" alt="Doconnect Logo" /><span className="text-lg font-bold text-slate-800 dark:text-white whitespace-nowrap">Admin</span></Link>)}
+                {!(isCollapsed && !mobileOpen) && (<Link href="/" className="flex items-center gap-3"><img className="w-8 h-8 rounded-md" src={logoUrl} alt="Doconnect Logo" /><span className="text-lg font-bold text-slate-800 dark:text-white whitespace-nowrap">Admin</span></Link>)}
                 {!isMobile && (<button onClick={() => setIsCollapsed(!isCollapsed)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}>{isCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}</button>)}
                 {isMobile && (<button onClick={() => setShowAdminSidebarMobile(false)} className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" aria-label="Close sidebar"><X size={20} /></button>)}
             </div>
@@ -138,11 +138,15 @@ function SidebarComponent({ user, navLinks, isCollapsed, setIsCollapsed, mobileO
 // MAIN AUTHENTICATED LAYOUT
 //================================================================
 export default function AuthenticatedLayout({ header, children }) {
-    const { props, component } = usePage();
-    const { auth: { user } } = props;
+    const { props } = usePage();
+    const { auth: { user }, footerData } = props;
     const isAdmin = user.role === "admin" || user.role === "super_admin";
     const isSuperAdmin = user.role === "super_admin";
+    
+    const component = props.component || '';
     const onAdminPage = component.startsWith('Admin/') || component.startsWith('SuperAdmin/');
+
+    const logoUrl = footerData?.footer_logo_url || '/images/gapanlogo.png';
 
     const [adminUnreadMessages, setAdminUnreadMessages] = useState([]);
     const [adminUnreadCount, setAdminUnreadCount] = useState(0);
@@ -387,7 +391,7 @@ export default function AuthenticatedLayout({ header, children }) {
         <div className="min-h-screen bg-gray-100 dark:bg-slate-900/95 font-inter">
             <AnimatePresence>
                 {isAdmin && (isMobile && showAdminSidebarMobile || !isMobile) && (
-                    <SidebarComponent user={user} navLinks={navLinkGroups} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} mobileOpen={isMobile && showAdminSidebarMobile} isMobile={isMobile} setShowAdminSidebarMobile={setShowAdminSidebarMobile} />
+                    <SidebarComponent user={user} navLinks={navLinkGroups} isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} mobileOpen={isMobile && showAdminSidebarMobile} isMobile={isMobile} setShowAdminSidebarMobile={setShowAdminSidebarMobile} logoUrl={logoUrl} />
                 )}
             </AnimatePresence>
             {isMobile && showAdminSidebarMobile && (<div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setShowAdminSidebarMobile(false)} />)}
@@ -399,7 +403,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                 <button onClick={() => { if (isMobile) { if (isAdmin && onAdminPage) { setShowAdminSidebarMobile(p => !p); setIsMobileNavOpen(false); } else { setIsMobileNavOpen(p => !p); setShowAdminSidebarMobile(false); } } }} className="md:hidden p-2 rounded-lg" aria-label="Toggle mobile menu">
                                     {(showAdminSidebarMobile || isMobileNavOpen) ? <X size={24} /> : <Menu size={24} />}
                                 </button>
-                                <Link href="/" className="flex items-center gap-2"><img className="w-10 h-10 rounded-full" src="/images/gapanlogo.png" alt="Doconnect Logo" /><span className="font-bold text-lg text-blue-900 dark:text-white hidden sm:inline">Doconnect</span></Link>
+                                <Link href="/" className="flex items-center gap-2"><img className="w-10 h-10 rounded-full" src={logoUrl} alt="Doconnect Logo" /><span className="font-bold text-lg text-blue-900 dark:text-white hidden sm:inline">Doconnect</span></Link>
                             </div>
                             <div className="hidden md:flex items-center gap-6">
                                 <NavLink id="nav-home" href={route("residents.home")} active={route().current("residents.home")}>Home</NavLink>

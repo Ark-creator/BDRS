@@ -76,6 +76,46 @@ class ImageProxyController extends Controller
             || str_starts_with($path, 'face_images/');
     }
 
+    public function showSiteLogo(string $path)
+    {
+        $path = ltrim($path, '/');
+
+        if (!str_starts_with($path, 'site_logos/')) {
+            abort(403, 'Access denied.');
+        }
+
+        $disk = Storage::disk(config('filesystems.public_uploads_disk', 's3'));
+
+        if (!$disk->exists($path)) {
+            abort(404, 'Image not found.');
+        }
+
+        return $disk->response($path, null, [
+            'Cache-Control' => 'public, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    public function showOfficialPhoto(string $path)
+    {
+        $path = ltrim($path, '/');
+
+        if (!str_starts_with($path, 'officials/')) {
+            abort(403, 'Access denied.');
+        }
+
+        $disk = Storage::disk(config('filesystems.public_uploads_disk', 's3'));
+
+        if (!$disk->exists($path)) {
+            abort(404, 'Image not found.');
+        }
+
+        return $disk->response($path, null, [
+            'Cache-Control' => 'public, max-age=86400',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     private function canViewCredentialImage(Request $request, UserProfile $profile): bool
     {
         $user = $request->user();
