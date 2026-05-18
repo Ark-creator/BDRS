@@ -64,8 +64,10 @@ public function store(LoginRequest $request): RedirectResponse
 
     // 3. Check for 2FA and redirect if enabled
     if ($user->two_factor_enabled) {
+        $graceEnabled = SystemSetting::twoFactorGracePeriodEnabled();
         $graceDays = SystemSetting::twoFactorGracePeriodDays();
-        $withinGrace = $user->last_2fa_at
+        $withinGrace = $graceEnabled
+            && $user->last_2fa_at
             && $user->last_2fa_at->addDays($graceDays)->isFuture();
 
         if (!$withinGrace) {

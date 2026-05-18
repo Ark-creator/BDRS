@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class SystemSetting extends Model
 {
     public const EMAIL_VERIFICATION_ENABLED = 'email_verification_enabled';
+    public const TWO_FACTOR_GRACE_PERIOD_ENABLED = 'two_factor_grace_period_enabled';
     public const TWO_FACTOR_GRACE_PERIOD_DAYS = 'two_factor_grace_period_days';
     public const DEFAULT_TWO_FACTOR_GRACE_PERIOD = 7;
 
@@ -44,6 +45,11 @@ class SystemSetting extends Model
     public static function emailVerificationEnabled(): bool
     {
         return static::boolean(static::EMAIL_VERIFICATION_ENABLED, false);
+    }
+
+    public static function twoFactorGracePeriodEnabled(): bool
+    {
+        return static::boolean(static::TWO_FACTOR_GRACE_PERIOD_ENABLED, false);
     }
 
     public static function twoFactorGracePeriodDays(): int

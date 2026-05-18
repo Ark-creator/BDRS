@@ -120,6 +120,8 @@ export default function SuperAdminSettings({ auth, initialSettingsData, systemSe
             footer_logo_file: null,
             officials_files: [null, null, null],
             email_verification_enabled: Boolean(systemSettings.email_verification_enabled),
+            two_factor_grace_period_enabled: Boolean(systemSettings.two_factor_grace_period_enabled),
+            two_factor_grace_period_days: Number(systemSettings.two_factor_grace_period_days) || 7,
             document_availability: availability.map((document) => ({
                 ...document,
                 is_requestable: Boolean(document.is_requestable),
@@ -251,6 +253,7 @@ export default function SuperAdminSettings({ auth, initialSettingsData, systemSe
                                 )}
 
                                 {activeTab === 'auth' && (
+                                    <>
                                     <FormRow>
                                         <FormLabel title="Email Verification" description="Control whether users must verify their email before using verified routes." />
                                         <FormControl>
@@ -262,6 +265,35 @@ export default function SuperAdminSettings({ auth, initialSettingsData, systemSe
                                             />
                                         </FormControl>
                                     </FormRow>
+
+                                    <FormRow>
+                                        <FormLabel title="2FA Grace Period" description="Allow users with 2FA enabled to skip the code for a period after their last successful verification." />
+                                        <FormControl>
+                                            <ToggleSwitch
+                                                checked={Boolean(data.two_factor_grace_period_enabled)}
+                                                onChange={(checked) => setData('two_factor_grace_period_enabled', checked)}
+                                                label="Enable 2FA Grace Period"
+                                                description={data.two_factor_grace_period_enabled ? 'Users can log in without 2FA within the grace period.' : 'Users must always enter 2FA code on every login.'}
+                                            />
+                                        </FormControl>
+                                    </FormRow>
+
+                                    {data.two_factor_grace_period_enabled && (
+                                        <FormRow>
+                                            <FormLabel title="Grace Period (Days)" description="Number of days a user can log in without 2FA after their last successful verification." />
+                                            <FormControl>
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="90"
+                                                    value={data.two_factor_grace_period_days}
+                                                    onChange={(e) => setData('two_factor_grace_period_days', parseInt(e.target.value) || 1)}
+                                                    className="w-24 rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                                />
+                                            </FormControl>
+                                        </FormRow>
+                                    )}
+                                    </>
                                 )}
                             </motion.div>
                         </AnimatePresence>

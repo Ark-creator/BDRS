@@ -63,6 +63,8 @@ class ContentSettingsController extends Controller
             'initialSettingsData' => $settings,
             'systemSettings' => [
                 'email_verification_enabled' => SystemSetting::emailVerificationEnabled(),
+                'two_factor_grace_period_enabled' => SystemSetting::twoFactorGracePeriodEnabled(),
+                'two_factor_grace_period_days' => SystemSetting::twoFactorGracePeriodDays(),
             ],
             'documentAvailability' => $documentAvailability,
         ]);
@@ -82,6 +84,8 @@ class ContentSettingsController extends Controller
             'officials.*.position' => 'nullable|string|max:255',
             'officials_files' => 'nullable|array|size:3',
             'email_verification_enabled' => 'required',
+            'two_factor_grace_period_enabled' => 'required',
+            'two_factor_grace_period_days' => 'required|integer|min:1|max:90',
             'document_availability' => 'nullable|array',
             'document_availability.*.name' => 'required|string|max:255',
             'document_availability.*.is_requestable' => 'required',
@@ -92,6 +96,14 @@ class ContentSettingsController extends Controller
         SystemSetting::setValue(
             SystemSetting::EMAIL_VERIFICATION_ENABLED,
             $request->boolean('email_verification_enabled')
+        );
+        SystemSetting::setValue(
+            SystemSetting::TWO_FACTOR_GRACE_PERIOD_ENABLED,
+            $request->boolean('two_factor_grace_period_enabled')
+        );
+        SystemSetting::setValue(
+            SystemSetting::TWO_FACTOR_GRACE_PERIOD_DAYS,
+            $request->integer('two_factor_grace_period_days')
         );
 
         foreach ($request->input('document_availability', []) as $documentSetting) {
