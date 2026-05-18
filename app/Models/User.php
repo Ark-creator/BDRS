@@ -28,6 +28,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'barangay_id',
         'two_factor_method',
         'email_verified_at',
+        'last_otp_sent_at',
     ];
 
     protected $hidden = [
@@ -43,6 +44,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_expires_at' => 'datetime',
+            'last_otp_sent_at' => 'datetime',
         ];
     }
 

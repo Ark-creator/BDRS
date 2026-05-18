@@ -68,11 +68,20 @@ public function store(LoginRequest $request): RedirectResponse
         $user->two_factor_expires_at = now()->addMinutes(10);
         $user->save();
         
-        $user->notify(new TwoFactorCode());
+        // Check if OTP was sent within the last 5 days (throttling to save credits)
+        $otpThrottlePeriod = now()->subDays(5);
+        $shouldSendOtp = !$user->last_otp_sent_at || $user->last_otp_sent_at->lt($otpThrottlePeriod);
+        
+        if ($shouldSendOtp) {
+            $user->notify(new TwoFactorCode());
+            $user->last_otp_sent_at = now();
+            $user->save();
+        }
         
         // This is the key: place the user ID in the session, then log out
         $request->session()->put('two_factor_user_id', $user->id);
-                $request->session()->flash('two_factor_method', $user->two_factor_method);
+        $request->session()->flash('two_factor_method', $user->two_factor_method);
+        $request->session()->flash('otp_throttled', !$shouldSendOtp);
 
         Auth::logout();
         

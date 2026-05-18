@@ -77,6 +77,13 @@ class TwoFactorController extends Controller
 
         $user = User::findOrFail($userId);
 
+        // Check if OTP was sent within the last 5 days (throttling to save credits)
+        $otpThrottlePeriod = now()->subDays(5);
+        if ($user->last_otp_sent_at && $user->last_otp_sent_at->gte($otpThrottlePeriod)) {
+            return back()
+                ->withErrors(['two_factor_code' => 'Please wait before requesting a new code. An OTP was recently sent to your account.']);
+        }
+
         // Determine which method to use for resending
         $resendMethod = $request->input('method', $user->two_factor_method);
 
@@ -88,6 +95,10 @@ class TwoFactorController extends Controller
         $user->save();
 
         $user->notify(new TwoFactorCode());
+
+        // Update the last OTP sent timestamp
+        $user->last_otp_sent_at = now();
+        $user->save();
 
         return back()
             ->with('status', 'A new verification code has been sent.')
