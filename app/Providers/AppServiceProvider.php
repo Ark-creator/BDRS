@@ -52,9 +52,9 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(IdentityVerificationReviewed::class, RecordIdentityVerificationAudit::class);
 
         // Force generated URLs to HTTPS whenever the deployed app URL uses HTTPS.
-        // if ($this->app->environment('production') || str_starts_with((string) config('app.url'), 'https://')) {
-        //     URL::forceScheme('https');
-        // }
+        if ($this->app->environment('production') || str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
 
         // Allow super admins to bypass all checks automatically
         Gate::before(function (User $user, string $ability) {
