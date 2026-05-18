@@ -27,7 +27,8 @@ use App\Http\Controllers\Security\HoneypotController;
 
 use App\Http\Controllers\Admin\DocumentGenerationController;
 use App\Http\Controllers\Resident\DocumentRequestController;
-use App\Http\Controllers\Resident\RequestPaper\BrgyController; 
+use App\Http\Controllers\Resident\RequestPaper\BrgyController;
+use App\Http\Controllers\Resident\RequestPaper\PaperController; 
 
 // --- Admin & SuperAdmin Controllers ---
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
@@ -142,6 +143,8 @@ Route::middleware(['auth', 'verified', 'can:be-resident', 'throttle:authenticate
     ->middleware('throttle:sensitive')
     ->name('requests.submit-payment');
 
+    Route::get('/history', [DocumentRequestController::class, 'history'])->name('history');
+
     Route::prefix('papers')->name('papers.')->group(function() {
         Route::get('/akap', fn() => Inertia::render('Residents/papers/Akap'))->name('akap');
         Route::get('/solo-parent', fn() => Inertia::render('Residents/papers/SoloParent'))->name('soloParent');
@@ -156,7 +159,10 @@ Route::middleware(['auth', 'verified', 'can:be-resident', 'throttle:authenticate
         Route::get('/gp-indigency', fn() => Inertia::render('Residents/papers/GpIndigency'))->name('gpIndigency');
         Route::get('/residency', fn() => Inertia::render('Residents/papers/Residency'))->name('residency');
         Route::get('/indigency', fn() => Inertia::render('Residents/papers/Indigency'))->name('indigency');
-        
+        Route::get('/job-seeker', [PaperController::class, 'jobSeeker'])->name('jobSeeker');
+        Route::get('/oath-of-undertaking', [PaperController::class, 'oathOfUndertaking'])->name('oathOfUndertaking');
+        Route::get('/brgy-business-permit', [PaperController::class, 'brgyBusinessPermit'])->name('brgyBusinessPermit');
+        Route::get('/pagpapatunay-eduk', [PaperController::class, 'pagpapatunayEduk'])->name('pagpapatunayEduk');
     });
 });
 
@@ -249,6 +255,7 @@ Route::middleware(['auth', 'verified', 'can:manage-users', 'throttle:authenticat
     
      Route::get('/settings', [ContentSettingsController::class, 'show'])->name('settings');
     Route::patch('/settings', [ContentSettingsController::class, 'update'])->middleware('throttle:sensitive')->name('settings.update');
+    Route::get('/documents', fn() => Inertia::render('SuperAdmin/DocumentsType'))->name('documents');
 });
 
 // Auth scaffolding routes

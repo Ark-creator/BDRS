@@ -10,4 +10,18 @@ export default defineConfig({
         }),
         react(),
     ],
+    build: {
+        sourcemap: false,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor-mui': ['@mui/material', '@emotion/react', '@emotion/styled'],
+                    'vendor-animation': ['framer-motion', 'gsap'],
+                    'vendor-charts': ['recharts'],
+                    'vendor-ocr': ['tesseract.js'],
+                    'vendor-utils': ['sweetalert2', 'date-fns', 'lucide-react'],
+                },
+            },
+        },
+    },
 });
