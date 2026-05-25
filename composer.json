@@ -14,7 +14,7 @@
         "laravel/octane": "*",
         "laravel/reverb": "*",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.10.1",
+        "laravel/tinker": "^3.0.2",
         "league/flysystem-aws-s3-v3": "^3.32",
         "mpdf/mpdf": "^8.2",
         "phpoffice/phpword": "^1.4",
