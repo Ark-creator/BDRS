@@ -16,7 +16,6 @@ import {
 } from '@/utils/announcementList';
 
 const content = {
-    // ... (walang pagbabago sa content object mo)
     en: {
         title: "Doconnect",
         tagline: "Fast and Reliable Service",
@@ -105,7 +104,6 @@ const content = {
     }
 };
 
-// --- Reusable Components (walang pagbabago dito) ---
 const ServiceCard = ({ icon, title, description }) => ( <motion.div className="bg-white/50 dark:bg-slate-800/50 p-6 rounded-2xl shadow-lg backdrop-blur-sm ring-1 ring-black/5 transition-shadow duration-300 hover:shadow-blue-500/20 hover:shadow-2xl" initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} whileHover={{ y: -8, transition: { duration: 0.2 } }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.5, ease: "easeOut" }} > <div className="flex-shrink-0 bg-sky-100 dark:bg-sky-900/50 p-3 rounded-full w-fit mb-4 shadow-inner">{icon}</div> <h3 className="text-lg font-bold text-slate-900 dark:text-white">{title}</h3> <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{description}</p> </motion.div> );
 const StepCard = ({ icon, title, description }) => ( <div className="relative flex flex-col items-center text-center px-4"> <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-full bg-sky-100 dark:bg-sky-900/50 ring-8 ring-white dark:ring-slate-900 shadow-lg"> {icon} </div> <h3 className="mt-6 text-lg font-semibold text-slate-800 dark:text-white">{title}</h3> <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-xs">{description}</p> </div> );
 const FaqItem = ({ question, answer }) => { const [isOpen, setIsOpen] = useState(false); return ( <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.5 }} transition={{ duration: 0.5 }} className={clsx( "mb-4 rounded-xl border transition-all duration-300", isOpen ? "border-blue-500 bg-white dark:bg-slate-800/50" : "border-slate-200 bg-white/50 dark:border-slate-700 dark:bg-slate-800/30 hover:bg-white/80 dark:hover:bg-slate-800/60" )} > <button onClick={() => setIsOpen(!isOpen)} className="w-full flex justify-between items-start text-left p-6" > <div className="flex items-start gap-4"> <h3 className="text-md font-semibold text-slate-800 dark:text-slate-100">{question}</h3> </div> <motion.div animate={{ rotate: isOpen ? 180 : 0 }} className="ml-4"> <ChevronDown className="h-5 w-5 text-slate-500 flex-shrink-0" /> </motion.div> </button> <AnimatePresence> {isOpen && ( <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.3, ease: "easeInOut" }} className="overflow-hidden" > <div className="px-6 pb-6 pl-16 text-slate-600 dark:text-slate-400 text-sm"> {answer} </div> </motion.div> )} </AnimatePresence> </motion.div> ); };
@@ -113,7 +111,6 @@ const AuroraBackground = () => ( <div className="absolute top-0 left-0 w-full h-
 
 const ANNOUNCEMENT_LIMIT = 5;
 
-// 1. DAGDAGAN NG `footerData` DITO PARA MATANGGAP ANG PROP GALING SA CONTROLLER
 export default function Welcome({ auth, announcements = [], footerData , officials }) {
     const [scrolled, setScrolled] = useState(false);
     const [language, setLanguage] = useState('en');
@@ -172,8 +169,6 @@ export default function Welcome({ auth, announcements = [], footerData , officia
 
     const slideInUp = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }, };
     const staggerContainer = { hidden: {}, visible: { transition: { staggerChildren: 0.2 } }, };
-    const sectionVariants = { hidden: {}, visible: { transition: { staggerChildren: 0.2, delayChildren: 0.1, } } };
-    const cardVariants = { hidden: { opacity: 0, y: 50 }, visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } } };
 
     return (
         <>
@@ -183,68 +178,101 @@ export default function Welcome({ auth, announcements = [], footerData , officia
             <div className="relative overflow-x-hidden bg-sky-50 dark:bg-slate-900 font-sans text-slate-800 dark:text-slate-200 isolate">
                 <motion.div className="fixed top-0 left-0 right-0 h-1 bg-blue-600 origin-left z-50" style={{ scaleX }} />
 
-                <header className={clsx("fixed top-0 left-0 right-0 z-40 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
-                    <nav className="flex items-center justify-between p-4 md:px-8 max-w-7xl mx-auto" aria-label="Global">
-                        <div className="flex md:flex-1">
+                <header className={clsx("fixed top-0 left-0 right-0 z-50 transition-all duration-300", scrolled ? "bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-md" : "bg-transparent")}>
+                    <nav className="flex items-center justify-between p-4 lg:px-8 max-w-7xl mx-auto" aria-label="Global">
+                        <div className="flex lg:flex-1">
                             <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
                                      <img className="h-10 w-auto rounded-full ring-2 ring-white/50" src={footerData.footer_logo_url || '/images/gapanlogo.png'} alt="Barangay Logo" />
                                      <span className="font-bold text-lg text-slate-800 dark:text-white">{footerData?.title || 'Doconnect'}</span>
                             </Link>
                         </div>
 
-                        <div className="flex md:hidden">
-                            <button type="button" className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700 dark:text-gray-300" onClick={() => setIsMobileMenuOpen(true)} >
+                        {/* Hamburger Button: Shows on Mobile & Tablet (up to lg) */}
+                        <div className="flex lg:hidden">
+                            <button type="button" className="-m-2.5 inline-flex items-center justify-center rounded-md p-2.5 text-gray-700 dark:text-gray-300 transition-colors hover:bg-black/5 dark:hover:bg-white/5" onClick={() => setIsMobileMenuOpen(true)} >
                                 <span className="sr-only">Open main menu</span>
                                 <Menu className="h-6 w-6" aria-hidden="true" />
                             </button>
                         </div>
-                        <div className="hidden md:flex md:gap-x-8">
+                        
+                        {/* Desktop Nav Links (lg and up) */}
+                        <div className="hidden lg:flex lg:gap-x-8">
                             {t.navLinks.map((item) => (
                                 <a key={item.name} href={item.href} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
                                     {item.name}
                                 </a>
                             ))}
                         </div>
-                        <div className="hidden md:flex md:flex-1 md:justify-end md:items-center md:gap-x-4">
+                        
+                        {/* Desktop Auth Links (lg and up) */}
+                        <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:items-center lg:gap-x-4">
                             <TranslateButton language={language} setLanguage={setLanguage} />
                             {auth.user ? (
                                 <Link href={route('residents.home')} className="rounded-md px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 ring-1 ring-slate-200 dark:ring-slate-700 transition hover:bg-slate-100 dark:hover:bg-slate-800">{t.dashboard}</Link>
                             ) : (
                                 <>
-                                    <Link href={route('login')} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white">{t.login}</Link>
+                                    <Link href={route('login')} className="text-sm font-semibold leading-6 text-gray-900 dark:text-white hover:text-blue-600 transition-colors">{t.login}</Link>
                                     <Link href={route('register')} className="rounded-md bg-blue-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus-visible:outline-blue-600 transition-colors">{t.register}</Link>
                                 </>
                             )}
                         </div>
                     </nav>
+                    
                     <AnimatePresence>
                         {isMobileMenuOpen && (
-                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="md:hidden" >
-                                <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-                                <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="fixed inset-y-0 right-0 z-50 flex h-full w-full flex-col bg-slate-50 dark:bg-slate-800 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10" >
-                                    <div className="p-6">
-                                        <div className="flex items-center justify-between">
-                                            <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
-                                                <img className="h-8 w-auto rounded-full" src={footerData?.logoUrl || '/images/gapanlogo.png'} alt="Barangay Logo" />
-                                                <span className="font-bold text-lg text-slate-800 dark:text-white">{footerData?.title || 'Doconnect'}</span>
-                                            </Link>
-                                            <button type="button" className="-m-2.5 rounded-md p-2.5 text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700" onClick={() => setIsMobileMenuOpen(false)} >
-                                                <span className="sr-only">Close menu</span>
-                                                <X className="h-6 w-6" aria-hidden="true" />
-                                            </button>
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="lg:hidden" >
+                                {/* Overlay */}
+                                <div className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
+                                
+                                {/* Slide-out Menu Panel */}
+                                <motion.div 
+                                    initial={{ x: '100%' }} 
+                                    animate={{ x: 0 }} 
+                                    exit={{ x: '100%' }} 
+                                    transition={{ duration: 0.3, ease: "easeOut" }} 
+                                    className="fixed inset-y-0 right-0 z-[70] flex h-[100dvh] w-full flex-col bg-slate-50 dark:bg-slate-900 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10 shadow-2xl" 
+                                >
+                                    {/* Menu Header - Fixed Top */}
+                                    <div className="flex items-center justify-between p-6 border-b border-gray-200/50 dark:border-gray-800/50 shrink-0 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md">
+                                        <Link href="/" className="-m-1.5 p-1.5 flex items-center gap-2">
+                                            <img className="h-8 w-auto rounded-full ring-2 ring-slate-200 dark:ring-slate-700" src={footerData?.logoUrl || '/images/gapanlogo.png'} alt="Barangay Logo" />
+                                            <span className="font-bold text-lg text-slate-800 dark:text-white">{footerData?.title || 'Doconnect'}</span>
+                                        </Link>
+                                        <button type="button" className="-m-2.5 rounded-md p-2.5 text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-800" onClick={() => setIsMobileMenuOpen(false)} >
+                                            <span className="sr-only">Close menu</span>
+                                            <X className="h-6 w-6" aria-hidden="true" />
+                                        </button>
+                                    </div>
+
+                                    {/* Menu Links - Scrollable Area */}
+                                    <div className="flex-1 overflow-y-auto px-6 py-6 pb-24">
+                                        <div className="space-y-2 mb-8">
+                                            {t.navLinks.map((item) => ( 
+                                                <a key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className="-mx-3 block rounded-lg px-3 py-3 text-base font-semibold leading-7 text-gray-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors" > 
+                                                    {item.name} 
+                                                </a> 
+                                            ))}
                                         </div>
-                                        <div className="mt-8 flow-root">
-                                            <div className="-my-6 divide-y divide-gray-200/10 dark:divide-gray-700/50">
-                                                <div className="space-y-2 py-6">
-                                                    {t.navLinks.map((item) => ( <a key={item.name} href={item.href} onClick={() => setIsMobileMenuOpen(false)} className="-mx-3 block rounded-lg px-3 py-2 text-base font-semibold leading-7 text-gray-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700" > {item.name} </a> ))}
-                                                </div>
-                                                <div className="space-y-4 py-6">
-                                                    {auth.user ? ( <Link href={route('residents.home')} onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700" > {t.dashboard} </Link> ) : ( <> <Link href={route('login')} onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-200 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">{t.login}</Link> <Link href={route('register')} onClick={() => setIsMobileMenuOpen(false)} className="block rounded-lg bg-blue-600 py-3 px-4 text-center text-base font-semibold leading-7 text-white shadow-sm hover:bg-blue-700">{t.register}</Link> </> )}
-                                                </div>
-                                            </div>
+                                        <div className="space-y-4 pt-6 border-t border-gray-200/50 dark:border-gray-800/50">
+                                            {auth.user ? ( 
+                                                <Link href={route('residents.home')} onClick={() => setIsMobileMenuOpen(false)} className="block w-full rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-300 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors" > 
+                                                    {t.dashboard} 
+                                                </Link> 
+                                            ) : ( 
+                                                <> 
+                                                    <Link href={route('login')} onClick={() => setIsMobileMenuOpen(false)} className="block w-full rounded-lg py-3 px-4 text-center text-base font-semibold leading-7 text-gray-900 dark:text-white ring-1 ring-slate-300 dark:ring-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                                        {t.login}
+                                                    </Link> 
+                                                    <Link href={route('register')} onClick={() => setIsMobileMenuOpen(false)} className="block w-full rounded-lg bg-blue-600 py-3 px-4 text-center text-base font-semibold leading-7 text-white shadow-sm hover:bg-blue-700 transition-colors">
+                                                        {t.register}
+                                                    </Link> 
+                                                </> 
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="mt-auto border-t border-gray-200 dark:border-gray-700/50 p-6">
+
+                                    {/* Menu Footer - Fixed Bottom */}
+                                    <div className="mt-auto border-t border-gray-200/50 dark:border-gray-800/50 p-6 shrink-0 bg-slate-50 dark:bg-slate-900">
                                         <TranslateButton language={language} setLanguage={setLanguage} isMobile={true} />
                                     </div>
                                 </motion.div>
@@ -256,32 +284,39 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                 <main className="relative z-10">
                     <div className="min-h-screen flex items-center relative overflow-hidden">
                         <AuroraBackground />
-                        <div className="flex flex-col md:grid md:grid-cols-2 items-center gap-8 max-w-7xl mx-auto px-6 pt-28 pb-16 md:pt-24 md:pb-12 z-10">
-                            <motion.div className="text-center md:text-left" initial="hidden" animate="visible" variants={staggerContainer}>
+                        {/* Changed md:grid to lg:grid to keep Hero section stacked on tablets */}
+                        <div className="flex flex-col lg:grid lg:grid-cols-2 items-center gap-8 max-w-7xl mx-auto px-6 pt-28 pb-16 lg:pt-24 lg:pb-12 z-10 w-full">
+                            {/* Changed text-center md:text-left to lg:text-left */}
+                            <motion.div className="text-center lg:text-left w-full" initial="hidden" animate="visible" variants={staggerContainer}>
                                 <motion.span variants={slideInUp} className="inline-flex items-center rounded-full bg-sky-100 dark:bg-sky-900/50 px-3 py-1 text-sm font-medium text-sky-800 dark:text-sky-300">{t.tagline}</motion.span>
                                 <motion.div variants={slideInUp} className="mt-4 text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-white min-h-[140px] sm:min-h-[160px] md:min-h-0">
                                     <TypeAnimation sequence={[ t.heroTitle, 3000, '', 500 ]} wrapper="h1" speed={70} deletionSpeed={40} cursor={true} repeat={Infinity} />
                                 </motion.div>
-                                <motion.p variants={slideInUp} className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto md:mx-0">{t.heroSubtitle}</motion.p>
-                                <motion.div variants={slideInUp} className="mt-8 flex flex-col sm:flex-row justify-center md:justify-start gap-4">
-                                    <Link href={route('register')} className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-lg hover:bg-blue-700 focus-visible:outline-blue-600 transition-transform hover:scale-105">
+                                <motion.p variants={slideInUp} className="mt-4 text-lg text-slate-600 dark:text-slate-400 max-w-xl mx-auto lg:mx-0">{t.heroSubtitle}</motion.p>
+                                
+                                {/* Full width button on mobile, auto width on larger screens */}
+                                <motion.div variants={slideInUp} className="mt-8 flex flex-col sm:flex-row justify-center lg:justify-start gap-4 w-full">
+                                    <Link href={route('register')} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-lg hover:bg-blue-700 focus-visible:outline-blue-600 transition-transform hover:scale-105">
                                         {t.getStarted}
                                         <ArrowRight size={20} />
                                     </Link>
                                 </motion.div>
                             </motion.div>
-                            <motion.div className="w-full mt-10 md:mt-0" initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }} >
-                                <video src="/images/solid.mp4" className="w-full h-auto rounded-xl" autoPlay loop muted playsInline >
+                            
+                            <motion.div className="w-full mt-10 lg:mt-0" initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }} >
+                                <video src="/images/solid.mp4" className="w-full h-auto rounded-xl shadow-xl ring-1 ring-black/5" autoPlay loop muted playsInline >
                                     Your browser does not support the video tag.
                                 </video>
                             </motion.div>
                         </div>
                     </div>
+
                     <div className="py-16 sm:py-20 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
                         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                             <Announcements announcements={announcementList} />
                         </div>
                     </div>
+
                     <section id="how-it-works" className="py-20 sm:py-28 relative bg-white dark:bg-slate-900/70 backdrop-blur-sm">
                         <div className="absolute inset-0 bg-[url('/images/grid.svg')] [mask-image:linear-gradient(to_bottom,white,transparent,white)] dark:opacity-20" />
                         <div className="relative max-w-7xl mx-auto px-6 text-center">
@@ -290,9 +325,13 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                                 <motion.p variants={slideInUp} className="mt-4 text-lg text-slate-600 dark:text-slate-400">{t.howItWorksSubtitle}</motion.p>
                             </motion.div>
                             <div ref={stepsRef} className="mt-20 relative">
-                                <motion.div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-[calc(100%-5rem)] bg-slate-200 dark:bg-slate-700 md:hidden" style={{ scaleY: isInView ? 1 : 0, originY: 0 }} transition={{ duration: 1, ease: "easeOut" }} />
-                                <motion.div className="absolute top-10 left-0 w-full h-0.5 bg-slate-200 dark:bg-slate-700 hidden md:block" style={{ scaleX: isInView ? 1 : 0, originX: 0 }} transition={{ duration: 1, ease: "easeOut", delay: 0.2 }} />
-                                <motion.div initial="hidden" whileInView="visible" variants={staggerContainer} viewport={{ once: true, amount: 0.3 }} className="grid grid-cols-1 md:grid-cols-3 gap-y-16 md:gap-y-0 md:gap-x-8">
+                                {/* Vertical line shows up to Tablet (lg) */}
+                                <motion.div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-[calc(100%-5rem)] bg-slate-200 dark:bg-slate-700 lg:hidden" style={{ scaleY: isInView ? 1 : 0, originY: 0 }} transition={{ duration: 1, ease: "easeOut" }} />
+                                {/* Horizontal line shows Desktop only (lg and up) */}
+                                <motion.div className="absolute top-10 left-0 w-full h-0.5 bg-slate-200 dark:bg-slate-700 hidden lg:block" style={{ scaleX: isInView ? 1 : 0, originX: 0 }} transition={{ duration: 1, ease: "easeOut", delay: 0.2 }} />
+                                
+                                {/* Stacks 1 column until lg (desktop) */}
+                                <motion.div initial="hidden" whileInView="visible" variants={staggerContainer} viewport={{ once: true, amount: 0.3 }} className="grid grid-cols-1 lg:grid-cols-3 gap-y-16 lg:gap-y-0 lg:gap-x-8">
                                     <motion.div variants={slideInUp}><StepCard icon={<UserPlus className="h-8 w-8 text-sky-600 dark:text-sky-400" />} title={t.step1Title} description={t.step1Desc} /></motion.div>
                                     <motion.div variants={slideInUp}><StepCard icon={<MousePointerClick className="h-8 w-8 text-sky-600 dark:text-sky-400" />} title={t.step2Title} description={t.step2Desc} /></motion.div>
                                     <motion.div variants={slideInUp}><StepCard icon={<CheckCircle className="h-8 w-8 text-sky-600 dark:text-sky-400" />} title={t.step3Title} description={t.step3Desc} /></motion.div>
@@ -300,6 +339,7 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                             </div>
                         </div>
                     </section>
+
                     <section id="services" className="relative py-20 sm:py-28 overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-full">
                             <svg className="absolute -top-40 -left-20 w-[80rem] h-auto text-sky-100/50 dark:text-blue-900/20" width="1280" height="1280" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1096.5 528c-303 62-436 220.5-436 436s133 374 436 436 436-133 436-436c0-215.5-133-374-436-436Zm-872 0C-88.5 590 44.5 748.5 44.5 964s-133 374-436 436-436-133-436-436c0-215.5 133-374 436-436Z" fill="currentColor"/></svg>
@@ -317,7 +357,7 @@ export default function Welcome({ auth, announcements = [], footerData , officia
                         </div>
                     </section>
                    
-                          <OfficialsWelcome officials={officials} />
+                    <OfficialsWelcome officials={officials} />
                 
                     <section id="faq" className="py-20 sm:py-28 bg-sky-50 dark:bg-slate-900">
                         <div className="max-w-3xl mx-auto px-6">
